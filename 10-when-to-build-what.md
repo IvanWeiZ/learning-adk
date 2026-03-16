@@ -707,3 +707,343 @@ The LLM calls the hidden `transfer_to_agent` function. `AutoFlow` intercepts it 
 | `ParallelAgent` | Concurrent independent tasks | Instantiate directly |
 | `LoopAgent` | Repeat until done | Instantiate directly |
 | LLM-routed sub-agents | LLM decides delegation | `LlmAgent(sub_agents=[...])` |
+
+---
+
+## My Custom Use Cases
+
+---
+
+### Use Case 1 — Parse the User Message, Enrich with API Context, and Replace What the Agent Sees
+
+**Scenario:**
+The user sends a raw message like `"abc media_id:1"`. Before the agent ever runs, you want to:
+1. Extract the clean query (`"abc"`) and any structured IDs (`media_id=1`)
+2. Call external APIs to fetch context for those IDs (media record, user profile, etc.)
+3. Present the agent with a fully reformatted message — the original raw string is never visible to the LLM
+
+**Target agent input (what the LLM should see):**
+```
+User query is: abc
+
+Current media is:
+  id: 1
+  title: "Summer Reel"
+  tags: ["outdoor", "sports"]
+
+Additional context for the user:
+  name: Alice
+  tier: premium
+  watch_history: [...]
+
+Additional context for the media:
+  recommendations: [...]
+  trending_score: 0.87
+```
+
+---
+
+#### Why NOT a plain callback on the agent
+
+`before_agent_callback` fires before `_run_async_impl` but after the user event is already appended to the session. The agent's flow will still pull session history and include the raw `"abc media_id:1"` message in the `LlmRequest.contents`. You need to intercept at the model-request level to fully replace what the LLM sees.
+
+---
+
+#### The Right Pattern: `before_model_callback` + `SequentialAgent`
+
+Two clean options depending on how much separation you want.
+
+---
+
+##### Option A — `before_model_callback` (simpler, single agent)
+
+Hook into the LLM request just before it's sent. Replace the last user message's content with the enriched version. The LLM never sees the original.
+
+```
+User message arrives: "abc media_id:1"
+  → stored in session as-is (raw)
+  → agent.run_async() → flow builds LlmRequest with raw message in contents
+  → before_model_callback fires
+      → parse raw text, extract IDs
+      → call media API, call user context API
+      → rewrite llm_request.contents[-1] with enriched formatted content
+  → LLM receives the enriched message, never sees "abc media_id:1"
+```
+
+```python
+import re
+import httpx
+from google.adk.agents import LlmAgent
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models.llm_request import LlmRequest
+from google.genai import types
+
+# --- Parsing helper ---
+def parse_user_message(raw: str) -> tuple[str, dict]:
+    """Extract clean query and structured IDs from raw user input.
+
+    Example:
+        "abc media_id:1" → ("abc", {"media_id": "1"})
+        "find dog media_id:42 user_id:7" → ("find dog", {"media_id": "42", "user_id": "7"})
+    """
+    ids = {}
+    clean = raw
+    for match in re.finditer(r'(\w+_id):(\w+)', raw):
+        ids[match.group(1)] = match.group(2)
+        clean = clean.replace(match.group(0), '').strip()
+    return clean.strip(), ids
+
+# --- API fetchers (replace with your real clients) ---
+async def fetch_media_context(media_id: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://api.example.com/media/{media_id}")
+        return resp.json()
+
+async def fetch_user_context(user_id: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://api.example.com/users/{user_id}")
+        return resp.json()
+
+# --- The callback ---
+async def enrich_user_message(
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
+):
+    # Find the last user-role content in the request
+    last_user_content = None
+    last_user_idx = None
+    for i, content in enumerate(llm_request.contents):
+        if content.role == "user" and content.parts:
+            # Skip function responses — we only want plain text messages
+            if content.parts[0].text:
+                last_user_content = content
+                last_user_idx = i
+
+    if last_user_content is None:
+        return None  # nothing to enrich
+
+    raw_text = last_user_content.parts[0].text
+    clean_query, ids = parse_user_message(raw_text)
+
+    # Only enrich if we actually found IDs to resolve
+    if not ids:
+        return None
+
+    # Fetch context concurrently
+    import asyncio
+    media_ctx, user_ctx = {}, {}
+    tasks = []
+    if "media_id" in ids:
+        tasks.append(fetch_media_context(ids["media_id"]))
+    else:
+        tasks.append(asyncio.sleep(0, result={}))  # no-op placeholder
+
+    if "user_id" in ids:
+        tasks.append(fetch_user_context(ids["user_id"]))
+    else:
+        tasks.append(asyncio.sleep(0, result={}))
+
+    media_ctx, user_ctx = await asyncio.gather(*tasks)
+
+    # Build the enriched message the LLM will actually see
+    enriched = f"User query is: {clean_query}\n\n"
+
+    if media_ctx:
+        enriched += f"Current media is:\n{format_context(media_ctx)}\n\n"
+
+    if user_ctx:
+        enriched += f"Additional context for the user:\n{format_context(user_ctx)}\n\n"
+
+    # Replace the raw user message in-place — LLM never sees "abc media_id:1"
+    llm_request.contents[last_user_idx] = types.Content(
+        role="user",
+        parts=[types.Part(text=enriched.strip())],
+    )
+
+    return None  # proceed normally with the modified request
+
+def format_context(data: dict) -> str:
+    return "\n".join(f"  {k}: {v}" for k, v in data.items())
+
+# --- Wire it up ---
+agent = LlmAgent(
+    name="media_agent",
+    model="gemini-2.5-flash",
+    instruction="You are a helpful media assistant. Answer based on the provided context.",
+    before_model_callback=enrich_user_message,
+)
+```
+
+**What the session stores:** The raw `"abc media_id:1"` message (unchanged). Session history is clean and auditable.
+
+**What the LLM sees:** The enriched formatted message, every time.
+
+---
+
+##### Option B — `SequentialAgent` (cleaner separation, recommended for complex enrichment)
+
+Split into two agents: an **extractor** that parses and enriches, and a **responder** that only ever sees the enriched context via session state. The responder is fully isolated from the original message.
+
+```
+SequentialAgent
+  │
+  ├─ extractor_agent (LlmAgent or custom BaseAgent)
+  │   → receives raw "abc media_id:1"
+  │   → calls parse tool + API tools
+  │   → writes enriched context to session state:
+  │       state["clean_query"]   = "abc"
+  │       state["media_context"] = {...}
+  │       state["user_context"]  = {...}
+  │
+  └─ responder_agent (LlmAgent)
+      → include_contents="none"   ← never sees any conversation history
+      → instruction reads from state via {variable} placeholders:
+          "User query is: {clean_query}
+           Current media: {media_context}
+           User context: {user_context}"
+      → responds purely from enriched context
+```
+
+```python
+import re
+import json
+from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools.tool_context import ToolContext
+
+# --- Extraction + enrichment tools ---
+def parse_and_extract(raw_query: str, tool_context: ToolContext) -> dict:
+    """Parse the user's raw message into a clean query and extracted IDs.
+
+    Args:
+        raw_query: The original user message, e.g. 'abc media_id:1'.
+
+    Returns:
+        A dict with 'clean_query' and any extracted ID fields.
+    """
+    ids = {}
+    clean = raw_query
+    for match in re.finditer(r'(\w+_id):(\w+)', raw_query):
+        ids[match.group(1)] = match.group(2)
+        clean = clean.replace(match.group(0), '').strip()
+
+    result = {"clean_query": clean.strip(), **ids}
+    # Persist so the responder agent can read it
+    tool_context.state["clean_query"] = clean.strip()
+    return result
+
+async def fetch_and_store_media(media_id: str, tool_context: ToolContext) -> dict:
+    """Fetch media metadata from the API and store in session state.
+
+    Args:
+        media_id: The media ID to fetch.
+    """
+    import httpx
+    async with httpx.AsyncClient() as client:
+        data = (await client.get(f"https://api.example.com/media/{media_id}")).json()
+    tool_context.state["media_context"] = json.dumps(data, indent=2)
+    return data
+
+async def fetch_and_store_user(user_id: str, tool_context: ToolContext) -> dict:
+    """Fetch user context from the API and store in session state.
+
+    Args:
+        user_id: The user ID to fetch.
+    """
+    import httpx
+    async with httpx.AsyncClient() as client:
+        data = (await client.get(f"https://api.example.com/users/{user_id}")).json()
+    tool_context.state["user_context"] = json.dumps(data, indent=2)
+    return data
+
+# --- Agent 1: extracts IDs and fetches context into state ---
+extractor_agent = LlmAgent(
+    name="extractor",
+    model="gemini-2.5-flash",
+    instruction="""
+    You are a message parser. Given the user's raw message:
+    1. Call parse_and_extract with the full raw message.
+    2. If a media_id was found, call fetch_and_store_media with it.
+    3. If a user_id was found, call fetch_and_store_user with it.
+    4. Do not respond with anything else. Just call the tools.
+    """,
+    tools=[parse_and_extract, fetch_and_store_media, fetch_and_store_user],
+)
+
+# --- Agent 2: answers using enriched context only, never sees raw message ---
+responder_agent = LlmAgent(
+    name="responder",
+    model="gemini-2.5-flash",
+    include_contents="none",        # ← does NOT see session history or raw message
+    instruction="""
+    You are a helpful media assistant.
+
+    User query is: {clean_query}
+
+    Current media context:
+    {media_context}
+
+    Current user context:
+    {user_context}
+
+    Answer the user's query based solely on the context above.
+    """,
+    # {variable} placeholders are resolved from session.state at runtime
+)
+
+# --- Wire together ---
+pipeline = SequentialAgent(
+    name="media_pipeline",
+    sub_agents=[extractor_agent, responder_agent],
+)
+```
+
+---
+
+#### Comparison
+
+| | Option A: `before_model_callback` | Option B: `SequentialAgent` |
+|--|-----------------------------------|------------------------------|
+| Complexity | Low — one callback function | Medium — two agents + tools |
+| Separation of concerns | Enrichment mixed into callback | Extractor and responder are fully separate |
+| Testability | Test callback in isolation | Test each agent independently |
+| Best when | Enrichment is simple and fast | Enrichment involves multiple async API calls or LLM reasoning |
+| Session history | Raw message stored, enriched only at model call time | Raw message stored; enriched values in `state` |
+| LLM calls | 1 per turn | 2 per turn (extractor + responder) |
+
+**Recommendation:** Use **Option A** when parsing is regex/rule-based and enrichment is a single API call. Use **Option B** when the extraction itself needs reasoning, or when you want the extractor and responder to be independently testable and reusable.
+
+---
+
+#### Data Flow Diagram
+
+```
+User sends: "abc media_id:1"
+      │
+      ▼
+Runner appends Event(author="user", content="abc media_id:1") to session
+      │
+      ▼ (Option A)                          ▼ (Option B)
+before_model_callback                  extractor_agent runs
+  → parse "abc media_id:1"               → parse_and_extract("abc media_id:1")
+  → clean_query = "abc"                  → clean_query = "abc"  → state
+  → media_id   = "1"                     → fetch_and_store_media("1") → state
+  → GET /media/1   → media_ctx           → fetch_and_store_user(...)  → state
+  → rewrite llm_request.contents[-1]            │
+      │                                          ▼
+      ▼                                   responder_agent runs
+LLM receives:                              → include_contents="none"
+  "User query is: abc                      → instruction resolves {clean_query}
+                                                                  {media_context}
+   Current media is:                                              {user_context}
+     id: 1                                         │
+     title: Summer Reel                            ▼
+     ...                                     LLM receives enriched context only
+                                             Raw "abc media_id:1" never visible
+   Additional context for the user:
+     name: Alice
+     tier: premium
+     ..."
+      │
+      ▼
+LLM responds: "Here's what I found about abc..."
+```
