@@ -4,6 +4,76 @@ A decision guide for every extensibility point in ADK. Each section answers: **w
 
 ---
 
+## Real-World Use Cases → What to Build
+
+The most common concrete scenarios and the exact ADK component that solves each one.
+
+### Tools
+
+| Real-world scenario | What to build |
+|---------------------|---------------|
+| Agent needs to call a weather API | Plain function tool |
+| Agent needs to query a PostgreSQL database | Plain function tool |
+| Agent needs to send a Slack message | Plain function tool |
+| Agent needs to read/write files on disk | Plain function tool |
+| Agent needs to search Google | Built-in `google_search` tool (no code needed) |
+| Agent needs to call any REST API defined by an OpenAPI spec | `OpenAPIToolset` (no code needed) |
+| Agent needs to export a report that takes 5 minutes to generate | `BaseTool` subclass with `is_long_running=True` |
+| Agent needs to trigger a Cloud Run job and wait for the result | `BaseTool` subclass with `is_long_running=True` |
+| Agent needs to execute Python code it generates | Built-in `BuiltInCodeExecutor` or `BaseTool` for custom sandbox |
+| Agent should expose all tools from an MCP server | `MCPToolset` (no code needed) |
+| Agent should only show certain tools based on user role | `BaseToolset` subclass with `get_tools()` that filters by `ctx.state` |
+| Agent connects to a third-party tool platform (LangChain, CrewAI) | `LangchainTool` / `CrewaiTool` wrapper |
+
+### Agent Callbacks (single-agent hooks)
+
+| Real-world scenario | What to build |
+|---------------------|---------------|
+| Block the agent if the user is not authenticated | `before_agent_callback` → return Content if not authed |
+| Cache the agent's full response for repeated identical inputs | `before_agent_callback` (check cache) + `after_agent_callback` (write cache) |
+| Always append "Disclaimer: AI-generated" to agent replies | `after_agent_callback` → return extra Content |
+| Inject today's date into the system prompt before every LLM call | `before_model_callback` → mutate `llm_request` |
+| Return a cached LLM response to avoid redundant API calls | `before_model_callback` → return cached `LlmResponse` |
+| Log token usage for every LLM call on a specific agent | `after_model_callback` → read `llm_response.usage_metadata` |
+| Sanitize PII from LLM output before it reaches the user | `after_model_callback` → return scrubbed `LlmResponse` |
+| Show a friendly message when the LLM quota is exceeded | `on_model_error_callback` → return fallback `LlmResponse` |
+| Validate tool arguments (e.g. reject SQL with DROP TABLE) | `before_tool_callback` → return error dict if invalid |
+| Rate-limit tool calls per user per minute | `before_tool_callback` → check counter in state, return error if exceeded |
+| Normalize/clean a tool's return value before the LLM sees it | `after_tool_callback` → return transformed dict |
+| Alert on-call when a tool raises an exception | `on_tool_error_callback` → send alert, return fallback dict |
+
+### Plugins (app-wide hooks)
+
+| Real-world scenario | What to build |
+|---------------------|---------------|
+| Log every LLM call and token count across all agents | `BasePlugin` with `before/after_model_callback` |
+| Add OpenTelemetry tracing spans around every agent and tool call | `BasePlugin` with all `before/after` hooks |
+| Block all invocations for users on a deny-list, globally | `BasePlugin` with `before_run_callback` |
+| Attach a request ID to every event for distributed tracing | `BasePlugin` with `on_event_callback` |
+| Enforce a global system prompt added to every LLM call | `BasePlugin` with `before_model_callback` |
+| Clean up DB connections when the server shuts down | `BasePlugin.close()` |
+
+### Agent Composition
+
+| Real-world scenario | What to build |
+|---------------------|---------------|
+| Research → Draft → Review pipeline, each step depends on the previous | `SequentialAgent` |
+| Summarize 10 documents at once, then merge summaries | `ParallelAgent` → `LlmAgent` synthesizer |
+| Run a code-generate → test → fix loop until tests pass | `LoopAgent` with `max_iterations`, sub-agent calls `escalate()` when tests pass |
+| Customer support router: billing vs tech vs sales | `LlmAgent` with `sub_agents` (LLM decides routing) |
+| Multi-step form wizard (collect name, then address, then payment) | `SequentialAgent` with one `LlmAgent` per step |
+| Competitive analysis: run 3 different analyst agents in parallel | `ParallelAgent` with 3 specialized `LlmAgent`s |
+
+### Custom Agents
+
+| Real-world scenario | What to build |
+|---------------------|---------------|
+| Deterministic FAQ bot with no LLM needed | `BaseAgent` subclass with rule-matching logic |
+| Wrap a LangGraph graph as an ADK agent | `BaseAgent` subclass that calls the graph in `_run_async_impl` |
+| An agent that calls an external orchestration API and streams its events back | `BaseAgent` subclass |
+
+---
+
 ## Quick Decision Tree
 
 ```
