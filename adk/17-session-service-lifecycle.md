@@ -370,6 +370,219 @@ Two layers:
 
 ---
 
+## Beyond Session Service: Full-Stack Latency Optimization
+
+Session service is only one source of latency. Here's the full critical path for a single user turn, with the dominant costs:
+
+```
+          Time →
+          ├──────────────────────────────────────────────────────────────────────────┤
+
+get_session     append(user)   LLM call #1        tool exec    LLM call #2       append x N
+  ┌──┐            ┌─┐       ┌──────────────┐      ┌───┐     ┌──────────────┐     ┌─┐┌─┐┌─┐
+  │  │            │ │       │              │      │   │     │              │     │ ││ ││ │
+  └──┘            └─┘       └──────────────┘      └───┘     └──────────────┘     └─┘└─┘└─┘
+  ~1ms           ~0.1ms        500-3000ms         10-500ms     500-3000ms        ~0.3ms total
+                                                                                 (in-memory)
+```
+
+**The LLM calls dominate.** Session service latency only matters when it's database-backed. But there are still meaningful wins across the full stack.
+
+### 1. Model Selection (Biggest Single Lever)
+
+The LLM call is 80–95% of total latency. Model choice matters more than anything else.
+
+| Model | Typical TTFT | Typical Total | When to Use |
+|-------|-------------|---------------|-------------|
+| `gemini-2.5-flash` | ~200ms | ~500-1500ms | Default — fast and capable |
+| `gemini-2.5-pro` | ~500ms | ~1000-3000ms | Complex reasoning only |
+| `claude-haiku-4-5` | ~300ms | ~800-2000ms | Fast Anthropic option |
+| `claude-sonnet-4-5` | ~500ms | ~1500-4000ms | High quality, slower |
+
+```python
+# Use the fastest model that's good enough
+agent = LlmAgent(model="gemini-2.5-flash", ...)
+```
+
+**Tip:** Use a fast model for routing/triage agents, save expensive models for the final response agent.
+
+### 2. Streaming (Reduce Perceived Latency)
+
+ADK streams by default. The Runner yields `partial=True` events as LLM tokens arrive. This doesn't reduce total latency but dramatically improves **time-to-first-token** (perceived responsiveness).
+
+```python
+async for event in runner.run_async(...):
+    if event.partial:
+        print(event.content.parts[0].text, end='', flush=True)  # stream to UI
+    # partial events are NOT passed to append_event (skipped automatically)
+```
+
+**Key insight:** Partial events are free — `append_event` skips them (`if event.partial: return event`). Only the final aggregated event is persisted.
+
+### 3. Reduce LLM Round-Trips (Tool Call Batching)
+
+Each tool call creates a full LLM round-trip: `LLM → tool → LLM`. If the LLM needs 3 tool calls sequentially, that's 4 LLM calls total.
+
+**Mitigation: Parallel tool calls.** Modern models can return multiple `FunctionCall`s in a single response. ADK's `functions.py` response processor executes all tool calls from a single response before looping back to the LLM.
+
+```python
+# The LLM can return multiple function calls in one response:
+# FunctionCall(name='get_weather', args={'city': 'Tokyo'})
+# FunctionCall(name='get_weather', args={'city': 'London'})
+# → Both run, results sent back to LLM in one shot → 2 round-trips instead of 3
+```
+
+**What you can do:**
+- Write tool descriptions that encourage the LLM to batch calls
+- Use `output_schema` to force structured output when you don't need tool use
+- Reduce the number of tools visible to the agent (fewer tools = faster LLM decisions)
+
+### 4. Minimize Tool Execution Time
+
+Tools run synchronously (awaited) in the flow loop. A slow tool blocks the entire turn.
+
+```python
+# BAD: slow tool blocks the LLM loop
+async def search_database(query: str) -> list[dict]:
+    return await slow_db_query(query)  # 500ms
+
+# BETTER: pre-warm connections, add caching
+from functools import lru_cache
+
+_db_pool = None  # connection pool initialized once
+
+async def search_database(query: str, tool_context: ToolContext) -> list[dict]:
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = await create_pool()
+    # Use cached result if same query was made recently
+    cache_key = f"search:{query}"
+    if cached := tool_context.state.get(f"temp:{cache_key}"):
+        return cached
+    result = await _db_pool.fetch(query)
+    tool_context.state[f"temp:{cache_key}"] = result  # temp: = not persisted
+    return result
+```
+
+**For I/O-heavy tools:** Consider `LongRunningFunctionTool` which returns immediately with a pending status and completes asynchronously.
+
+### 5. Limit Conversation History
+
+The `contents.py` preprocessor builds the LLM prompt from `session.events`. More events = larger prompt = slower LLM call (both TTFT and total).
+
+```python
+# Limit what the LLM sees
+run_config = RunConfig(
+    get_session_config=GetSessionConfig(num_recent_events=20)
+)
+
+# Or use compaction to summarize old events
+from google.adk.apps import App
+app = App(
+    agent=agent,
+    plugins=[CompactionPlugin(max_events=50)]  # auto-summarize when history > 50 events
+)
+```
+
+**Impact:** Reducing from 100 events to 20 can cut LLM latency by 30–50% (fewer input tokens).
+
+### 6. Simplify Instructions and Tool Schemas
+
+The `instructions.py` preprocessor injects the system prompt. Large instructions with many variable substitutions slow down both preprocessing and the LLM.
+
+```python
+# BAD: huge instruction with many tools
+agent = LlmAgent(
+    instruction="You are an agent that can... [2000 words]...",
+    tools=[tool1, tool2, ..., tool20],  # 20 tool schemas in the prompt
+)
+
+# BETTER: focused agent with minimal tools
+agent = LlmAgent(
+    instruction="Answer weather questions using the get_weather tool.",
+    tools=[get_weather],  # 1 tool schema
+)
+```
+
+**Fewer tools = smaller prompt = faster LLM response.** If you need many tools, use a routing agent that delegates to specialized sub-agents with small tool sets.
+
+### 7. Skip Callbacks You Don't Need
+
+Every callback in the chain is awaited sequentially:
+
+```
+before_agent_callback → before_model_callback → [LLM] → after_model_callback
+→ before_tool_callback → [tool] → after_tool_callback → after_agent_callback
+```
+
+If you're not using them, don't set them. Each `None` callback is a fast no-op check, but non-None callbacks add real latency if they do I/O.
+
+```python
+# Only set callbacks you actually need
+agent = LlmAgent(
+    # before_model_callback=None,   # default — no overhead
+    # after_model_callback=None,    # default — no overhead
+    before_tool_callback=my_auth_check,  # only if needed
+)
+```
+
+### 8. Avoid Unnecessary Agent Transfers
+
+Agent transfers in `AutoFlow` are expensive: each transfer triggers a new `agent.run_async()` which re-runs all preprocessors and makes a new LLM call.
+
+```
+User → Router Agent (LLM call #1) → transfer → Weather Agent (LLM call #2)
+                                                    → tool call → LLM call #3
+```
+
+That's 3 LLM calls for what could be 2. Consider whether you really need a router or if one agent can handle the task directly.
+
+### 9. Use `SingleFlow` When Possible
+
+`AutoFlow` (the default) adds agent transfer overhead to every LLM response — it checks for `transfer_to_agent` function calls. If your agent doesn't transfer, force `SingleFlow`:
+
+```python
+agent = LlmAgent(
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
+    sub_agents=[],  # no sub-agents
+    # → ADK auto-selects SingleFlow
+)
+```
+
+### 10. Disable Compaction for Short-Lived Sessions
+
+Compaction (`App` plugin) runs after each invocation to summarize old events. If your sessions are short-lived or you don't need history compression, skip it:
+
+```python
+# Don't wrap in App if you don't need plugins
+runner = Runner(agent=agent, app_name="my_app", session_service=session_service)
+# Instead of:
+# app = App(agent=agent, plugins=[...])
+# runner = Runner(app=app, session_service=session_service)
+```
+
+---
+
+## Latency Optimization Cheat Sheet
+
+| Optimization | Latency Saved | Effort | When |
+|---|---|---|---|
+| Use `gemini-2.5-flash` | 500-2000ms/call | Config change | Always (unless quality demands more) |
+| `num_recent_events=20` | 30-50% of LLM time | Config change | Always |
+| `InMemorySessionService` | 5-200ms/event | Config change | When persistence not needed |
+| Fewer tools per agent | 100-500ms/call | Architecture | When >5 tools |
+| Parallel tool calls | Saves 1 LLM round-trip | Prompt engineering | Multiple independent tools |
+| Skip unnecessary callbacks | 1-50ms/callback | Config change | Always |
+| `SingleFlow` (no transfers) | ~0 (avoids overhead) | Config change | No sub-agents |
+| Short instructions | 50-200ms/call | Rewrite | Verbose prompts |
+| Cache tool results with `temp:` | Tool-dependent | Code change | Repeated tool calls |
+| Fire-and-forget session service | ~0.1ms/event | Custom class | Max throughput |
+
+**Priority order:** Model selection > history limits > session service > tool design > everything else.
+
+---
+
 ## Cross-References
 
 - [06-sessions.md](06-sessions.md) — Session data model, state scoping, service interface
