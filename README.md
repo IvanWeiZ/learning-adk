@@ -185,6 +185,17 @@ Agents declare tools; the LLM requests tool execution by name; `BaseLlmFlow` dis
 
 ---
 
+## New Team Member Guides
+
+| # | Guide | What It Covers |
+|---|-------|---------------|
+| 1 | [12-onboarding-guide.md](adk/12-onboarding-guide.md) | Zero-to-first-agent walkthrough with diagrams |
+| 2 | [13-best-practices.md](adk/13-best-practices.md) | Common mistakes, anti-patterns, debugging checklist |
+| 3 | [14-advanced-adk.md](adk/14-advanced-adk.md) | Processor pipeline, plugins, auth, artifacts, A2A |
+| 4 | [15-faq.md](adk/15-faq.md) | Tool versioning, testing, state scoping, agent messaging |
+
+---
+
 ## Example Agents
 
 100+ examples live in [`contributing/samples/`](../adk-python/contributing/samples/).
