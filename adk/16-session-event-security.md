@@ -90,6 +90,27 @@ sessions = await session_service.list_sessions(
 
 **Never expose `list_sessions` without filtering by `user_id`** in any user-facing API.
 
+### Runner Has No Built-In Authorization
+
+This is critical to understand: **`Runner` performs zero authentication or authorization.** It blindly passes `user_id` to the session service. From `runners.py`:
+
+```python
+# Runner.run_async() trusts the caller completely:
+async def run_async(
+    self,
+    *,
+    user_id: str,         # No validation — Runner trusts this is correct
+    session_id: str,
+    new_message: Content,
+    ...
+) -> AsyncGenerator[Event, None]:
+    session = await self._get_or_create_session(user_id, session_id)
+    # → Calls session_service.get_session(app_name=self.app_name, user_id=user_id, ...)
+    # → If auto_create_session=True, creates a new session under this user_id
+```
+
+**This means your application layer is the ONLY security boundary.** If a bug in your API handler passes the wrong `user_id` to `runner.run_async()`, ADK will happily serve the wrong user's session. There are no guardrails inside ADK itself.
+
 ### Defense: Validate user_id at the Gateway
 
 ```python
@@ -545,17 +566,20 @@ session = await session_service.get_session(
 Every event yielded by an agent is passed to `session_service.append_event()` and stored permanently. This includes:
 
 ```
-What gets stored in session.events:
-┌──────────────────────────────────────────────────────┐
-│  ✓ User messages (everything the user typed)          │
-│  ✓ LLM responses (agent replies)                      │
-│  ✓ Tool call arguments (including any PII passed in)  │
-│  ✓ Tool responses (including any PII returned)        │
-│  ✓ state_delta (state changes in EventActions)        │
-│  ✓ Error messages and stack traces                    │
-│  ✓ File/blob content (if not using artifact service)  │
-└──────────────────────────────────────────────────────┘
+What gets stored in session.events (verified from event_actions.py):
+┌──────────────────────────────────────────────────────────┐
+│  ✓ User messages (everything the user typed)              │
+│  ✓ LLM responses (agent replies)                          │
+│  ✓ Tool call arguments (including any PII passed in)      │
+│  ✓ Tool responses (including any PII returned)            │
+│  ✓ state_delta (state changes — temp: stripped, rest kept)│
+│  ✓ requested_auth_configs (OAuth/auth credentials!)       │
+│  ✓ Error messages and stack traces                        │
+│  ✓ File/blob content (if not using artifact service)      │
+└──────────────────────────────────────────────────────────┘
 ```
+
+**The `requested_auth_configs` field is especially dangerous.** When a tool requests OAuth credentials, the `EventActions` stores `dict[str, AuthConfig]` keyed by function call ID. These auth configs are **persisted to your session storage backend** as part of the event. If your database isn't encrypted at rest, auth credentials sit in plaintext.
 
 ### Common Leak Vectors
 
@@ -637,6 +661,12 @@ session_service = DatabaseSessionService(
     # Connection string should come from secrets manager, not code!
 )
 ```
+
+**Concurrency safety (verified from source):** `DatabaseSessionService` uses two layers of protection for concurrent `append_event` calls:
+1. **In-process `asyncio.Lock`** per session — keyed by `(app_name, user_id, session_id)` — serializes writes within the same Python process
+2. **Database row-level locking** (`SELECT ... FOR UPDATE`) on Postgres, MySQL, and MariaDB — serializes writes across processes
+
+SQLite does **not** support row-level locking, so concurrent writes from multiple processes can corrupt data. Use SQLite only for single-process deployments.
 
 **Production database security checklist:**
 
@@ -920,6 +950,80 @@ Root cause: before_model_callback logs full LLM requests for debugging.
 Mitigation: Log only metadata (message count, model name, latency). Never log content.
 Detection:  Scan log output for conversation patterns. Use structured logging with allow-lists.
 ```
+
+---
+
+## 12. ADK's Built-In Safety Mechanisms (Source Code Verified)
+
+ADK includes several safety mechanisms. Understanding what ADK does and doesn't protect helps you know where to add your own defenses.
+
+### What ADK DOES Protect
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  Built-in safety (verified from source code)                            │
+│                                                                         │
+│  ✓ Composite key isolation: get_session requires (app_name, user_id,    │
+│    session_id) match — wrong user_id returns None, not another user's   │
+│    data  [database_session_service.py, in_memory_session_service.py]    │
+│                                                                         │
+│  ✓ temp: state never persisted: _trim_temp_delta_state() strips temp:   │
+│    keys from events before storage  [base_session_service.py:131-146]   │
+│                                                                         │
+│  ✓ Pydantic extra='forbid': Session and Event models reject unknown     │
+│    fields, preventing injection via unexpected keys  [session.py:31]    │
+│                                                                         │
+│  ✓ State delta separation: extract_state_delta() routes state to        │
+│    separate storage tables (app/user/session)  [_session_util.py:37-50] │
+│                                                                         │
+│  ✓ Row-level locking: DatabaseSessionService uses SELECT FOR UPDATE     │
+│    on Postgres/MySQL to prevent concurrent write corruption              │
+│    [database_session_service.py:560-561]                                │
+│                                                                         │
+│  ✓ Staleness detection: append_event checks if the session was updated  │
+│    externally and reloads from storage if needed                        │
+│    [database_session_service.py:594-614]                                │
+│                                                                         │
+│  ✓ Deep copy on read: InMemorySessionService returns deepcopy of        │
+│    sessions, preventing callers from mutating stored state directly     │
+│    [in_memory_session_service.py:178]                                   │
+│                                                                         │
+│  ✓ Branch isolation: Events carry a branch field encoding the agent     │
+│    hierarchy; flows filter events by branch so agents only see their    │
+│    own lineage  [event.py:60-68]                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### What ADK Does NOT Protect
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  NOT built-in — your responsibility                                     │
+│                                                                         │
+│  ✗ Authentication: Runner trusts user_id blindly — no verification      │
+│    [runners.py: run_async accepts user_id as a plain string]            │
+│                                                                         │
+│  ✗ Authorization: list_sessions(user_id=None) returns ALL sessions      │
+│    [base_session_service.py:86 — user_id is Optional]                   │
+│                                                                         │
+│  ✗ Encryption at rest: State and events are stored as-is in the DB      │
+│    (including requested_auth_configs with OAuth credentials)             │
+│                                                                         │
+│  ✗ PII redaction: Tools can return any data; ADK doesn't filter it      │
+│                                                                         │
+│  ✗ Session expiry: No built-in TTL — old sessions live forever          │
+│                                                                         │
+│  ✗ Rate limiting: No protection against session enumeration attacks      │
+│                                                                         │
+│  ✗ Audit logging: No built-in logging of who accessed which session     │
+│                                                                         │
+│  ✗ User state cleanup: Deleting a session does NOT delete the user:     │
+│    or app: state rows — those persist independently                     │
+│    [database_session_service.py: delete_session only deletes session]   │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+The last point deserves emphasis: **when you delete a session, `user:` state and `app:` state are NOT deleted.** These live in separate storage tables (`user_states` and `app_states`). For full GDPR compliance, you must also clean up these tables directly.
 
 ---
 
