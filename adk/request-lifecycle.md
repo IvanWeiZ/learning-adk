@@ -175,6 +175,8 @@ Session(
 
 Runner fetches the session, wraps the user message in an Event, persists it, then builds the `InvocationContext` that flows through every subsequent call.
 
+> **Additional `run_async` parameters:** Beyond the `user_id`, `session_id`, and `new_message` shown above, `run_async` also accepts an optional `invocation_id` (to resume a previous invocation, e.g., after a long-running tool pauses) and `state_delta` (a `dict` injected into session state alongside the user message event).
+
 **User Event (evt-001) — created and persisted before the agent runs:**
 
 ```python

@@ -116,9 +116,9 @@ app = App(
     name='my_app',
     root_agent=agent,
     context_cache_config=ContextCacheConfig(
-        # Explicit cache config — creates a named cache on Vertex AI
-        use_context_cache=True,
-        cache_ttl_seconds=3600,
+        cache_intervals=10,    # refresh cache every 10 invocations (range: 1–100)
+        ttl_seconds=1800,      # cache TTL in seconds (default: 30 min)
+        min_tokens=0,          # minimum token count before caching activates
     ),
 )
 ```

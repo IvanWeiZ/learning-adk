@@ -116,6 +116,10 @@ output_schema: Optional[SchemaType]
 output_key: Optional[str]
 # On final response, writes text to session.state[output_key].
 
+input_schema: Optional[type[BaseModel]]
+# Validates arguments when this agent is used as a sub-agent tool (AgentTool).
+# The parent LLM must provide arguments matching this Pydantic model.
+
 include_contents: Literal['default', 'none']
 # 'none' = agent gets no conversation history (stateless mode).
 
@@ -141,6 +145,39 @@ LlmAgent adds finer-grained hooks compared to BaseAgent:
 | `before_tool_callback` | Before each tool run | Yes — return dict to skip tool |
 | `after_tool_callback` | After each tool run | Yes — return dict to replace result |
 | `on_tool_error_callback` | On tool error | Yes — return dict to recover |
+
+**Full signatures for error callbacks:**
+
+```python
+def on_model_error_callback(
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
+    error: Exception,
+) -> Optional[LlmResponse]: ...
+
+def on_tool_error_callback(
+    tool: BaseTool,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+    error: Exception,
+) -> Optional[dict]: ...
+```
+
+### [ ] Key Methods
+
+```python
+@classmethod
+LlmAgent.set_default_model(model: str | BaseLlm) -> None
+# Override the global default model (class variable DEFAULT_MODEL).
+# Affects all LlmAgent instances that don't set their own model and have no
+# ancestor with a model set. Default is 'gemini-2.5-flash'.
+
+@property
+LlmAgent.canonical_model -> BaseLlm
+# Resolves the effective model for this agent by walking up parent agents
+# until one has a model set. Falls back to DEFAULT_MODEL. Returns a BaseLlm
+# instance (wraps a string model name via LLMRegistry if needed).
+```
 
 ---
 

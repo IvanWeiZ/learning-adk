@@ -49,6 +49,15 @@ class Event(LlmResponse):
     # Inherited from LlmResponse / Content:
     content: Optional[types.Content]   # the actual payload (text, function calls, etc.)
     partial: Optional[bool]            # True for streaming chunks, False for final
+
+    # Inherited from LlmResponse (often populated on the final event):
+    long_running_tool_ids: Optional[set[str]]  # set of function call IDs for long-running tools;
+                                                # when present, is_final_response() returns True
+                                                # so the runner pauses and yields control to the caller
+    finish_reason: Optional[types.FinishReason]  # why generation stopped (STOP, MAX_TOKENS, SAFETY, etc.)
+    usage_metadata: Optional[types.GenerateContentResponseUsageMetadata]  # token counts (prompt, candidates, total)
+    grounding_metadata: Optional[types.GroundingMetadata]  # search grounding metadata from Google Search
+    custom_metadata: Optional[dict[str, Any]]  # arbitrary metadata; Runner merges RunConfig.custom_metadata here
 ```
 
 ---
@@ -69,6 +78,10 @@ class EventActions(BaseModel):
     compaction: Optional[EventCompaction]  # summary of compacted old events
     end_of_agent: Optional[bool]        # agent finished its current run
     agent_state: Optional[dict]         # checkpoint for resumable invocations
+    requested_tool_confirmations: dict[str, ToolConfirmation]  # human-in-the-loop confirmation
+                                                                # requests, keyed by function call ID
+    rewind_before_invocation_id: Optional[str]  # signals session rewind to before this invocation ID
+    render_ui_widgets: Optional[list[UiWidget]]  # UI widgets for frontend rendering
 ```
 
 `state_delta` is especially important: this is how agents write to persistent session state (e.g., `output_key` on `LlmAgent` writes here).
@@ -81,6 +94,8 @@ class EventActions(BaseModel):
 ```python
 event.is_final_response() -> bool
 # True when the event is the last thing an agent yields for this turn.
+# Also returns True when long_running_tool_ids is set (runner pauses for
+# long-running tools) or when skip_summarization is set on the event actions.
 # False if: event has function calls, function responses, partial=True,
 #           or has trailing code execution results.
 
