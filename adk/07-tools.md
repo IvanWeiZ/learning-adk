@@ -4,7 +4,7 @@
 
 ---
 
-## What It Is
+## [ ] What It Is
 
 Tools give agents the ability to take actions beyond generating text. The LLM requests a tool call by name with arguments; ADK dispatches to the matching `BaseTool`, runs it, and feeds the result back to the LLM.
 
@@ -15,7 +15,7 @@ Tools attach to an agent via `LlmAgent(tools=[...])`. They can be:
 
 ---
 
-## BaseTool — The Interface
+## [ ] BaseTool — The Interface
 
 ```python
 class BaseTool(ABC):
@@ -41,7 +41,7 @@ class BaseTool(ABC):
 
 ---
 
-## FunctionTool — Wrapping Python Functions
+## [ ] FunctionTool — Wrapping Python Functions
 
 The simplest way to create a tool: just pass a Python function.
 
@@ -67,7 +67,7 @@ def save_note(text: str, tool_context: ToolContext) -> str:
 
 ---
 
-## BaseToolset — Dynamic Tool Collections
+## [ ] BaseToolset — Dynamic Tool Collections
 
 A `BaseToolset` provides a variable set of tools determined at runtime:
 
@@ -87,7 +87,7 @@ The flow calls `toolset.get_tools(ctx)` before each LLM call to get the current 
 
 ---
 
-## ToolContext — What Tools Can Do
+## [ ] ToolContext — What Tools Can Do
 
 `ToolContext` is passed to every `run_async` call. It gives tools access to session state and ADK services:
 
@@ -112,7 +112,7 @@ class ToolContext:
 
 ---
 
-## Built-in Tools
+## [ ] Built-in Tools
 
 | Tool | Import | What it does |
 |------|--------|-------------|
@@ -127,7 +127,7 @@ class ToolContext:
 
 ---
 
-## Tool Resolution in LlmAgent
+## [ ] Tool Resolution in LlmAgent
 
 ```python
 agent = LlmAgent(tools=[
@@ -141,7 +141,7 @@ When there are multiple tools, `GoogleSearchTool` and `VertexAiSearchTool` are a
 
 ---
 
-## Long-Running Tools
+## [ ] Long-Running Tools
 
 When `is_long_running=True`, the tool starts an operation and returns an operation ID. ADK:
 1. Yields a "paused" event with `long_running_tool_ids`
@@ -150,7 +150,7 @@ When `is_long_running=True`, the tool starts an operation and returns an operati
 
 ---
 
-## Tool Confirmation (Human-in-the-Loop)
+## [ ] Tool Confirmation (Human-in-the-Loop)
 
 Tools can request human confirmation before executing:
 
@@ -168,7 +168,7 @@ class MyTool(BaseTool):
 
 ---
 
-## Related Files
+## [ ] Related Files
 
 - [`tools/base_tool.py`](../adk-python/src/google/adk/tools/base_tool.py) — abstract base
 - [`tools/base_toolset.py`](../adk-python/src/google/adk/tools/base_toolset.py) — dynamic tool collections

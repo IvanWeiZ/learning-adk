@@ -6,7 +6,7 @@
 
 ## 1. Agent Naming — The #1 Source of Startup Crashes
 
-### The Rules
+### [ ] The Rules
 
 ```
 Agent name must be:
@@ -15,7 +15,7 @@ Agent name must be:
 └── Unique among siblings (duplicate names log warnings but cause bugs)
 ```
 
-### Common Mistakes
+### [ ] Common Mistakes
 
 ```python
 # ❌ WRONG: Hyphens are not valid Python identifiers
@@ -37,7 +37,7 @@ agent = Agent(name="my_agent", ...)
 agent = Agent(name="MyAgent", ...)
 ```
 
-### Duplicate Sub-Agent Names (Silent Bug)
+### [ ] Duplicate Sub-Agent Names (Silent Bug)
 
 ```python
 # ❌ WRONG: Both children named "helper" — transfer_to_agent will be ambiguous
@@ -64,7 +64,7 @@ root = Agent(
 
 ## 2. Tool Design — Return Errors, Never Raise Exceptions
 
-### The Pattern
+### [ ] The Pattern
 
 ```
 Tool return value:
@@ -73,7 +73,7 @@ Tool return value:
 └── Never   → raise Exception  ← LLM sees a stack trace, gets confused
 ```
 
-### Examples
+### [ ] Examples
 
 ```python
 # ❌ WRONG: Raising exceptions
@@ -98,7 +98,7 @@ def search_database(query: str) -> str:
         return f"Search failed: {e}"
 ```
 
-### Why This Matters
+### [ ] Why This Matters
 
 ```
 When a tool raises an exception:
@@ -161,7 +161,7 @@ def search_products(query: str, category: str = "all") -> str:
     return catalog.search(query, category)
 ```
 
-### Naming Matters Too
+### [ ] Naming Matters Too
 
 ```python
 # ❌ Ambiguous names — LLM confuses these
@@ -368,7 +368,7 @@ agent = Agent(
 
 ## 8. State Management — Avoid These Traps
 
-### Trap 1: Forgetting State Prefix Behavior
+### [ ] Trap 1: Forgetting State Prefix Behavior
 
 ```python
 # ❌ CONFUSING: Reading "user:name" without the prefix
@@ -378,7 +378,7 @@ name = tool_context.state.get("name")  # Gets session-scoped "name", NOT "user:n
 name = tool_context.state.get("user:name")  # Gets user-scoped name
 ```
 
-### Trap 2: Storing Non-Serializable Objects
+### [ ] Trap 2: Storing Non-Serializable Objects
 
 ```python
 # ❌ WRONG: Storing Python objects — will crash on session persistence
@@ -391,7 +391,7 @@ tool_context.state["timestamp"] = datetime.now().isoformat()
 tool_context.state["results"] = [{"id": 1, "name": "Alice"}]
 ```
 
-### Trap 3: temp: State Disappearing
+### [ ] Trap 3: temp: State Disappearing
 
 ```python
 # temp: state is ONLY in memory — never persisted between requests
@@ -405,7 +405,7 @@ token = tool_context.state.get("temp:auth_token")  # → None! It's gone.
 # ✅ Use temp: for cache/scratch data only. For persistent data, use session or user scope.
 ```
 
-### Trap 4: State in Parallel Agents
+### [ ] Trap 4: State in Parallel Agents
 
 ```python
 # ❌ RISKY: Two parallel agents writing the same state key
@@ -460,7 +460,7 @@ root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
 
 ## 10. Instruction Design — Dynamic vs Static
 
-### Dynamic Instructions with Placeholders
+### [ ] Dynamic Instructions with Placeholders
 
 ```python
 # ✅ ADK supports {state_key} placeholders in instructions
@@ -473,7 +473,7 @@ agent = Agent(
 # At runtime, ADK replaces {user:company_name} with state["user:company_name"]
 ```
 
-### Dynamic Instructions with Functions
+### [ ] Dynamic Instructions with Functions
 
 ```python
 # ✅ For complex logic, use a callable
@@ -489,7 +489,7 @@ agent = Agent(
 )
 ```
 
-### Common Instruction Mistakes
+### [ ] Common Instruction Mistakes
 
 ```python
 # ❌ WRONG: Telling the agent about tools it doesn't have
@@ -596,7 +596,7 @@ async def test_weather_agent_bad():
 
 ## 13. Async Best Practices
 
-### Never Block the Event Loop
+### [ ] Never Block the Event Loop
 
 ```python
 # ❌ WRONG: Blocking I/O in a tool
@@ -626,7 +626,7 @@ async def fetch_data(url: str) -> str:
     return response.text
 ```
 
-### Sync Tools Are Fine — ADK Handles Them
+### [ ] Sync Tools Are Fine — ADK Handles Them
 
 ```python
 # ✅ ADK auto-detects sync vs async and handles both correctly
@@ -681,7 +681,7 @@ sub_agents=[
 
 ## 15. Common Architecture Anti-Patterns
 
-### Anti-Pattern 1: God Agent
+### [ ] Anti-Pattern 1: God Agent
 
 ```
 ❌ One agent with 20 tools and a 2000-word instruction
@@ -710,7 +710,7 @@ sub_agents=[
 └────┘└────┘└────┘
 ```
 
-### Anti-Pattern 2: Deep Nesting
+### [ ] Anti-Pattern 2: Deep Nesting
 
 ```
 ❌ Too many layers — slow, hard to debug
@@ -725,7 +725,7 @@ root → specialist_a
      → specialist_c
 ```
 
-### Anti-Pattern 3: Stateless Agents Sharing State Through Side Channels
+### [ ] Anti-Pattern 3: Stateless Agents Sharing State Through Side Channels
 
 ```python
 # ❌ WRONG: Using global variables to share state between agents
