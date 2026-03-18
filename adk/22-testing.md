@@ -1,6 +1,6 @@
 # Testing — Deterministic Unit Tests for ADK Agents
 
-**Source:** [`tests/unittests/testing_utils.py`](../adk-python/tests/unittests/testing_utils.py) · [`tests/unittests/agents/test_base_agent.py`](../adk-python/tests/unittests/agents/test_base_agent.py) · [`tests/unittests/flows/llm_flows/test_model_callbacks.py`](../adk-python/tests/unittests/flows/llm_flows/test_model_callbacks.py) · [`tests/unittests/flows/llm_flows/test_tool_callbacks.py`](../adk-python/tests/unittests/flows/llm_flows/test_tool_callbacks.py) · [`tests/unittests/tools/test_function_tool.py`](../adk-python/tests/unittests/tools/test_function_tool.py)
+**Source:** [`tests/unittests/testing_utils.py`](../adk-python/tests/unittests/testing_utils.py) · [`tests/unittests/agents/test_llm_agent_fields.py`](../adk-python/tests/unittests/agents/test_llm_agent_fields.py) · [`tests/unittests/agents/test_llm_agent_callbacks.py`](../adk-python/tests/unittests/agents/test_llm_agent_callbacks.py) · [`tests/unittests/agents/test_llm_agent_output_save.py`](../adk-python/tests/unittests/agents/test_llm_agent_output_save.py) · [`tests/unittests/agents/test_llm_agent_include_contents.py`](../adk-python/tests/unittests/agents/test_llm_agent_include_contents.py) · [`tests/unittests/flows/llm_flows/test_tool_callbacks.py`](../adk-python/tests/unittests/flows/llm_flows/test_tool_callbacks.py) · [`tests/unittests/tools/test_function_tool.py`](../adk-python/tests/unittests/tools/test_function_tool.py)
 
 ---
 
@@ -48,6 +48,73 @@ ADK's test utilities enable deterministic agent tests without real LLM calls. Re
 
 ---
 
+## Test Utilities Reference
+
+ADK provides two categories of test utilities:
+
+1. **Production in-memory services** (shipped with `google-adk` package) — lightweight implementations for sessions, artifacts, memory, and credentials
+2. **Test-only utilities** (in `tests/unittests/testing_utils.py`) — `MockModel`, `InMemoryRunner` (test version), `simplify_events`, and helper functions
+
+### Production In-Memory Services
+
+These are part of the `google.adk` package and available to all users:
+
+| Service | Class | Package Path |
+|---|---|---|
+| Sessions | `InMemorySessionService` | `google.adk.sessions.in_memory_session_service` |
+| Artifacts | `InMemoryArtifactService` | `google.adk.artifacts.in_memory_artifact_service` |
+| Memory | `InMemoryMemoryService` | `google.adk.memory.in_memory_memory_service` |
+| Credentials | `InMemoryCredentialService` | `google.adk.auth.credential_service.in_memory_credential_service` |
+| Runner | `InMemoryRunner` | `google.adk.runners` |
+
+The production `InMemoryRunner` (in `google.adk.runners`) wires all three in-memory services automatically:
+
+```python
+# From google.adk.runners (production code, line 1596)
+class InMemoryRunner(Runner):
+    """An in-memory Runner for testing and development."""
+
+    def __init__(
+        self,
+        agent: BaseAgent | None = None,
+        *,
+        app_name: str | None = None,       # defaults to 'InMemoryRunner'
+        plugins: list[BasePlugin] | None = None,
+        app: App | None = None,
+        plugin_close_timeout: float = 5.0,
+    ):
+        super().__init__(
+            app_name=app_name or 'InMemoryRunner',
+            agent=agent,
+            artifact_service=InMemoryArtifactService(),
+            session_service=InMemorySessionService(),
+            memory_service=InMemoryMemoryService(),
+            plugins=plugins,
+            app=app,
+            plugin_close_timeout=plugin_close_timeout,
+        )
+```
+
+### Test-Only Utilities (testing_utils.py)
+
+These live in the adk-python source tree and must be copied or imported from the cloned repo:
+
+| Utility | Purpose |
+|---|---|
+| `MockModel` | Drop-in LLM replacement with canned responses |
+| `MockLlmConnection` | Live connection mock for streaming tests |
+| `InMemoryRunner` (test) | Sync runner with session reuse for multi-turn tests |
+| `TestInMemoryRunner` | Async runner with new session per call |
+| `create_invocation_context()` | Builds a fully wired `InvocationContext` for low-level tests |
+| `simplify_events()` | Collapses events into `(author, content)` tuples |
+| `simplify_contents()` | Collapses content lists into `(role, content)` tuples |
+| `simplify_resumable_app_events()` | Includes agent state and `end_of_agent` markers |
+| `ModelContent` | Wraps parts with `role='model'` |
+| `UserContent` | Wraps a string with `role='user'` |
+| `append_user_content()` | Adds user messages to an existing session |
+
+---
+
 ## MockModel
 
 `MockModel` extends `BaseLlm` as a drop-in LLM replacement. Yields canned `LlmResponse` objects in order and records every `LlmRequest` for inspection.
@@ -61,20 +128,6 @@ class MockModel(BaseLlm):
     responses: list[LlmResponse]           # pre-loaded responses to yield
     error: Exception | None = None         # if set, raised instead of yielding
     response_index: int = -1               # auto-incremented on each call
-
-    @classmethod
-    def create(
-        cls,
-        responses: list[str] | list[types.Part] | list[LlmResponse] | list[list[types.Part]],
-        error: Exception | None = None,
-    ) -> 'MockModel': ...
-
-    # Implements both sync and async generation:
-    def generate_content(self, llm_request, stream=False) -> Generator[LlmResponse, None, None]: ...
-    async def generate_content_async(self, llm_request, stream=False) -> AsyncGenerator[LlmResponse, None]: ...
-
-    # Live connection support:
-    async def connect(self, llm_request) -> BaseLlmConnection: ...
 
     @classmethod
     def supported_models(cls) -> list[str]:
@@ -113,107 +166,81 @@ mock = MockModel.create(responses=[], error=SystemError('API down'))
 
 Each call to `generate_content_async` increments `response_index` and yields the next response. If `error` is set, it raises the error instead.
 
+### Inspecting What the Model Received
+
+`MockModel` records every `LlmRequest` for assertion:
+
+```python
+mock_model = MockModel.create(responses=['response'])
+agent = Agent(name='test', model=mock_model, instruction='Be helpful.')
+runner = InMemoryRunner(agent)
+runner.run('Hello')
+
+# Assert on the LlmRequest sent to the model
+assert len(mock_model.requests) == 1
+request = mock_model.requests[0]
+
+# Check system instruction
+assert 'Be helpful' in request.config.system_instruction
+
+# Check conversation contents
+from tests.unittests.testing_utils import simplify_contents
+assert simplify_contents(request.contents) == [('user', 'Hello')]
+```
+
 ---
 
-## InMemoryRunner
+## InMemoryRunner (Test Version)
 
-The test utilities provide two runner variants. Both wire together `InMemorySessionService`, `InMemoryArtifactService`, and `InMemoryMemoryService` so no external storage is needed.
+### InMemoryRunner — Synchronous, Session Reuse
 
-### InMemoryRunner (Synchronous)
-
-The `InMemoryRunner` in `testing_utils` provides a synchronous `run()` method for simple tests:
+Creates a session on first use and reuses it for subsequent `run()` calls. Ideal for multi-turn tests:
 
 ```python
 from tests.unittests.testing_utils import InMemoryRunner, MockModel
 from google.adk.agents.llm_agent import Agent
 
-mock_model = MockModel.create(responses=['Hello from the agent!'])
+mock_model = MockModel.create(responses=['Hello!', 'How can I help?'])
 agent = Agent(name='greeter', model=mock_model)
 
 runner = InMemoryRunner(agent)
-events = runner.run('Hi there')
-# events is a list[Event] — the full conversation trace
-```
-
-Internally, `InMemoryRunner` creates a session on first use and reuses it for subsequent `run()` calls within the same runner instance. This lets you test multi-turn conversations:
-
-```python
-events_turn1 = runner.run('Hello')
-events_turn2 = runner.run('Follow up question')
+events_turn1 = runner.run('Hi there')
+events_turn2 = runner.run('Follow up')
 # Both turns share the same session with accumulated history
 ```
 
-It also supports async via `run_async()`, live mode via `run_live()`, and accepts an `App` instance:
+Constructor options:
 
 ```python
-# Async
-events = await runner.run_async('Hi there')
+runner = InMemoryRunner(
+    root_agent=agent,                   # or app=App(...)
+    plugins=[my_plugin],                # optional plugin list
+    response_modalities=['TEXT'],        # optional modalities
+)
 
-# With an App object
-from google.adk.apps.app import App
-app = App(name='my_app', root_agent=agent)
-runner = InMemoryRunner(app=app)
-
-# With plugins
-runner = InMemoryRunner(agent, plugins=[my_plugin])
+# Also supports async and live mode:
+events = await runner.run_async('message')
+events = runner.run_live(live_request_queue)
 ```
 
-### TestInMemoryRunner (Async, Session-per-Call)
+### TestInMemoryRunner — Async, New Session per Call
 
-`TestInMemoryRunner` extends the framework's own `InMemoryRunner` and creates a **new session for each call**, making tests fully isolated:
+Creates a **new session for each call**, ensuring full test isolation:
 
 ```python
-from tests.unittests.testing_utils import TestInMemoryRunner, MockModel
-from google.adk.agents.llm_agent import Agent
+from tests.unittests.testing_utils import TestInMemoryRunner
 
-mock_model = MockModel.create(responses=['response'])
-agent = Agent(name='root_agent', model=mock_model)
-
-runner = TestInMemoryRunner(agent)
+runner = TestInMemoryRunner(agent, plugins=[my_plugin])
 events = await runner.run_async_with_new_session('test input')
-```
-
-It also accepts `plugins` for testing plugin behavior:
-
-```python
-runner = TestInMemoryRunner(agent=agent, plugins=[my_plugin])
 ```
 
 ---
 
-## Helper Classes and Functions
-
-### ModelContent and UserContent
-
-```python
-from tests.unittests.testing_utils import ModelContent, UserContent
-
-# ModelContent wraps parts with role='model'
-content = ModelContent([types.Part.from_text(text='Hello')])
-
-# UserContent wraps a string with role='user'
-content = UserContent('Hello')
-```
-
-### create_invocation_context
-
-Creates a fully wired `InvocationContext` for low-level tests that don't need a full runner:
-
-```python
-from tests.unittests.testing_utils import create_invocation_context
-
-ctx = await create_invocation_context(
-    agent=my_agent,
-    user_content='test message',
-    run_config=RunConfig(),
-    plugins=[my_plugin],
-)
-# ctx has InMemorySessionService, InMemoryArtifactService, InMemoryMemoryService
-```
+## simplify_events and simplify_contents
 
 ### simplify_events
 
-`simplify_events` collapses Events into `(author, content)` tuples:
+Collapses Events into `(author, content)` tuples for readable assertions:
 
 ```python
 from tests.unittests.testing_utils import simplify_events
@@ -224,17 +251,12 @@ assert simplify_events(events) == [
 ]
 ```
 
-### Simplification Rules
-
-The underlying `simplify_content` function applies these rules:
-
-- If content has a **single text part**, return the stripped text string
-- If content has a **single non-text part** (e.g., function_call), return the `Part` object
-- If content has **multiple parts**, return the list of `Part` objects
-- `function_call.id` and `function_response.id` are set to `None` to avoid flaky comparisons
-- Events with no `content` are filtered out entirely
-
-This means you can assert against plain strings for text responses and against `Part` objects for tool calls:
+**Simplification rules:**
+- Single text part → stripped text string
+- Single non-text part (e.g., function_call) → the `Part` object
+- Multiple parts → list of `Part` objects
+- `function_call.id` and `function_response.id` → set to `None` (avoids flaky comparisons)
+- Events with no `content` → filtered out
 
 ```python
 from google.genai.types import Part
@@ -246,9 +268,21 @@ assert simplify_events(events) == [
 ]
 ```
 
+### simplify_contents
+
+Collapses `LlmRequest.contents` for asserting what was sent to the model:
+
+```python
+from tests.unittests.testing_utils import simplify_contents
+
+assert simplify_contents(mock_model.requests[0].contents) == [
+    ('user', 'First message'),
+]
+```
+
 ### simplify_resumable_app_events
 
-For testing resumability, use `simplify_resumable_app_events`. It preserves checkpoint events and `end_of_agent` markers:
+For testing resumability, preserves checkpoint events and `end_of_agent` markers:
 
 ```python
 from tests.unittests.testing_utils import simplify_resumable_app_events
@@ -259,281 +293,476 @@ results = simplify_resumable_app_events(events)
 
 ---
 
-## Testing Agents by Type
+## Creating Dependencies
 
-### LlmAgent (Primary Agent)
+### create_invocation_context — Full Context Without a Runner
 
-The most common test pattern — swap the LLM with `MockModel`:
+For low-level tests that need direct access to `InvocationContext` without a full runner:
 
 ```python
-from google.adk.agents.llm_agent import Agent
-from tests.unittests.testing_utils import InMemoryRunner, MockModel, simplify_events
+from tests.unittests.testing_utils import create_invocation_context
 
-def test_llm_agent_basic():
+ctx = await create_invocation_context(
+    agent=my_agent,
+    user_content='test message',         # optional
+    run_config=RunConfig(),              # optional
+    plugins=[my_plugin],                 # optional
+)
+# ctx has:
+#   ctx.artifact_service  → InMemoryArtifactService
+#   ctx.session_service   → InMemorySessionService
+#   ctx.memory_service    → InMemoryMemoryService
+#   ctx.plugin_manager    → PluginManager(plugins)
+#   ctx.session           → fresh session with app_name='test_app', user_id='test_user'
+```
+
+### Creating a ToolContext (Context)
+
+**Important:** `ToolContext` is an alias for `Context` (see `tool_context.py` line 30: `ToolContext = Context`). `Context` extends `ReadonlyContext` and adds mutable state, artifacts, credentials, memory, and tool confirmation.
+
+#### Option A: Via MagicMock (unit-level, for isolated tool testing)
+
+```python
+from unittest.mock import MagicMock
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.sessions.session import Session
+from google.adk.tools.tool_context import ToolContext  # alias for Context
+
+@pytest.fixture
+def mock_tool_context() -> ToolContext:
+    mock_invocation_context = MagicMock(spec=InvocationContext)
+    mock_invocation_context.session = MagicMock(spec=Session)
+    mock_invocation_context.session.state = MagicMock()
+    return ToolContext(invocation_context=mock_invocation_context)
+```
+
+This is the simplest approach. Use it when you just need a `ToolContext` parameter and don't need real state or artifact operations.
+
+#### Option B: Via create_invocation_context (integration-level, real services)
+
+```python
+from tests.unittests.testing_utils import create_invocation_context
+from google.adk.tools.tool_context import ToolContext
+
+async def make_real_tool_context() -> ToolContext:
+    agent = LlmAgent(name='test_agent')
+    ctx = await create_invocation_context(agent)
+    return ToolContext(invocation_context=ctx)
+```
+
+This gives you real in-memory services, so `tool_context.state`, `tool_context.save_artifact()`, etc. all work.
+
+#### Option C: Via InMemoryRunner (full integration, tools execute in agent loop)
+
+```python
+# No manual ToolContext creation needed — the runner wires everything
+mock = MockModel.create(responses=[
+    Part.from_function_call(name='my_tool', args={'x': 1}),
+    'done',
+])
+agent = Agent(name='test', model=mock, tools=[my_tool])
+runner = InMemoryRunner(agent)
+events = runner.run('do it')
+```
+
+### Creating a ReadonlyContext (for instruction/field tests)
+
+```python
+from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.sessions.in_memory_session_service import InMemorySessionService
+
+async def _create_readonly_context(
+    agent: LlmAgent, state: dict[str, Any] | None = None
+) -> ReadonlyContext:
+    session_service = InMemorySessionService()
+    session = await session_service.create_session(
+        app_name='test_app', user_id='test_user', state=state
+    )
+    invocation_context = InvocationContext(
+        invocation_id='test_id',
+        agent=agent,
+        session=session,
+        session_service=session_service,
+    )
+    return ReadonlyContext(invocation_context)
+```
+
+### Creating an InvocationContext Manually
+
+For maximum control, build `InvocationContext` directly:
+
+```python
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.sessions.in_memory_session_service import InMemorySessionService
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.plugins.plugin_manager import PluginManager
+
+session_service = InMemorySessionService()
+session = await session_service.create_session(
+    app_name='test_app', user_id='test_user'
+)
+
+ctx = InvocationContext(
+    invocation_id='test_invocation_id',
+    agent=my_agent,
+    session=session,
+    session_service=session_service,
+    artifact_service=InMemoryArtifactService(),       # optional
+    memory_service=InMemoryMemoryService(),            # optional
+    plugin_manager=PluginManager(plugins=[]),           # optional
+    run_config=RunConfig(),                             # optional
+)
+```
+
+---
+
+## Testing LlmAgent — Comprehensive Guide
+
+`LlmAgent` (aliased as `Agent`) is the primary agent type. Here is how to test every major feature.
+
+### Basic Response
+
+```python
+def test_basic_response():
     mock = MockModel.create(responses=['Hello!'])
     agent = Agent(name='greeter', model=mock)
     runner = InMemoryRunner(agent)
     assert simplify_events(runner.run('Hi')) == [('greeter', 'Hello!')]
 ```
 
-Test instructions, model inheritance, and output_key:
+### Instruction (Static String)
 
 ```python
-def test_agent_with_instruction():
-    mock = MockModel.create(responses=['I am a weather bot.'])
-    agent = Agent(
-        name='weather_bot',
-        model=mock,
-        instruction='You are a helpful weather assistant.',
-        output_key='last_response',
-    )
-    runner = InMemoryRunner(agent)
-    events = runner.run('Who are you?')
-    assert simplify_events(events) == [('weather_bot', 'I am a weather bot.')]
-    # output_key writes the text response to session state
+async def test_static_instruction():
+    agent = LlmAgent(name='test', instruction='You are helpful.')
+    ctx = await _create_readonly_context(agent)
+
+    instruction, bypass = await agent.canonical_instruction(ctx)
+    assert instruction == 'You are helpful.'
+    assert not bypass  # state injection not bypassed
 ```
 
-### Custom BaseAgent
-
-Subclass `BaseAgent`, implement `_run_async_impl`, and test the yielded events directly:
+### Instruction (Callable with State)
 
 ```python
-from typing import AsyncGenerator
-from google.adk.agents.base_agent import BaseAgent
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.events.event import Event
-from google.genai import types
-from typing_extensions import override
+async def test_callable_instruction():
+    def _provider(ctx: ReadonlyContext) -> str:
+        return f'Greet {ctx.state["user_name"]}'
 
-class _TestingAgent(BaseAgent):
-    @override
-    async def _run_async_impl(
-        self, ctx: InvocationContext
-    ) -> AsyncGenerator[Event, None]:
-        yield Event(
-            author=self.name,
-            branch=ctx.branch,
-            invocation_id=ctx.invocation_id,
-            content=types.Content(parts=[types.Part(text='Hello, world!')]),
-        )
+    agent = LlmAgent(name='test', instruction=_provider)
+    ctx = await _create_readonly_context(agent, state={'user_name': 'Alice'})
 
-# Test at the low level with InvocationContext:
-@pytest.mark.asyncio
-async def test_custom_agent():
-    agent = _TestingAgent(name='test_agent')
-    ctx = await create_invocation_context(agent)
-    events = [e async for e in agent.run_async(ctx)]
-    assert len(events) == 1
-    assert events[0].author == 'test_agent'
-    assert events[0].content.parts[0].text == 'Hello, world!'
+    instruction, bypass = await agent.canonical_instruction(ctx)
+    assert instruction == 'Greet Alice'
+    assert bypass  # callable bypasses state injection (already handled)
 ```
 
-### SequentialAgent
-
-Sub-agents run in order. Assert on event sequence:
+### Instruction (Async Callable)
 
 ```python
-from google.adk.agents.sequential_agent import SequentialAgent
+async def test_async_instruction():
+    async def _provider(ctx: ReadonlyContext) -> str:
+        return f'instruction: {ctx.state["key"]}'
 
-agent_1 = _TestingAgent(name='agent_1')
-agent_2 = _TestingAgent(name='agent_2')
-sequential = SequentialAgent(name='seq', sub_agents=[agent_1, agent_2])
+    agent = LlmAgent(name='test', instruction=_provider)
+    ctx = await _create_readonly_context(agent, state={'key': 'value'})
 
-# Without resumability: 2 events (one per sub-agent)
-ctx = await create_invocation_context(sequential)
-events = [e async for e in sequential.run_async(ctx)]
-assert len(events) == 2
-assert events[0].author == 'agent_1'
-assert events[1].author == 'agent_2'
+    instruction, bypass = await agent.canonical_instruction(ctx)
+    assert instruction == 'instruction: value'
 ```
 
-With resumability, checkpoint events are emitted:
+### Tools — Single Tool Call
 
 ```python
-from google.adk.apps.app import ResumabilityConfig
+def test_single_tool():
+    def get_weather(city: str) -> dict:
+        return {'temp': 20, 'condition': 'sunny'}
 
-ctx = await create_invocation_context(sequential)
-ctx.resumability_config = ResumabilityConfig(is_resumable=True)
-events = [e async for e in sequential.run_async(ctx)]
-# 5 events: checkpoint, agent_1, checkpoint, agent_2, final checkpoint (end_of_agent)
-```
-
-### ParallelAgent
-
-Sub-agents run concurrently. Faster agents produce events first:
-
-```python
-from google.adk.agents.parallel_agent import ParallelAgent
-
-agent_1 = _TestingAgent(name='agent_1')
-agent_2 = _TestingAgent(name='agent_2')
-parallel = ParallelAgent(name='par', sub_agents=[agent_1, agent_2])
-
-ctx = await create_invocation_context(parallel)
-events = [e async for e in parallel.run_async(ctx)]
-# Both agents produce events; order depends on completion time
-authors = {e.author for e in events if e.content}
-assert authors == {'agent_1', 'agent_2'}
-```
-
-### LoopAgent
-
-Runs sub-agents repeatedly up to `max_iterations`. Sub-agent can break early with `escalate`:
-
-```python
-from google.adk.agents.loop_agent import LoopAgent
-
-agent = _TestingAgent(name='worker')
-loop = LoopAgent(name='loop', max_iterations=3, sub_agents=[agent])
-
-ctx = await create_invocation_context(loop)
-events = [e async for e in loop.run_async(ctx)]
-# Worker runs 3 times
-content_events = [e for e in events if e.content]
-assert len(content_events) == 3
-```
-
-Early exit via escalation:
-
-```python
-class EscalatingAgent(BaseAgent):
-    @override
-    async def _run_async_impl(self, ctx):
-        yield Event(
-            author=self.name,
-            invocation_id=ctx.invocation_id,
-            branch=ctx.branch,
-            content=types.Content(parts=[types.Part(text='done')]),
-            actions=EventActions(escalate=True),  # breaks the loop
-        )
-```
-
----
-
-## Testing Agent Transfer
-
-Use MockModel to emit `transfer_to_agent` function calls:
-
-```python
-from google.genai.types import Part
-
-def test_agent_transfer():
-    sub_agent = Agent(name='specialist', model=MockModel.create(responses=['handled']))
     mock = MockModel.create(responses=[
-        Part.from_function_call(
-            name='transfer_to_agent',
-            args={'agent_name': 'specialist'}
-        ),
+        Part.from_function_call(name='get_weather', args={'city': 'London'}),
+        'It is 20C and sunny in London.',
     ])
-    router = Agent(
-        name='router',
-        model=mock,
-        sub_agents=[sub_agent],
+    agent = Agent(name='weather', model=mock, tools=[get_weather])
+    runner = InMemoryRunner(agent)
+
+    assert simplify_events(runner.run('weather?')) == [
+        ('weather', Part.from_function_call(name='get_weather', args={'city': 'London'})),
+        ('weather', Part.from_function_response(
+            name='get_weather', response={'temp': 20, 'condition': 'sunny'}
+        )),
+        ('weather', 'It is 20C and sunny in London.'),
+    ]
+```
+
+### Tools — State Manipulation via ToolContext
+
+```python
+def test_tool_writes_state():
+    def save_note(text: str, tool_context: ToolContext) -> str:
+        tool_context.state['note'] = text
+        return 'Saved.'
+
+    mock = MockModel.create(responses=[
+        Part.from_function_call(name='save_note', args={'text': 'buy milk'}),
+        'Done.',
+    ])
+    agent = Agent(name='test', model=mock, tools=[save_note])
+    runner = InMemoryRunner(agent)
+    runner.run('save a note')
+
+    # State was persisted in the session
+    assert runner.session.state.get('note') == 'buy milk'
+```
+
+### Tools — Asserting on Args Sent to Model
+
+```python
+def test_tool_args_in_model_request():
+    def my_tool(x: int) -> int:
+        return x + 1
+
+    mock = MockModel.create(responses=[
+        Part.from_function_call(name='my_tool', args={'x': 5}),
+        'Result is 6.',
+    ])
+    agent = Agent(name='test', model=mock, tools=[my_tool])
+    runner = InMemoryRunner(agent)
+    runner.run('increment 5')
+
+    # Second request to model includes the function response
+    second_request_contents = simplify_contents(mock.requests[1].contents)
+    # Contains: user message, model function_call, user function_response
+    assert any(
+        isinstance(content, Part) and content.function_response
+        for _, content in second_request_contents
     )
+```
+
+### Model Inheritance (Sub-Agent Inherits Parent Model)
+
+```python
+def test_model_inheritance():
+    sub = LlmAgent(name='sub')
+    parent = LlmAgent(name='parent', model='gemini-pro', sub_agents=[sub])
+
+    assert sub.canonical_model == parent.canonical_model
+```
+
+### output_key — Save Output to State
+
+```python
+def test_output_key():
+    agent = LlmAgent(name='test_agent', output_key='result')
+    event = Event(
+        invocation_id='inv',
+        author='test_agent',
+        content=types.Content(role='model', parts=[types.Part.from_text(text='Hello')]),
+        actions=EventActions(),
+    )
+
+    agent._LlmAgent__maybe_save_output_to_state(event)
+
+    assert event.actions.state_delta['result'] == 'Hello'
+```
+
+Output is NOT saved when:
+- Event author differs from agent name (case-sensitive)
+- `output_key` is not set
+- Response is partial (streaming chunk, not final)
+- Content is empty or whitespace-only
+
+### output_schema — Structured Output via Pydantic
+
+```python
+from pydantic import BaseModel
+
+class PersonSchema(BaseModel):
+    name: str
+    age: int
+
+def test_output_schema():
+    agent = LlmAgent(name='test', output_key='result', output_schema=PersonSchema)
+    event = Event(
+        invocation_id='inv',
+        author='test',
+        content=types.Content(
+            role='model',
+            parts=[types.Part.from_text(text='{"name": "Alice", "age": 30}')]
+        ),
+        actions=EventActions(),
+    )
+
+    agent._LlmAgent__maybe_save_output_to_state(event)
+
+    assert event.actions.state_delta['result'] == {'name': 'Alice', 'age': 30}
+```
+
+### output_schema + tools (Allowed)
+
+```python
+def test_output_schema_with_tools():
+    class Schema(BaseModel):
+        pass
+
+    def _a_tool():
+        pass
+
+    # Does not throw — output_schema is now allowed alongside tools
+    LlmAgent(name='test', output_schema=Schema, tools=[_a_tool])
+```
+
+### include_contents — Conversation History Control
+
+**`include_contents='default'`** — full history preserved across turns:
+
+```python
+@pytest.mark.asyncio
+async def test_include_contents_default():
+    def simple_tool(message: str) -> dict:
+        return {'result': f'Processed: {message}'}
+
+    mock = MockModel.create(responses=[
+        types.Part.from_function_call(name='simple_tool', args={'message': 'first'}),
+        'First response',
+        'Second response',
+    ])
+    agent = LlmAgent(name='test', model=mock, include_contents='default', tools=[simple_tool])
+
+    runner = InMemoryRunner(agent)
+    runner.run('First message')
+    runner.run('Second message')
+
+    # Second turn sees full history from first turn
+    second_turn = simplify_contents(mock.requests[2].contents)
+    assert ('user', 'First message') in second_turn
+    assert ('model', 'First response') in second_turn
+    assert ('user', 'Second message') in second_turn
+```
+
+**`include_contents='none'`** — no history, only current input:
+
+```python
+@pytest.mark.asyncio
+async def test_include_contents_none():
+    mock = MockModel.create(responses=['First', 'Second'])
+    agent = LlmAgent(name='test', model=mock, include_contents='none')
+
+    runner = InMemoryRunner(agent)
+    runner.run('First message')
+    runner.run('Second message')
+
+    # Second turn does NOT see first turn
+    assert simplify_contents(mock.requests[1].contents) == [
+        ('user', 'Second message'),
+    ]
+```
+
+**`include_contents='none'` with SequentialAgent** — agent2 doesn't see user input but sees agent1 output:
+
+```python
+@pytest.mark.asyncio
+async def test_include_contents_none_sequential():
+    agent1_model = MockModel.create(responses=['Agent1 response: XYZ'])
+    agent1 = LlmAgent(name='agent1', model=agent1_model)
+
+    agent2_model = MockModel.create(responses=['Agent2 final'])
+    agent2 = LlmAgent(name='agent2', model=agent2_model, include_contents='none')
+
+    seq = SequentialAgent(name='seq', sub_agents=[agent1, agent2])
+    runner = InMemoryRunner(seq)
+    events = runner.run('Original request')
+
+    # Agent2 does NOT see 'Original request'
+    agent2_contents = simplify_contents(agent2_model.requests[0].contents)
+    assert not any('Original request' in str(c) for _, c in agent2_contents)
+    # But DOES see Agent1's output
+    assert any('Agent1 response' in str(c) for _, c in agent2_contents)
+```
+
+### generate_content_config — Validation Rules
+
+```python
+# Allowed: thinking_config
+LlmAgent(
+    name='test',
+    generate_content_config=types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(include_thoughts=True)
+    ),
+)
+
+# NOT allowed: tools (use Agent.tools instead)
+with pytest.raises(ValueError):
+    LlmAgent(
+        name='test',
+        generate_content_config=types.GenerateContentConfig(
+            tools=[types.Tool(function_declarations=[])]
+        ),
+    )
+
+# NOT allowed: system_instruction (use Agent.instruction instead)
+with pytest.raises(ValueError):
+    LlmAgent(
+        name='test',
+        generate_content_config=types.GenerateContentConfig(
+            system_instruction='nope'
+        ),
+    )
+
+# NOT allowed: response_schema (use Agent.output_schema instead)
+with pytest.raises(ValueError):
+    LlmAgent(
+        name='test',
+        generate_content_config=types.GenerateContentConfig(
+            response_schema=MySchema
+        ),
+    )
+```
+
+### Agent Transfer
+
+```python
+def test_agent_transfer():
+    sub = Agent(name='specialist', model=MockModel.create(responses=['handled']))
+    mock = MockModel.create(responses=[
+        Part.from_function_call(name='transfer_to_agent', args={'agent_name': 'specialist'}),
+    ])
+    router = Agent(name='router', model=mock, sub_agents=[sub])
 
     runner = InMemoryRunner(router)
     events = runner.run('help me')
-    # Check transfer happened
-    transfer_events = [
-        e for e in events
-        if e.actions and e.actions.transfer_to_agent
-    ]
+
+    transfer_events = [e for e in events if e.actions and e.actions.transfer_to_agent]
     assert transfer_events[0].actions.transfer_to_agent == 'specialist'
 ```
 
----
-
-## Testing Model Callbacks
-
-### before_model_callback — Short-Circuit the LLM
-
-Return `LlmResponse` to skip the LLM entirely:
+### Transfer Flags
 
 ```python
-from google.adk.agents.callback_context import CallbackContext
-from google.adk.models.llm_request import LlmRequest
-from google.adk.models.llm_response import LlmResponse
-from tests.unittests.testing_utils import MockModel, InMemoryRunner, ModelContent, simplify_events
-from google.adk.agents.llm_agent import Agent
-from google.genai import types
+def test_transfer_flags():
+    sub = LlmAgent(name='sub')
+    parent = LlmAgent(name='parent', sub_agents=[sub])
 
-def my_before_model(callback_context: CallbackContext, llm_request: LlmRequest) -> LlmResponse:
-    return LlmResponse(
-        content=ModelContent([types.Part.from_text(text='intercepted')])
-    )
-
-mock_model = MockModel.create(responses=['should not appear'])
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    before_model_callback=my_before_model,
-)
-
-runner = InMemoryRunner(agent)
-assert simplify_events(runner.run('test')) == [
-    ('root_agent', 'intercepted'),
-]
+    # Transfers allowed by default
+    assert not parent.disallow_transfer_to_parent
+    assert not parent.disallow_transfer_to_peers
 ```
 
-`None` return = LLM runs normally (useful for logging/mutation).
-
-### after_model_callback — Replace the LLM Response
-
-Return `LlmResponse` to replace the model's response:
+### Multi-Provider Model Strings
 
 ```python
-def my_after_model(callback_context: CallbackContext, llm_response: LlmResponse) -> LlmResponse:
-    return LlmResponse(
-        content=ModelContent([types.Part.from_text(text='replaced')])
-    )
+# Gemini strings resolve to Gemini
+agent = LlmAgent(name='test', model='gemini-2.0-flash')
+assert isinstance(agent.canonical_model, Gemini)
 
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    after_model_callback=my_after_model,
-)
+# Claude strings resolve to Claude
+agent = LlmAgent(name='test', model='claude-sonnet-4@20250514')
+assert isinstance(agent.canonical_model, Claude)
 
-runner = InMemoryRunner(agent)
-assert simplify_events(runner.run('test')) == [
-    ('root_agent', 'replaced'),
-]
-```
-
-### on_model_error_callback — Handle LLM Errors
-
-Inject errors via `MockModel.create(responses=[], error=...)`, then test your error handler:
-
-```python
-import pytest
-
-mock_model = MockModel.create(responses=[], error=SystemError('API down'))
-
-# Error callback that provides a fallback response
-def handle_error(callback_context, llm_request, error) -> LlmResponse:
-    return LlmResponse(
-        content=ModelContent([types.Part.from_text(text='fallback response')])
-    )
-
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    on_model_error_callback=handle_error,
-)
-
-runner = TestInMemoryRunner(agent)
-events = await runner.run_async_with_new_session('test')
-assert simplify_events(events) == [('root_agent', 'fallback response')]
-```
-
-If the error callback returns `None`, the original exception propagates:
-
-```python
-mock_model = MockModel.create(responses=[], error=SystemError('error'))
-agent = Agent(name='root_agent', model=mock_model, on_model_error_callback=lambda **kw: None)
-
-runner = TestInMemoryRunner(agent)
-with pytest.raises(SystemError):
-    await runner.run_async_with_new_session('test')
+# Provider-prefixed strings resolve to LiteLlm
+agent = LlmAgent(name='test', model='openai/gpt-4o')
+assert isinstance(agent.canonical_model, LiteLlm)
 ```
 
 ---
@@ -545,13 +774,8 @@ with pytest.raises(SystemError):
 Return `types.Content` to skip the agent entirely. Return `None` to let it run:
 
 ```python
-# Sync callback that bypasses the agent
 def bypass_agent(callback_context: CallbackContext) -> types.Content:
-    return types.Content(parts=[types.Part(text='agent run is bypassed.')])
-
-# Async variant works identically
-async def async_bypass_agent(callback_context: CallbackContext) -> types.Content:
-    return types.Content(parts=[types.Part(text='agent run is bypassed.')])
+    return types.Content(parts=[types.Part(text='bypassed')])
 
 agent = _TestingAgent(
     name='test_agent',
@@ -561,294 +785,193 @@ ctx = await create_invocation_context(agent)
 events = [e async for e in agent.run_async(ctx)]
 
 assert len(events) == 1
-assert events[0].content.parts[0].text == 'agent run is bypassed.'
+assert events[0].content.parts[0].text == 'bypassed'
 ```
 
-Verify the callback was called and `_run_async_impl` was skipped using `mocker.spy`:
+Verify callback was called and `_run_async_impl` was skipped using `mocker.spy`:
 
 ```python
 @pytest.mark.asyncio
-async def test_before_agent_callback_bypass(mocker):
-    agent = _TestingAgent(
-        name='test_agent',
-        before_agent_callback=bypass_agent,
-    )
+async def test_before_agent_bypass(mocker):
+    agent = _TestingAgent(name='test', before_agent_callback=bypass_agent)
     ctx = await create_invocation_context(agent)
+
     spy_run = mocker.spy(agent, '_run_async_impl')
     spy_cb = mocker.spy(agent, 'before_agent_callback')
 
     events = [e async for e in agent.run_async(ctx)]
 
     spy_cb.assert_called_once()
-    spy_run.assert_not_called()  # Agent was bypassed
+    spy_run.assert_not_called()  # agent was bypassed
 ```
 
 ### after_agent_callback — Append an Extra Event
 
 ```python
 def append_reply(callback_context: CallbackContext) -> types.Content:
-    return types.Content(
-        parts=[types.Part(text='Agent reply from after agent callback.')]
-    )
+    return types.Content(parts=[types.Part(text='After-callback reply.')])
 
-agent = _TestingAgent(
-    name='test_agent',
-    after_agent_callback=append_reply,
-)
+agent = _TestingAgent(name='test', after_agent_callback=append_reply)
 ctx = await create_invocation_context(agent)
 events = [e async for e in agent.run_async(ctx)]
 
 assert len(events) == 2
 assert events[0].content.parts[0].text == 'Hello, world!'  # from agent
-assert events[1].content.parts[0].text == 'Agent reply from after agent callback.'
+assert events[1].content.parts[0].text == 'After-callback reply.'
 ```
 
 ### Callback Chains (Lists of Callbacks)
 
-Pass a list of callbacks. First non-`None` return wins (short-circuits the chain):
+Pass a list. First non-`None` return wins (short-circuits):
 
 ```python
 from unittest import mock
 from functools import partial
 
-# Mix sync and async callbacks
-mock_cb_1 = mock.Mock(side_effect=partial(mock_sync_cb, ret_value=None))      # passes through
-mock_cb_2 = mock.AsyncMock(side_effect=partial(mock_async_cb, ret_value='cb2'))  # returns → wins
-mock_cb_3 = mock.Mock(side_effect=partial(mock_sync_cb, ret_value='cb3'))      # never called
+mock_cb_1 = mock.Mock(side_effect=partial(sync_cb, ret_value=None))
+mock_cb_2 = mock.AsyncMock(side_effect=partial(async_cb, ret_value='cb2'))
+mock_cb_3 = mock.Mock(side_effect=partial(sync_cb, ret_value='cb3'))
 
 agent = _TestingAgent(
-    name='test_agent',
+    name='test',
     before_agent_callback=[mock_cb_1, mock_cb_2, mock_cb_3],
 )
 ctx = await create_invocation_context(agent)
 events = [e async for e in agent.run_async(ctx)]
 
-mock_cb_1.assert_called_once()       # ran, returned None → next
-mock_cb_2.assert_awaited_once()      # ran, returned 'cb2' → short-circuit
+mock_cb_1.assert_called_once()       # ran, returned None
+mock_cb_2.assert_awaited_once()      # returned 'cb2' → wins
 mock_cb_3.assert_not_called()        # never reached
-assert events[0].content.parts[0].text == 'cb2'
+```
+
+---
+
+## Testing Model Callbacks
+
+### before_model_callback — Short-Circuit the LLM
+
+```python
+def my_before_model(callback_context: CallbackContext, llm_request: LlmRequest) -> LlmResponse:
+    return LlmResponse(content=ModelContent([types.Part.from_text(text='intercepted')]))
+
+mock = MockModel.create(responses=['should not appear'])
+agent = Agent(name='root', model=mock, before_model_callback=my_before_model)
+
+runner = InMemoryRunner(agent)
+assert simplify_events(runner.run('test')) == [('root', 'intercepted')]
+```
+
+### after_model_callback — Replace the LLM Response
+
+```python
+def my_after_model(callback_context: CallbackContext, llm_response: LlmResponse) -> LlmResponse:
+    return LlmResponse(content=ModelContent([types.Part.from_text(text='replaced')]))
+
+agent = Agent(name='root', model=mock, after_model_callback=my_after_model)
+```
+
+### on_model_error_callback — Handle LLM Errors
+
+```python
+mock = MockModel.create(responses=[], error=SystemError('API down'))
+
+def handle_error(callback_context, llm_request, error) -> LlmResponse:
+    return LlmResponse(content=ModelContent([types.Part.from_text(text='fallback')]))
+
+agent = Agent(name='root', model=mock, on_model_error_callback=handle_error)
+
+runner = TestInMemoryRunner(agent)
+events = await runner.run_async_with_new_session('test')
+assert simplify_events(events) == [('root', 'fallback')]
 ```
 
 ---
 
 ## Testing Tool Callbacks
 
-MockModel drives tool callback tests by emitting `function_call` parts.
-
 ### before_tool_callback — Short-Circuit or Mutate Args
 
-Return a dict to skip tool execution (dict becomes the function response):
+Return dict → skip tool (dict becomes the function response). Return `None` → tool runs.
 
 ```python
-from google.adk.tools.base_tool import BaseTool
-from google.adk.tools.tool_context import ToolContext
-from google.genai.types import Part
-
 def simple_function(input_str: str) -> str:
     return {'result': input_str}
 
-def my_before_tool(tool: BaseTool, args: dict, tool_context: ToolContext):
+def intercept(tool: BaseTool, args: dict, tool_context: ToolContext):
     return {'intercepted': True}  # tool never runs
 
-responses = [
+mock = MockModel.create(responses=[
     types.Part.from_function_call(name='simple_function', args={}),
     'done',
-]
-mock_model = MockModel.create(responses=responses)
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    before_tool_callback=my_before_tool,
-    tools=[simple_function],
-)
+])
+agent = Agent(name='root', model=mock, before_tool_callback=intercept, tools=[simple_function])
 
-runner = InMemoryRunner(agent)
-assert simplify_events(runner.run('test')) == [
-    ('root_agent', Part.from_function_call(name='simple_function', args={})),
-    ('root_agent', Part.from_function_response(name='simple_function', response={'intercepted': True})),
-    ('root_agent', 'done'),
-]
+assert simplify_events(InMemoryRunner(agent).run('test'))[1] == (
+    'root', Part.from_function_response(name='simple_function', response={'intercepted': True})
+)
 ```
 
-Modify `args` in-place, return `None` — tool runs with modified args:
+Mutate args in-place, return `None`:
 
 ```python
-def mutate_args(tool: BaseTool, args: dict, tool_context: ToolContext):
-    args['input_str'] = 'modified_input'
-    return None  # tool runs with mutated args
-
-responses = [
-    types.Part.from_function_call(name='simple_function', args={}),
-    'done',
-]
-mock_model = MockModel.create(responses=responses)
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    before_tool_callback=mutate_args,
-    tools=[simple_function],
-)
-
-runner = InMemoryRunner(agent)
-assert simplify_events(runner.run('test')) == [
-    ('root_agent', Part.from_function_call(name='simple_function', args={})),
-    ('root_agent', Part.from_function_response(
-        name='simple_function', response={'result': 'modified_input'}
-    )),
-    ('root_agent', 'done'),
-]
+def mutate(tool, args, tool_context):
+    args['input_str'] = 'modified'
+    return None  # tool runs with modified args
 ```
 
-### after_tool_callback — Replace or Modify the Response
-
-Return dict to replace response, `None` to keep original:
+### after_tool_callback / on_tool_error_callback
 
 ```python
-def my_after_tool(tool, args, tool_context, tool_response=None):
-    tool_response['result'] = 'modified_output'
+# Replace tool response
+def modify_response(tool, args, tool_context, tool_response=None):
+    tool_response['result'] = 'modified'
     return tool_response
 
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    after_tool_callback=my_after_tool,
-    tools=[simple_function],
-)
-```
-
-### on_tool_error_callback — Handle Tool Failures
-
-Test error recovery with both sync and async error callbacks:
-
-```python
-def simple_function_with_error() -> str:
-    raise SystemError('tool broke')
-
-# Async error callback (sync also works)
-async def recover_from_error(tool, args, tool_context, error):
-    if tool.name == 'simple_function_with_error':
-        return {'result': 'recovered'}
-    return None  # re-raises original error
-
-responses = [
-    types.Part.from_function_call(name='simple_function_with_error', args={}),
-    'done',
-]
-mock_model = MockModel.create(responses=responses)
-agent = Agent(
-    name='root_agent',
-    model=mock_model,
-    on_tool_error_callback=recover_from_error,
-    tools=[simple_function_with_error],
-)
-
-runner = InMemoryRunner(agent)
-assert simplify_events(runner.run('test')) == [
-    ('root_agent', Part.from_function_call(name='simple_function_with_error', args={})),
-    ('root_agent', Part.from_function_response(
-        name='simple_function_with_error', response={'result': 'recovered'}
-    )),
-    ('root_agent', 'done'),
-]
+# Recover from tool errors (async also works)
+async def recover(tool, args, tool_context, error):
+    return {'result': 'recovered'}
 ```
 
 ---
 
-## Testing Tools with ToolContext
+## Testing Tools Directly
 
 ### FunctionTool — ToolContext Auto-Injection
 
-A parameter named `tool_context` (or typed `ToolContext` / `Context`) is automatically injected and hidden from the LLM schema:
+A parameter named `tool_context` or typed `ToolContext` / `Context` is auto-injected and hidden from the LLM schema:
 
 ```python
 from google.adk.tools.function_tool import FunctionTool
 from google.adk.tools.tool_context import ToolContext
-
-def save_note(text: str, tool_context: ToolContext) -> str:
-    tool_context.state['note'] = text
-    return 'Note saved.'
-
-tool = FunctionTool(save_note)
-assert tool._context_param_name == 'tool_context'
-assert 'tool_context' in tool._ignore_params  # hidden from LLM
-```
-
-Context parameter detection supports custom names with type annotations:
-
-```python
 from google.adk.agents.context import Context
 
-# Detected by type annotation — any parameter name works
-def my_tool(query: str, ctx: Context) -> str:
-    return query
+# Detected by parameter name
+def tool_a(query: str, tool_context: ToolContext) -> str: ...
+assert FunctionTool(tool_a)._context_param_name == 'tool_context'
 
-tool = FunctionTool(my_tool)
-assert tool._context_param_name == 'ctx'
+# Detected by type annotation — any name works
+def tool_b(query: str, ctx: Context) -> str: ...
+assert FunctionTool(tool_b)._context_param_name == 'ctx'
+
+# Custom name with ToolContext type
+def tool_c(query: str, my_ctx: ToolContext) -> str: ...
+assert FunctionTool(tool_c)._context_param_name == 'my_ctx'
 ```
 
-### Testing FunctionTool Directly (Unit-Level)
-
-Create a mock `ToolContext` using `MagicMock` for isolated tool tests:
+### Unit-Testing a FunctionTool
 
 ```python
-from unittest.mock import MagicMock
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.sessions.session import Session
-from google.adk.tools.tool_context import ToolContext
-
-@pytest.fixture
-def mock_tool_context() -> ToolContext:
-    mock_invocation_context = MagicMock(spec=InvocationContext)
-    mock_invocation_context.session = MagicMock(spec=Session)
-    mock_invocation_context.session.state = MagicMock()
-    return ToolContext(invocation_context=mock_invocation_context)
-
 @pytest.mark.asyncio
-async def test_function_tool_with_context(mock_tool_context):
-    def sample_func(expected_arg: str, tool_context: ToolContext):
-        return {'received_arg': expected_arg, 'context_present': bool(tool_context)}
+async def test_function_tool_isolated(mock_tool_context):
+    def sample(expected_arg: str, tool_context: ToolContext):
+        return {'received': expected_arg, 'has_ctx': bool(tool_context)}
 
-    tool = FunctionTool(sample_func)
+    tool = FunctionTool(sample)
     result = await tool.run_async(
-        args={'expected_arg': 'world', 'parameters': 'should_be_filtered'},
+        args={'expected_arg': 'hello', 'parameters': 'filtered_out'},
         tool_context=mock_tool_context,
     )
-    assert result == {'received_arg': 'world', 'context_present': True}
-```
-
-### Testing Tools with State (Integration-Level)
-
-Use `InMemoryRunner` for tools that read/write session state — no extra mocking needed:
-
-```python
-def save_preference(key: str, value: str, tool_context: ToolContext) -> str:
-    tool_context.state[key] = value
-    return f'Saved {key}={value}'
-
-def read_preference(key: str, tool_context: ToolContext) -> str:
-    return tool_context.state.get(key, 'not set')
-
-mock = MockModel.create(responses=[
-    Part.from_function_call(name='save_preference', args={'key': 'theme', 'value': 'dark'}),
-    Part.from_function_call(name='read_preference', args={'key': 'theme'}),
-    'Your theme is dark.',
-])
-agent = Agent(name='prefs', model=mock, tools=[save_preference, read_preference])
-
-runner = InMemoryRunner(agent)
-events = runner.run('set theme to dark then read it')
-assert simplify_events(events)[-1] == ('prefs', 'Your theme is dark.')
-```
-
-### Testing Tools with Artifacts
-
-`InMemoryRunner` wires `InMemoryArtifactService` automatically:
-
-```python
-def upload_file(name: str, content: str, tool_context: ToolContext) -> str:
-    artifact = types.Part.from_text(text=content)
-    version = tool_context.save_artifact(name, artifact)
-    return f'Saved {name} v{version}'
+    assert result == {'received': 'hello', 'has_ctx': True}
 ```
 
 ### Testing Tool Confirmation (Human-in-the-Loop)
@@ -856,46 +979,37 @@ def upload_file(name: str, content: str, tool_context: ToolContext) -> str:
 ```python
 from google.adk.tools.tool_confirmation import ToolConfirmation
 
-def sample_func(arg1: str):
-    return {'received_arg': arg1}
-
 tool = FunctionTool(sample_func, require_confirmation=True)
-
-# Setup ToolContext with required mocks
-mock_invocation_context = MagicMock(spec=InvocationContext)
-mock_invocation_context.session = MagicMock(spec=Session)
-mock_invocation_context.session.state = MagicMock()
-mock_invocation_context.agent = MagicMock()
-mock_invocation_context.agent.name = 'test_agent'
 tool_context = ToolContext(invocation_context=mock_invocation_context)
-tool_context.function_call_id = 'test_function_call_id'
+tool_context.function_call_id = 'fc_123'
 
-# First call — requests confirmation
-result = await tool.run_async(args={'arg1': 'hello'}, tool_context=tool_context)
+# First call → requests confirmation
+result = await tool.run_async(args={'arg1': 'hi'}, tool_context=tool_context)
 assert result == {'error': 'This tool call requires confirmation, please approve or reject.'}
 
-# User rejects
+# Reject
 tool_context.tool_confirmation = ToolConfirmation(confirmed=False)
-result = await tool.run_async(args={'arg1': 'hello'}, tool_context=tool_context)
+result = await tool.run_async(args={'arg1': 'hi'}, tool_context=tool_context)
 assert result == {'error': 'This tool call is rejected.'}
 
-# User approves
+# Approve
 tool_context.tool_confirmation = ToolConfirmation(confirmed=True)
-result = await tool.run_async(args={'arg1': 'hello'}, tool_context=tool_context)
-assert result == {'received_arg': 'hello'}
+result = await tool.run_async(args={'arg1': 'hi'}, tool_context=tool_context)
+assert result == {'received_arg': 'hi'}
 ```
 
-### Testing Agent Transfer from a Tool
+### Testing Parameter Validation Errors
 
 ```python
-def escalate(reason: str, tool_context: ToolContext) -> str:
-    tool_context.actions.transfer_to_agent = 'supervisor_agent'
-    return f'Escalating: {reason}'
+@pytest.mark.asyncio
+async def test_missing_args():
+    def my_func(arg1: str, arg2: str):
+        return arg1
 
-# Assert on the event's actions field after running:
-events = runner.run('this needs a supervisor')
-transfer_events = [e for e in events if e.actions and e.actions.transfer_to_agent]
-assert transfer_events[0].actions.transfer_to_agent == 'supervisor_agent'
+    tool = FunctionTool(my_func)
+    result = await tool.run_async(args={'arg1': 'hello'}, tool_context=MagicMock())
+    assert 'error' in result
+    assert 'arg2' in result['error']
 ```
 
 ---
@@ -904,7 +1018,7 @@ assert transfer_events[0].actions.transfer_to_agent == 'supervisor_agent'
 
 ### Plugin Callbacks Override Agent Callbacks
 
-Plugins implement `before_agent_callback`, `after_agent_callback`, `before_model_callback`, `after_model_callback`, `before_tool_callback`, `after_tool_callback`. Plugin callbacks take precedence over agent-level callbacks:
+Plugin callbacks execute first. If a plugin returns a non-`None` value, the agent callback is skipped:
 
 ```python
 from google.adk.plugins.base_plugin import BasePlugin
@@ -920,121 +1034,124 @@ class MockPlugin(BasePlugin):
         if not self.enable_before_agent_callback:
             return None
         return types.Content(parts=[types.Part(text='plugin intercepted')])
-```
 
-Test with `InMemoryRunner` or `create_invocation_context`:
-
-```python
-# Plugin response overrides agent callback
 mock_plugin = MockPlugin()
 mock_plugin.enable_before_agent_callback = True
 
-agent = _TestingAgent(
-    name='test_agent',
-    before_agent_callback=bypass_agent,  # agent callback exists but is skipped
-)
+agent = _TestingAgent(name='test', before_agent_callback=bypass_agent)
 ctx = await create_invocation_context(agent, plugins=[mock_plugin])
 events = [e async for e in agent.run_async(ctx)]
 
+# Plugin wins — agent callback never called
 assert events[0].content.parts[0].text == 'plugin intercepted'
 ```
 
-### Plugin with TestInMemoryRunner
+### Testing ReflectAndRetryToolPlugin
 
 ```python
 from google.adk.plugins.reflect_retry_tool_plugin import ReflectAndRetryToolPlugin
-from unittest import IsolatedAsyncioTestCase
 
-class TestMyPlugin(IsolatedAsyncioTestCase):
-    async def test_plugin_intercepts_error(self):
-        plugin = ReflectAndRetryToolPlugin(max_retries=3)
+async def test_reflect_retry():
+    plugin = ReflectAndRetryToolPlugin(max_retries=3)
 
-        def increase(x: int) -> int:
-            return x + 1
+    def increase(x: int) -> int:
+        return x + 1
 
-        wrong_call = types.Part.from_function_call(name='wrong_name', args={'x': 1})
-        correct_call = types.Part.from_function_call(name='increase', args={'x': 1})
-        mock_model = MockModel.create(responses=[wrong_call, correct_call, 'done'])
+    wrong_call = Part.from_function_call(name='wrong_name', args={'x': 1})
+    correct_call = Part.from_function_call(name='increase', args={'x': 1})
+    mock = MockModel.create(responses=[wrong_call, correct_call, 'done'])
 
-        agent = LlmAgent(name='root_agent', model=mock_model, tools=[increase])
-        runner = TestInMemoryRunner(agent=agent, plugins=[plugin])
+    agent = LlmAgent(name='root', model=mock, tools=[increase])
+    runner = TestInMemoryRunner(agent=agent, plugins=[plugin])
+    events = await runner.run_async_with_new_session('test')
 
-        events = await runner.run_async_with_new_session('test')
-        assert events[0].content.parts[0].function_call.name == 'wrong_name'
-        assert events[1].content.parts[0].function_response.response['error_type'] == 'ValueError'
-        assert events[2].content.parts[0].function_call.name == 'increase'
+    # First call wrong → error → retry → correct
+    assert events[0].content.parts[0].function_call.name == 'wrong_name'
+    assert events[1].content.parts[0].function_response.response['error_type'] == 'ValueError'
+    assert events[2].content.parts[0].function_call.name == 'increase'
 ```
+
+---
+
+## Testing Other Agent Types
+
+### Custom BaseAgent
+
+```python
+from typing import AsyncGenerator
+from google.adk.agents.base_agent import BaseAgent
+from typing_extensions import override
+
+class _TestingAgent(BaseAgent):
+    @override
+    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
+        yield Event(
+            author=self.name,
+            branch=ctx.branch,
+            invocation_id=ctx.invocation_id,
+            content=types.Content(parts=[types.Part(text='Hello, world!')]),
+        )
+
+@pytest.mark.asyncio
+async def test_custom_agent():
+    agent = _TestingAgent(name='test')
+    ctx = await create_invocation_context(agent)
+    events = [e async for e in agent.run_async(ctx)]
+    assert events[0].content.parts[0].text == 'Hello, world!'
+```
+
+### SequentialAgent, ParallelAgent, LoopAgent
+
+See the _Testing Agents by Type_ section in the prior version for SequentialAgent, ParallelAgent, and LoopAgent patterns.
 
 ---
 
 ## Faking and Mocking Dependencies
 
-### In-Memory Service Implementations
+### In-Memory Service Summary
 
-ADK provides drop-in in-memory implementations for all services. These are automatically wired by `InMemoryRunner`:
-
-| Service | In-Memory Implementation | Storage |
+| Service | In-Memory Class | Auto-wired by |
 |---|---|---|
-| Sessions | `InMemorySessionService` | `dict[app → user → session_id → Session]` |
-| Artifacts | `InMemoryArtifactService` | `dict[path → list[_ArtifactEntry]]` |
-| Memory | `InMemoryMemoryService` | `dict[app/user → session_id → events]` (keyword match) |
-| Credentials | `InMemoryCredentialService` | `dict[app → user → key → AuthCredential]` |
+| Sessions | `InMemorySessionService` | `InMemoryRunner`, `create_invocation_context` |
+| Artifacts | `InMemoryArtifactService` | `InMemoryRunner`, `create_invocation_context` |
+| Memory | `InMemoryMemoryService` | `InMemoryRunner`, `create_invocation_context` |
+| Credentials | `InMemoryCredentialService` | Manual wiring only |
 
-### Using MagicMock for ToolContext
-
-For unit-testing tools in isolation (without a full runner):
+`InMemoryCredentialService` stores credentials in a nested dict: `app_name → user_id → credential_key → AuthCredential`. Use it when testing tools that call `tool_context.save_credential()` or `tool_context.load_credential()`:
 
 ```python
-from unittest.mock import MagicMock
+from google.adk.auth.credential_service.in_memory_credential_service import InMemoryCredentialService
 
-mock_invocation_context = MagicMock(spec=InvocationContext)
-mock_invocation_context.session = MagicMock(spec=Session)
-mock_invocation_context.session.state = MagicMock()
-tool_context = ToolContext(invocation_context=mock_invocation_context)
+ctx = InvocationContext(
+    invocation_id='test',
+    agent=agent,
+    session=session,
+    session_service=session_service,
+    credential_service=InMemoryCredentialService(),
+)
 ```
 
-### Using mock.patch for External Services
+### mock.patch for External Services
 
 ```python
 from unittest import mock
 
-# Patch a module-level function
+# Patch google.auth.default for VertexAI tests
+@mock.patch(
+    'google.auth.default',
+    mock.MagicMock(return_value=('credentials', 'project')),
+)
+async def test_vais_tool():
+    # test code that needs auth
+    ...
+
+# Patch module-level functions
 with mock.patch(
     'google.adk.flows.llm_flows.basic.can_use_output_schema_with_tools',
     mock.MagicMock(return_value=False),
-) as patched:
-    # ... test code ...
-    patched.assert_called_once()
-
-# Patch an async engine for database tests
-def fake_create_async_engine(db_url, **kwargs):
-    fake_engine = mock.Mock()
-    fake_engine.dialect.name = 'postgresql'
-    return fake_engine
-
-with mock.patch.object(
-    database_session_service,
-    'create_async_engine',
-    side_effect=fake_create_async_engine,
 ):
-    svc = DatabaseSessionService('postgresql://...')
-```
-
-### Recording Subclasses
-
-Extend an in-memory service to capture calls:
-
-```python
-class RecordingSessionService(InMemorySessionService):
-    def __init__(self):
-        super().__init__()
-        self.captured = {}
-
-    async def create_session(self, *, app_name, user_id, **kwargs):
-        self.captured['app_name'] = app_name
-        return await super().create_session(
-            app_name=app_name, user_id=user_id, **kwargs
-        )
+    # test code
+    ...
 ```
 
 ### AsyncMock for Async Methods
@@ -1042,257 +1159,171 @@ class RecordingSessionService(InMemorySessionService):
 ```python
 from unittest.mock import AsyncMock
 
-runner.plugin_manager.close = AsyncMock()
-await runner.close()
-runner.plugin_manager.close.assert_awaited_once()
+mock_service = AsyncMock()
+mock_service.save_artifact.return_value = 1
+# Use in InvocationContext: artifact_service=mock_service
 ```
 
-### mocker.spy (pytest-mock) for Call Verification
+### mocker.spy (pytest-mock)
 
 ```python
-@pytest.mark.asyncio
-async def test_with_spy(mocker):
-    agent = _TestingAgent(name='test')
-    ctx = await create_invocation_context(agent)
-
-    spy = mocker.spy(agent, '_run_async_impl')
-    events = [e async for e in agent.run_async(ctx)]
-
-    spy.assert_called_once()
+spy = mocker.spy(agent, '_run_async_impl')
+events = [e async for e in agent.run_async(ctx)]
+spy.assert_called_once()
 ```
 
-### Fake Environment Variables (conftest.py Pattern)
-
-ADK's test suite sets fake credentials to prevent real API calls:
+### Fake Environment Variables
 
 ```python
 # conftest.py
-_ENV_VARS = {
-    'GOOGLE_API_KEY': 'fake_google_api_key',
-    'GOOGLE_CLOUD_PROJECT': 'fake_google_cloud_project',
-    'GOOGLE_CLOUD_LOCATION': 'fake_google_cloud_location',
-}
-
 @pytest.fixture(autouse=True)
 def fake_env(monkeypatch):
-    for key, value in _ENV_VARS.items():
-        monkeypatch.setenv(key, value)
+    monkeypatch.setenv('GOOGLE_API_KEY', 'fake_key')
+    monkeypatch.setenv('GOOGLE_CLOUD_PROJECT', 'fake_project')
+    monkeypatch.setenv('GOOGLE_CLOUD_LOCATION', 'fake_location')
 ```
 
 ---
 
-## Testing with pytest-asyncio
+## Best Practices
 
-For async tests, use `@pytest.mark.asyncio`:
+### 1. Choose the Right Test Level
+
+| Goal | Approach |
+|---|---|
+| Test full agent behavior end-to-end | `InMemoryRunner` + `MockModel` + `simplify_events` |
+| Test a single LlmAgent field/config | `_create_readonly_context()` + direct method call |
+| Test a tool function in isolation | `FunctionTool(fn).run_async(args, tool_context=MagicMock())` |
+| Test callback logic in isolation | Direct callback call with `CallbackContext` |
+| Test agent-level callback wiring | `_TestingAgent` + `create_invocation_context` + `mocker.spy` |
+| Test plugin behavior | `TestInMemoryRunner(agent, plugins=[...])` |
+| Test multi-turn conversation | `InMemoryRunner` (reuses session across `.run()` calls) |
+| Test session isolation | `TestInMemoryRunner` (new session per call) |
+
+### 2. Prefer simplify_events Over Manual Event Inspection
 
 ```python
-import pytest
-from tests.unittests.testing_utils import TestInMemoryRunner, MockModel, simplify_events
-from google.adk.agents.llm_agent import Agent
+# Good — readable, ignores IDs
+assert simplify_events(events) == [('agent', 'response')]
 
+# Avoid — brittle, tied to internal structure
+assert events[0].content.parts[0].text == 'response'
+```
+
+Use `simplify_contents(mock.requests[N].contents)` to assert on what the model received.
+
+### 3. Use MockModel Response Sequences to Drive Multi-Step Flows
+
+Each response maps to one model invocation. Plan the sequence:
+
+```python
+# Step 1: model calls tool  →  Step 2: model responds with text
+mock = MockModel.create(responses=[
+    Part.from_function_call(name='tool', args={}),   # invocation 1
+    'Final answer.',                                   # invocation 2
+])
+```
+
+For multi-agent transfer:
+
+```python
+mock = MockModel.create(responses=[
+    Part.from_function_call(name='transfer_to_agent', args={'agent_name': 'sub'}),
+])
+```
+
+### 4. Use InMemoryRunner for State/Artifact Tests
+
+`InMemoryRunner` wires real in-memory services — `tool_context.state`, `tool_context.save_artifact()`, etc. all work without additional mocking:
+
+```python
+runner = InMemoryRunner(agent)
+runner.run('do something')
+# Check session state
+assert runner.session.state.get('key') == 'value'
+```
+
+### 5. Use MagicMock for Isolated Tool Tests
+
+When you only need a `ToolContext` parameter and don't care about real state:
+
+```python
+result = await tool.run_async(args={'x': 1}, tool_context=MagicMock())
+```
+
+When you need `session.state` to exist (e.g., tool reads state):
+
+```python
+mock_ctx = MagicMock(spec=InvocationContext)
+mock_ctx.session = MagicMock(spec=Session)
+mock_ctx.session.state = {'existing_key': 'value'}
+tool_context = ToolContext(invocation_context=mock_ctx)
+```
+
+### 6. Test Callback Chains with mock.Mock / mock.AsyncMock
+
+Use `functools.partial` to control return values and assert call counts:
+
+```python
+from functools import partial
+cb = mock.AsyncMock(side_effect=partial(my_cb_fn, ret_value='response'))
+```
+
+### 7. Always Set Fake Environment Variables
+
+Prevent accidental real API calls in unit tests:
+
+```python
+# conftest.py
+@pytest.fixture(autouse=True)
+def fake_env(monkeypatch):
+    monkeypatch.setenv('GOOGLE_API_KEY', 'fake')
+```
+
+### 8. Use pytest.mark.asyncio for Async Tests
+
+```python
 @pytest.mark.asyncio
-async def test_async_agent_behavior():
-    mock_model = MockModel.create(responses=['async response'])
-    agent = Agent(name='root_agent', model=mock_model)
-
+async def test_async():
     runner = TestInMemoryRunner(agent)
     events = await runner.run_async_with_new_session('hello')
-
-    assert simplify_events(events) == [
-        ('root_agent', 'async response'),
-    ]
 ```
 
-Sync alternative with `InMemoryRunner`:
+Sync alternative when async isn't needed:
 
 ```python
-def test_sync_agent_behavior():
-    mock_model = MockModel.create(responses=['sync response'])
-    agent = Agent(name='root_agent', model=mock_model)
-
-    runner = InMemoryRunner(agent)
-    assert simplify_events(runner.run('hello')) == [
-        ('root_agent', 'sync response'),
-    ]
-```
-
----
-
-## Example: Complete Test File
-
-Full test: tool calls, callbacks, multi-turn:
-
-```python
-"""tests/unittests/agents/test_weather_agent.py"""
-
-import pytest
-from google.adk.agents.callback_context import CallbackContext
-from google.adk.agents.llm_agent import Agent
-from google.adk.models.llm_request import LlmRequest
-from google.adk.models.llm_response import LlmResponse
-from google.adk.tools.base_tool import BaseTool
-from google.adk.tools.tool_context import ToolContext
-from google.genai import types
-from google.genai.types import Part
-
-from tests.unittests.testing_utils import (
-    InMemoryRunner,
-    MockModel,
-    ModelContent,
-    TestInMemoryRunner,
-    simplify_events,
-)
-
-# ---- Tool definitions ----
-
-def get_weather(city: str) -> dict:
-    """Get current weather for a city."""
-    return {'city': city, 'temp_c': 20, 'condition': 'sunny'}
-
-def set_reminder(message: str) -> dict:
-    """Set a reminder."""
-    return {'status': 'ok', 'message': message}
-
-# ---- Tests ----
-
-def test_single_tool_call():
-    """Agent calls get_weather, receives the result, then responds."""
-    mock_model = MockModel.create(responses=[
-        Part.from_function_call(name='get_weather', args={'city': 'London'}),
-        'The weather in London is 20C and sunny.',
-    ])
-    agent = Agent(
-        name='weather_agent',
-        model=mock_model,
-        tools=[get_weather],
-    )
-
-    runner = InMemoryRunner(agent)
-    events = runner.run('What is the weather in London?')
-
-    assert simplify_events(events) == [
-        ('weather_agent', Part.from_function_call(name='get_weather', args={'city': 'London'})),
-        ('weather_agent', Part.from_function_response(
-            name='get_weather',
-            response={'city': 'London', 'temp_c': 20, 'condition': 'sunny'},
-        )),
-        ('weather_agent', 'The weather in London is 20C and sunny.'),
-    ]
-
-def test_multiple_tool_calls():
-    """Agent calls two tools in sequence."""
-    mock_model = MockModel.create(responses=[
-        Part.from_function_call(name='get_weather', args={'city': 'Paris'}),
-        Part.from_function_call(name='set_reminder', args={'message': 'Bring umbrella'}),
-        'Done! Weather checked and reminder set.',
-    ])
-    agent = Agent(
-        name='weather_agent',
-        model=mock_model,
-        tools=[get_weather, set_reminder],
-    )
-
-    runner = InMemoryRunner(agent)
-    events = runner.run('Check Paris weather and remind me about umbrella')
-
-    simplified = simplify_events(events)
-    assert simplified[0] == ('weather_agent', Part.from_function_call(
-        name='get_weather', args={'city': 'Paris'}
-    ))
-    assert simplified[-1] == ('weather_agent', 'Done! Weather checked and reminder set.')
-
-def test_before_model_callback_adds_context():
-    """before_model_callback that returns None lets the model run normally."""
-    captured_requests = []
-
-    def capture_request(callback_context: CallbackContext, llm_request: LlmRequest):
-        captured_requests.append(llm_request)
-        return None  # pass through to model
-
-    mock_model = MockModel.create(responses=['response'])
-    agent = Agent(
-        name='weather_agent',
-        model=mock_model,
-        before_model_callback=capture_request,
-    )
-
+def test_sync():
     runner = InMemoryRunner(agent)
     events = runner.run('hello')
+```
 
-    assert simplify_events(events) == [('weather_agent', 'response')]
-    assert len(captured_requests) == 1
+### 9. Test Error Paths Explicitly
 
-def test_before_tool_callback_validates_args():
-    """before_tool_callback rejects calls with missing required args."""
-    def validate_args(tool: BaseTool, args: dict, tool_context: ToolContext):
-        if 'city' not in args or not args['city']:
-            return {'error': 'city is required'}
-        return None  # let tool run
+```python
+# Model errors
+mock = MockModel.create(responses=[], error=SystemError('down'))
 
-    mock_model = MockModel.create(responses=[
-        Part.from_function_call(name='get_weather', args={}),
-        'I need a city name to check the weather.',
-    ])
-    agent = Agent(
-        name='weather_agent',
-        model=mock_model,
-        before_tool_callback=validate_args,
-        tools=[get_weather],
-    )
+# Tool errors
+def broken_tool():
+    raise RuntimeError('broke')
 
-    runner = InMemoryRunner(agent)
-    events = runner.run('weather?')
+# Missing tool (model calls nonexistent function)
+mock = MockModel.create(responses=[
+    Part.from_function_call(name='nonexistent', args={}),
+])
 
-    simplified = simplify_events(events)
-    assert simplified[1] == ('weather_agent', Part.from_function_response(
-        name='get_weather', response={'error': 'city is required'}
-    ))
+# Missing args
+result = await FunctionTool(my_fn).run_async(args={}, tool_context=MagicMock())
+assert 'error' in result
+```
 
-@pytest.mark.asyncio
-async def test_model_error_with_fallback():
-    """on_model_error_callback provides a fallback when the model fails."""
-    mock_model = MockModel.create(responses=[], error=ConnectionError('timeout'))
+### 10. Name Agents with Valid Python Identifiers
 
-    def fallback(callback_context, llm_request, error):
-        return LlmResponse(
-            content=ModelContent([
-                types.Part.from_text(text='Service temporarily unavailable.')
-            ])
-        )
+Agent names must be valid Python identifiers. `"user"` is reserved by ADK. Tests verify this:
 
-    agent = Agent(
-        name='weather_agent',
-        model=mock_model,
-        on_model_error_callback=fallback,
-    )
-
-    runner = TestInMemoryRunner(agent)
-    events = await runner.run_async_with_new_session('weather in Tokyo?')
-
-    assert simplify_events(events) == [
-        ('weather_agent', 'Service temporarily unavailable.'),
-    ]
-
-def test_inspect_model_requests():
-    """MockModel records requests so you can assert on what was sent."""
-    mock_model = MockModel.create(responses=['response'])
-    agent = Agent(
-        name='weather_agent',
-        model=mock_model,
-        instruction='You are a helpful weather assistant.',
-    )
-
-    runner = InMemoryRunner(agent)
-    runner.run('What is the weather?')
-
-    # MockModel captured the LlmRequest
-    assert len(mock_model.requests) == 1
-    request = mock_model.requests[0]
-    assert any(
-        part.text and 'weather' in part.text.lower()
-        for content in request.contents
-        for part in content.parts
-    )
+```python
+with pytest.raises(ValueError):
+    BaseAgent(name='not an identifier')
 ```
 
 ---
@@ -1303,22 +1334,19 @@ def test_inspect_model_requests():
 |---|---|
 | Fake LLM responses | `MockModel.create(responses=[...])` |
 | Fake LLM error | `MockModel.create(responses=[], error=...)` |
-| Run agent (sync) | `InMemoryRunner(agent).run('msg')` |
-| Run agent (async, new session) | `await TestInMemoryRunner(agent).run_async_with_new_session('msg')` |
-| Readable assertions | `simplify_events(events)` |
+| Run agent (sync, multi-turn) | `InMemoryRunner(agent).run('msg')` |
+| Run agent (async, isolated) | `await TestInMemoryRunner(agent).run_async_with_new_session('msg')` |
+| Readable event assertions | `simplify_events(events)` |
+| Assert on model input | `simplify_contents(mock.requests[N].contents)` |
 | Resumability assertions | `simplify_resumable_app_events(events)` |
 | Inspect what model received | `mock_model.requests` |
 | Test with plugins | `TestInMemoryRunner(agent, plugins=[...])` |
-| Test custom BaseAgent | Subclass, implement `_run_async_impl`, use `create_invocation_context` |
-| Test SequentialAgent | Compose sub-agents, assert event order |
-| Test ParallelAgent | Compose sub-agents, assert all agents produced events |
-| Test LoopAgent | Set `max_iterations`, assert iteration count |
-| Test agent transfer | Check `event.actions.transfer_to_agent` |
-| Test callback chains | Pass list of callbacks, verify call counts with `mock.spy` |
-| Test tool with ToolContext | `InMemoryRunner` auto-wires state/artifacts/memory |
-| Unit-test tool in isolation | `MagicMock(spec=InvocationContext)` → `ToolContext(...)` |
-| Test tool confirmation | Set `require_confirmation=True`, check `ToolConfirmation` |
-| Mock external services | `mock.patch(...)` or recording subclasses |
+| Test LlmAgent field | `_create_readonly_context(agent, state={...})` |
+| Test tool in isolation | `FunctionTool(fn).run_async(args, tool_context=MagicMock())` |
+| Create real ToolContext | `ToolContext(invocation_context=await create_invocation_context(agent))` |
+| Create mock ToolContext | `ToolContext(invocation_context=MagicMock(spec=InvocationContext))` |
+| Test tool confirmation | `FunctionTool(fn, require_confirmation=True)` + `ToolConfirmation` |
+| Mock external services | `mock.patch(...)` or `AsyncMock()` |
 | Fake env vars | `monkeypatch.setenv(...)` in conftest.py |
+| Verify method called | `mocker.spy(obj, 'method_name')` |
 | Async test decorator | `@pytest.mark.asyncio` |
-| Verify method was called | `mocker.spy(obj, 'method_name')` |
