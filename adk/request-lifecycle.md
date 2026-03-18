@@ -132,7 +132,7 @@ CALLER (your code)
 
 ## Step-by-Step Trace with Payloads
 
-### Step 0 — Session State Before the Request
+### [ ] Step 0 — Session State Before the Request
 
 The session exists from a prior `create_session()` call. It's currently empty:
 
@@ -150,7 +150,7 @@ Session(
 
 ---
 
-### Step 1 — Runner.run_async() Entry
+### [ ] Step 1 — Runner.run_async() Entry
 
 **Source:** [`runners.py:Runner.run_async`](../adk-python/src/google/adk/runners.py)
 
@@ -214,7 +214,7 @@ InvocationContext(
 
 ---
 
-### Step 2 — BaseAgent.run_async() → Callbacks
+### [ ] Step 2 — BaseAgent.run_async() → Callbacks
 
 **Source:** [`agents/base_agent.py:BaseAgent.run_async`](../adk-python/src/google/adk/agents/base_agent.py)
 
@@ -230,7 +230,7 @@ No callbacks are configured on this agent, so both return `None` — no short-ci
 
 ---
 
-### Step 3 — Flow: STEP 1 Preprocess — Building the LlmRequest
+### [ ] Step 3 — Flow: STEP 1 Preprocess — Building the LlmRequest
 
 **Source:** [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`flows/llm_flows/instructions.py`](../adk-python/src/google/adk/flows/llm_flows/instructions.py) · [`flows/llm_flows/contents.py`](../adk-python/src/google/adk/flows/llm_flows/contents.py) · [`flows/llm_flows/functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py)
 
@@ -308,7 +308,7 @@ LlmRequest(
 
 ---
 
-### Step 4 — Flow: STEP 1 LLM Call → Function Call Response
+### [ ] Step 4 — Flow: STEP 1 LLM Call → Function Call Response
 
 **Source:** [`models/gemini_llm.py`](../adk-python/src/google/adk/models/gemini_llm.py) · [`models/llm_response.py`](../adk-python/src/google/adk/models/llm_response.py)
 
@@ -357,7 +357,7 @@ This event is **yielded to Runner** → Runner calls `append_event()` → persis
 
 ---
 
-### Step 5 — Flow: STEP 1 Postprocess — Tool Dispatch
+### [ ] Step 5 — Flow: STEP 1 Postprocess — Tool Dispatch
 
 **Source:** [`flows/llm_flows/functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py)
 
@@ -414,7 +414,7 @@ This event is **yielded to Runner** → `append_event()` → persisted.
 
 ---
 
-### Step 6 — Flow: STEP 2 Preprocess — Rebuilding the LlmRequest
+### [ ] Step 6 — Flow: STEP 2 Preprocess — Rebuilding the LlmRequest
 
 **Source:** [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py)
 
@@ -451,7 +451,7 @@ LlmRequest(
 
 ---
 
-### Step 7 — Flow: STEP 2 LLM Call → Final Text Response
+### [ ] Step 7 — Flow: STEP 2 LLM Call → Final Text Response
 
 The LLM now has the tool result and generates the final answer. It streams back:
 
@@ -516,7 +516,7 @@ This event is **yielded to Runner** → `append_event()` → persisted. The flow
 
 ---
 
-### Step 8 — Session State After the Request
+### [ ] Step 8 — Session State After the Request
 
 ```python
 # [sessions/session.py] Session — after invocation
@@ -605,11 +605,11 @@ Caller          Runner          BaseAgent       LlmAgent        BaseLlmFlow     
 
 ## What Changes With More Tools / Agents
 
-### If the LLM calls two tools in one response
+### [ ] If the LLM calls two tools in one response
 
 The flow receives a single Event with two `FunctionCall` parts. The `functions.py` postprocessor runs both tools (potentially in parallel), then yields a single Event with two `FunctionResponse` parts. The loop continues with both results in the next LlmRequest.
 
-### If `output_key="result"` is set on the agent
+### [ ] If `output_key="result"` is set on the agent
 
 In Step 7, after the final event is yielded, `__maybe_save_output_to_state` runs:
 
@@ -619,11 +619,11 @@ event.actions.state_delta["result"] = "The weather in Tokyo is currently 18°C..
 # session_service.append_event applies state_delta → session.state["result"] is now set
 ```
 
-### If a sub-agent is involved (AutoFlow)
+### [ ] If a sub-agent is involved (AutoFlow)
 
 After step 4 (LLM responds with a `transfer_to_agent` function call), `auto_flow.py` intercepts it, finds the target agent by name in the tree, and calls `sub_agent.run_async(ctx)`. The sub-agent runs its own full lifecycle (its own loop), yielding events with its own `author` name and a child `branch`.
 
-### If `before_model_callback` is set
+### [ ] If `before_model_callback` is set
 
 Between Step 3 (LlmRequest built) and Step 4 (LLM called), the callback fires:
 

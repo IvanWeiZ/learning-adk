@@ -95,14 +95,14 @@ Runner → fetch Session
 
 ## Module Summaries
 
-### `events/` — The Universal Currency
+### [ ] `events/` — The Universal Currency
 Every action in ADK produces an `Event`: user messages, LLM responses, tool calls, tool results. Sessions are just ordered lists of Events. Understanding `Event` fields unlocks everything else.
 
 → [events/event.py](../adk-python/src/google/adk/events/event.py)
 
 ---
 
-### `agents/` — Agent Blueprints
+### [ ] `agents/` — Agent Blueprints
 - **`LlmAgent`** — the primary class. Wraps an LLM + tools + system prompt. Delegates the reason-act loop to a `BaseLlmFlow`.
 - **`LoopAgent`**, **`ParallelAgent`**, **`SequentialAgent`** — composition primitives for multi-agent hierarchies.
 - **`InvocationContext`** — the shared context object threaded through every layer during one request.
@@ -113,14 +113,14 @@ Every action in ADK produces an `Event`: user messages, LLM responses, tool call
 
 ---
 
-### `runners.py` — Stateless Orchestrator
+### [ ] `runners.py` — Stateless Orchestrator
 `Runner` owns the outermost lifecycle per invocation. It never holds state — it fetches sessions, creates context, calls the agent, and streams events back. Think of it as the request handler.
 
 → [runners.py](../adk-python/src/google/adk/runners.py)
 
 ---
 
-### `flows/llm_flows/` — The Reason-Act Loop
+### [ ] `flows/llm_flows/` — The Reason-Act Loop
 `BaseLlmFlow.run_async()` drives the inner loop:
 1. Build `LlmRequest` (history + system prompt + tool definitions)
 2. Call the LLM adapter → stream `LlmResponse`
@@ -132,7 +132,7 @@ Every action in ADK produces an `Event`: user messages, LLM responses, tool call
 
 ---
 
-### `models/` — LLM Adapters
+### [ ] `models/` — LLM Adapters
 Thin wrappers over Gemini, Google, Anthropic, and LiteLLM. `LLMRegistry` dispatches to the right adapter by model name string. The contract is `generate_content_async(LlmRequest) → AsyncIterator[LlmResponse]`.
 
 → [models/base_llm.py](../adk-python/src/google/adk/models/base_llm.py)
@@ -141,7 +141,7 @@ Thin wrappers over Gemini, Google, Anthropic, and LiteLLM. `LLMRegistry` dispatc
 
 ---
 
-### `sessions/` — Conversation History & State
+### [ ] `sessions/` — Conversation History & State
 `Session` holds: id, user_id, app_name, a `state` dict (arbitrary key-value), and an ordered list of `Event`s. Service implementations: in-memory (default), SQLite, generic database, Vertex AI managed.
 
 → [sessions/session.py](../adk-python/src/google/adk/sessions/session.py)
@@ -150,7 +150,7 @@ Thin wrappers over Gemini, Google, Anthropic, and LiteLLM. `LLMRegistry` dispatc
 
 ---
 
-### `tools/` — 50+ Pluggable Tools
+### [ ] `tools/` — 50+ Pluggable Tools
 Agents declare tools; the LLM requests tool execution by name; `BaseLlmFlow` dispatches to the right `BaseTool.run_async()`. Key tools: Google Search, BigQuery, Bigtable, Spanner, OpenAPI spec tools, MCP, LangChain/CrewAI adapters, code executors.
 
 → [tools/base_tool.py](../adk-python/src/google/adk/tools/base_tool.py)
@@ -158,14 +158,14 @@ Agents declare tools; the LLM requests tool execution by name; `BaseLlmFlow` dis
 
 ---
 
-### `apps/` — High-Level App Container
+### [ ] `apps/` — High-Level App Container
 `App` wraps a root agent with plugins and event compaction config. Use `App` over a bare agent when you need compaction (sliding window summarization), plugins, or context caching.
 
 → [apps/app.py](../adk-python/src/google/adk/apps/app.py)
 
 ---
 
-### Cross-Cutting Services
+### [ ] Cross-Cutting Services
 
 | Module | Purpose |
 |--------|---------|

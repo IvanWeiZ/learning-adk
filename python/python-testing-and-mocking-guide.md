@@ -27,7 +27,7 @@
 
 ## 1. pytest Fundamentals
 
-### Java → Python Comparison
+### [ ] Java → Python Comparison
 
 ```java
 // JUnit
@@ -56,7 +56,7 @@ class TestCalculator:
         assert Calculator.subtract(5, 3) == 2
 ```
 
-### Key Differences from JUnit
+### [ ] Key Differences from JUnit
 
 ```python
 # pytest uses plain `assert` — no assertEquals, assertTrue, etc.
@@ -89,7 +89,7 @@ def test_assertions():
     assert exc_info.value.args[0] == "invalid input"
 ```
 
-### Test Discovery
+### [ ] Test Discovery
 
 ```
 # pytest auto-discovers tests by convention:
@@ -111,7 +111,7 @@ def test_assertions():
 
 ## 2. Mock Basics — Mock, MagicMock, AsyncMock
 
-### Mock — The Foundation
+### [ ] Mock — The Foundation
 
 ```python
 from unittest.mock import Mock
@@ -135,7 +135,7 @@ print(m)  # <Mock name='llm_client' id='...'>
 
 **Java equivalent:** `Mockito.mock(SomeClass.class)` but far more permissive — no class needed.
 
-### MagicMock — Mock with Magic Methods
+### [ ] MagicMock — Mock with Magic Methods
 
 ```python
 from unittest.mock import MagicMock
@@ -165,7 +165,7 @@ assert list(m) == [1, 2, 3]
 # Use plain Mock only when you specifically want magic methods to fail
 ```
 
-### AsyncMock — For Async Functions
+### [ ] AsyncMock — For Async Functions
 
 ```python
 from unittest.mock import AsyncMock
@@ -203,7 +203,7 @@ assert result == "LLM response"
 
 Patching temporarily replaces an object during a test. This is the most important mocking technique to understand correctly.
 
-### The Golden Rule: Patch Where It's LOOKED UP, Not Where It's DEFINED
+### [ ] The Golden Rule: Patch Where It's LOOKED UP, Not Where It's DEFINED
 
 ```python
 # --- my_agents/tools/web_search.py ---
@@ -231,9 +231,9 @@ async def test_search(mock_fetch):
 
 **Java equivalent:** This is like Mockito's `@InjectMocks` but manual. Java's DI makes this easier; Python requires you to understand the import graph.
 
-### Three Ways to Patch
+### [ ] Three Ways to Patch
 
-#### Way 1: Decorator (`@patch`)
+#### [ ] Way 1: Decorator (`@patch`)
 
 ```python
 from unittest.mock import patch
@@ -250,7 +250,7 @@ def test_with_decorators(mock_a, mock_b):
     assert result == ("a_result", "b_result")
 ```
 
-#### Way 2: Context Manager (`with patch(...)`)
+#### [ ] Way 2: Context Manager (`with patch(...)`)
 
 ```python
 def test_with_context_manager():
@@ -261,7 +261,7 @@ def test_with_context_manager():
     # After the `with` block, service_a is restored to original
 ```
 
-#### Way 3: Manual Start/Stop
+#### [ ] Way 3: Manual Start/Stop
 
 ```python
 def test_manual_patch():
@@ -276,7 +276,7 @@ def test_manual_patch():
         patcher.stop()  # always stop!
 ```
 
-### `patch.object` — Patching a Specific Attribute
+### [ ] `patch.object` — Patching a Specific Attribute
 
 ```python
 from unittest.mock import patch
@@ -293,7 +293,7 @@ def test_llm(mock_generate):
     mock_generate.assert_called_once_with("hello")
 ```
 
-### `patch.dict` — Patching Dictionaries (e.g., Environment Variables)
+### [ ] `patch.dict` — Patching Dictionaries (e.g., Environment Variables)
 
 ```python
 import os
@@ -312,7 +312,7 @@ def test_clean_env():
     assert os.environ["API_KEY"] == "test"
 ```
 
-### `patch.multiple` — Patching Multiple Attributes at Once
+### [ ] `patch.multiple` — Patching Multiple Attributes at Once
 
 ```python
 from unittest.mock import patch, MagicMock
@@ -335,7 +335,7 @@ def test_multiple(**mocks):
 
 `side_effect` is the most powerful Mock feature. It controls what happens when the mock is called.
 
-### Raise an Exception
+### [ ] Raise an Exception
 
 ```python
 from unittest.mock import Mock
@@ -346,7 +346,7 @@ with pytest.raises(ValueError, match="invalid input"):
     m()
 ```
 
-### Return Different Values on Successive Calls
+### [ ] Return Different Values on Successive Calls
 
 ```python
 # Like Mockito's thenReturn(a).thenReturn(b).thenReturn(c)
@@ -364,7 +364,7 @@ with pytest.raises(ValueError):
 assert m() == "recovered"
 ```
 
-### Custom Logic — A Function as side_effect
+### [ ] Custom Logic — A Function as side_effect
 
 ```python
 # Like Mockito's thenAnswer()
@@ -380,7 +380,7 @@ assert m("https://api.com/search?q=test") == {"results": ["r1", "r2"]}
 assert m("https://api.com/user/123") == {"name": "Wei", "role": "developer"}
 ```
 
-### Async side_effect
+### [ ] Async side_effect
 
 ```python
 from unittest.mock import AsyncMock
@@ -401,7 +401,7 @@ assert await mock_llm() == "response1"
 assert await mock_llm() == "response2"
 ```
 
-### side_effect That Also Records Calls (Passthrough)
+### [ ] side_effect That Also Records Calls (Passthrough)
 
 ```python
 original_function = some_module.real_function
@@ -428,7 +428,7 @@ mock_client.generat("hello")  # typo! But Mock doesn't care — no error!
 mock_client.generat.assert_called()  # passes! Bug hidden.
 ```
 
-### spec — Mock Follows an Interface
+### [ ] spec — Mock Follows an Interface
 
 ```python
 class LlmClient:
@@ -449,7 +449,7 @@ def test_with_spec(MockLlmClient):
     ...
 ```
 
-### spec_set — Even Stricter (No Setting New Attributes)
+### [ ] spec_set — Even Stricter (No Setting New Attributes)
 
 ```python
 mock_client = Mock(spec_set=LlmClient)
@@ -457,7 +457,7 @@ mock_client.generate.return_value = "ok"   # ✅ fine
 mock_client.new_attribute = "value"         # ❌ AttributeError!
 ```
 
-### auto-spec with patch
+### [ ] auto-spec with patch
 
 ```python
 # autospec=True creates a mock that matches the FULL interface,
@@ -521,7 +521,7 @@ m.assert_not_called()  # fresh start
 m.call_count == 0
 ```
 
-### Using `call` for Nested/Chained Assertions
+### [ ] Using `call` for Nested/Chained Assertions
 
 ```python
 from unittest.mock import Mock, call
@@ -539,7 +539,7 @@ m.agent.run.assert_has_calls([
 m.agent.stop.assert_called_once()
 ```
 
-### Using `ANY` for Partial Matching
+### [ ] Using `ANY` for Partial Matching
 
 ```python
 from unittest.mock import ANY
@@ -558,7 +558,7 @@ m.log.assert_called_with("error", ANY, timestamp=ANY)
 
 ## 7. Fixtures — Dependency Injection for Tests
 
-### Basic Fixtures
+### [ ] Basic Fixtures
 
 ```python
 import pytest
@@ -588,7 +588,7 @@ async def test_llm_call(mock_llm):
     assert result == "LLM response"
 ```
 
-### Fixture Scopes
+### [ ] Fixture Scopes
 
 ```python
 # function (default) — created fresh for each test
@@ -616,7 +616,7 @@ def expensive_resource():
     resource.cleanup()
 ```
 
-### Fixtures Using Yield (Setup + Teardown)
+### [ ] Fixtures Using Yield (Setup + Teardown)
 
 ```python
 # Java equivalent: @BeforeEach + @AfterEach combined
@@ -629,7 +629,7 @@ def temp_database():
     db.close()
 ```
 
-### conftest.py — Shared Fixtures
+### [ ] conftest.py — Shared Fixtures
 
 ```python
 # tests/conftest.py — fixtures here are available to ALL tests in the directory
@@ -654,7 +654,7 @@ def mock_tool_context():
     return ctx
 ```
 
-### Fixture Composition (Fixtures Using Other Fixtures)
+### [ ] Fixture Composition (Fixtures Using Other Fixtures)
 
 ```python
 @pytest.fixture
@@ -682,7 +682,7 @@ def test_something(mock_context):
 
 ## 8. Testing Async Code
 
-### Setup: pytest-asyncio
+### [ ] Setup: pytest-asyncio
 
 ```bash
 pip install pytest-asyncio
@@ -694,7 +694,7 @@ pip install pytest-asyncio
 # asyncio_mode = "auto"    # auto-detect async tests (recommended)
 ```
 
-### Basic Async Tests
+### [ ] Basic Async Tests
 
 ```python
 import pytest
@@ -713,7 +713,7 @@ async def test_explicit_async():
     assert result == "expected"
 ```
 
-### Patching Async Functions
+### [ ] Patching Async Functions
 
 ```python
 # --- my_agents/llm_client.py ---
@@ -737,7 +737,7 @@ async def test_run_agent(mock_call_llm):
     mock_call_llm.assert_awaited_once_with("test query")
 ```
 
-### AsyncMock-Specific Assertions
+### [ ] AsyncMock-Specific Assertions
 
 ```python
 mock = AsyncMock()
@@ -755,7 +755,7 @@ mock.await_args                           # call("arg2") — last await
 mock.await_args_list                      # [call("arg1"), call("arg2")]
 ```
 
-### Testing asyncio.gather and Concurrency
+### [ ] Testing asyncio.gather and Concurrency
 
 ```python
 async def run_parallel_tools(tools: list, query: str) -> list:
@@ -777,7 +777,7 @@ async def test_parallel_execution():
     assert results == ["result_a", "result_b"]
 ```
 
-### Testing Timeouts
+### [ ] Testing Timeouts
 
 ```python
 async def test_timeout_handling():
@@ -798,7 +798,7 @@ async def test_graceful_timeout():
 
 ## 9. Mocking Generators and Async Generators
 
-### Mocking Sync Generators
+### [ ] Mocking Sync Generators
 
 ```python
 from unittest.mock import Mock, MagicMock
@@ -816,7 +816,7 @@ def test_mock_iterable():
     assert list(m) == ["event1", "event2", "event3"]
 ```
 
-### Mocking Async Generators (Critical for ADK)
+### [ ] Mocking Async Generators (Critical for ADK)
 
 ```python
 from unittest.mock import AsyncMock, MagicMock
@@ -890,7 +890,7 @@ async def test_with_factory():
 
 ## 10. Mocking Context Managers
 
-### Sync Context Manager (`with`)
+### [ ] Sync Context Manager (`with`)
 
 ```python
 from unittest.mock import MagicMock, patch
@@ -924,7 +924,7 @@ def test_file_read_easy():
         assert f.read() == "file contents"
 ```
 
-### Async Context Manager (`async with`)
+### [ ] Async Context Manager (`async with`)
 
 ```python
 from unittest.mock import AsyncMock, MagicMock
@@ -968,7 +968,7 @@ async def test_mcp_toolset():
 
 ## 11. Mocking Properties and Attributes
 
-### Mocking a Property
+### [ ] Mocking a Property
 
 ```python
 from unittest.mock import PropertyMock, patch
@@ -998,7 +998,7 @@ def test_readonly_property():
         assert agent.is_ready is True
 ```
 
-### Setting Attributes Directly on Mocks
+### [ ] Setting Attributes Directly on Mocks
 
 ```python
 from unittest.mock import MagicMock
@@ -1013,7 +1013,7 @@ assert mock_agent.name == "test_agent"
 # Note: these won't track access like PropertyMock does
 ```
 
-### configure_mock — Set Multiple Attributes at Once
+### [ ] configure_mock — Set Multiple Attributes at Once
 
 ```python
 mock_config = MagicMock()
@@ -1033,7 +1033,7 @@ assert mock_config.generate() == "response"
 
 ## 12. Mocking Class Hierarchies and ABCs
 
-### Mocking Abstract Base Classes
+### [ ] Mocking Abstract Base Classes
 
 ```python
 from abc import ABC, abstractmethod
@@ -1058,7 +1058,7 @@ mock_tool.name = "mock_search"
 mock_tool.run_async.return_value = "search results"  # autospec makes this async
 ```
 
-### Mocking the Constructor (return_value on the class mock)
+### [ ] Mocking the Constructor (return_value on the class mock)
 
 ```python
 from unittest.mock import patch, MagicMock
@@ -1084,7 +1084,7 @@ def test_constructor_mock(MockLlmClient):
     MockLlmClient.assert_called_once_with("fake-key")
 ```
 
-### Spying — Wrapping a Real Object
+### [ ] Spying — Wrapping a Real Object
 
 ```python
 from unittest.mock import patch
@@ -1163,7 +1163,7 @@ async def test_model_configs(model, temperature):
 
 ## 14. Common Patterns for ADK Testing
 
-### Testing an ADK-Style Agent
+### [ ] Testing an ADK-Style Agent
 
 ```python
 import pytest
@@ -1252,7 +1252,7 @@ async def test_agent_updates_session_state(mock_ctx):
     assert mock_ctx.session.state["counter"] == 1
 ```
 
-### Testing Callbacks
+### [ ] Testing Callbacks
 
 ```python
 async def test_before_agent_callback():
@@ -1280,7 +1280,7 @@ async def test_callback_can_skip_agent():
     assert result.content == "Skipped by policy"
 ```
 
-### Testing Tool Schema Generation
+### [ ] Testing Tool Schema Generation
 
 ```python
 import inspect
@@ -1311,7 +1311,7 @@ def test_tool_schema_generation():
 
 ## 15. Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Mocking Everything
+### [ ] Anti-Pattern 1: Mocking Everything
 
 ```python
 # ❌ BAD: Testing mock behavior, not real code
@@ -1331,7 +1331,7 @@ async def test_real_logic():
         assert result.formatted_output == "Processed: value"
 ```
 
-### Anti-Pattern 2: Forgetting new_callable=AsyncMock
+### [ ] Anti-Pattern 2: Forgetting new_callable=AsyncMock
 
 ```python
 # ❌ BAD: patch creates a MagicMock for an async function
@@ -1346,7 +1346,7 @@ async def test_good(mock_func):
     result = await mock_func()  # works!
 ```
 
-### Anti-Pattern 3: Not Using spec
+### [ ] Anti-Pattern 3: Not Using spec
 
 ```python
 # ❌ BAD: typos silently pass
@@ -1358,7 +1358,7 @@ mock = Mock(spec=LlmClient)
 mock.genrate("hello")  # AttributeError: Mock object has no attribute 'genrate'
 ```
 
-### Anti-Pattern 4: Testing Implementation Instead of Behavior
+### [ ] Anti-Pattern 4: Testing Implementation Instead of Behavior
 
 ```python
 # ❌ BAD: brittle test tied to exact implementation
@@ -1374,7 +1374,7 @@ async def test_behavior():
     assert ctx.session.state["result"] == "expected value"
 ```
 
-### Anti-Pattern 5: Shared Mutable Mock State Between Tests
+### [ ] Anti-Pattern 5: Shared Mutable Mock State Between Tests
 
 ```python
 # ❌ BAD: module-level mock shared between tests

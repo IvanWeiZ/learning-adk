@@ -18,7 +18,7 @@ Each day covers one or two tightly scoped topics. Every topic includes:
 
 ## Week 1 — Foundations
 
-### Day 1: Python Type Hints & the `typing` Module
+### [ ] Day 1: Python Type Hints & the `typing` Module
 
 **Why ADK needs this:**
 ADK auto-generates tool schemas from your function signatures. If your type hints are wrong, your tools break. Every ADK class uses full type annotations.
@@ -42,7 +42,7 @@ Write a function `def search(query: str, max_results: int = 10, filters: dict[st
 
 ---
 
-### Day 2: Pydantic BaseModel (Part 1 — Basics)
+### [ ] Day 2: Pydantic BaseModel (Part 1 — Basics)
 
 **Why ADK needs this:**
 Every ADK data structure — `Event`, `EventActions`, `Session`, `GenerateContentConfig` — is a Pydantic model. You'll subclass `BaseModel` constantly.
@@ -75,7 +75,7 @@ Then practice `model_copy(update={"author": "new_agent"})`.
 
 ---
 
-### Day 3: Pydantic BaseModel (Part 2 — Advanced)
+### [ ] Day 3: Pydantic BaseModel (Part 2 — Advanced)
 
 **Why ADK needs this:**
 ADK uses validators for configuration, custom serialization for events, and discriminated unions for different tool types.
@@ -93,7 +93,7 @@ Create a `ToolDefinition` model that uses a discriminated union for different to
 
 ---
 
-### Day 4: Generators & `yield` (Sync)
+### [ ] Day 4: Generators & `yield` (Sync)
 
 **Why ADK needs this:**
 ADK streams everything through generators. Understanding sync generators is prerequisite to async generators (which ADK actually uses). The `yield` keyword has no Java equivalent — this is genuinely new.
@@ -122,7 +122,7 @@ Then chain it with a filter generator that only passes through certain event typ
 
 ---
 
-### Day 5: `asyncio` Fundamentals
+### [ ] Day 5: `asyncio` Fundamentals
 
 **Why ADK needs this:**
 ADK is **async-first**. Every agent method, every LLM call, every tool execution is async. If you don't understand asyncio, you can't use ADK.
@@ -147,7 +147,7 @@ Write an async function that simulates calling 3 different LLM providers concurr
 
 ---
 
-### Day 6: `AsyncGenerator` & `async for`
+### [ ] Day 6: `AsyncGenerator` & `async for`
 
 **Why ADK needs this:**
 ADK's core method signature is:
@@ -181,7 +181,7 @@ async def run_sequential(agents) -> AsyncGenerator[Event, None]:
 
 ---
 
-### Day 7: Abstract Base Classes, Protocols & Inheritance
+### [ ] Day 7: Abstract Base Classes, Protocols & Inheritance
 
 **Why ADK needs this:**
 ADK's extension model is built on ABCs: `BaseAgent`, `BaseLlm`, `BaseTool`, `BaseSessionService`. To create custom agents or tools, you subclass these and implement abstract methods.
@@ -217,7 +217,7 @@ class FunctionTool(BaseTool):
 
 ## Week 2 — Advanced Patterns & ADK-Specific
 
-### Day 8: Decorators & First-Class Functions
+### [ ] Day 8: Decorators & First-Class Functions
 
 **Why ADK needs this:**
 ADK's callback system and tool registration rely on passing functions as arguments and using decorators. `@tool`, callback registration, and plugin hooks all use these patterns.
@@ -249,7 +249,7 @@ async def search_web(query: str, max_results: int = 5) -> list[str]:
 
 ---
 
-### Day 9: Context Managers & Resource Management
+### [ ] Day 9: Context Managers & Resource Management
 
 **Why ADK needs this:**
 ADK uses async context managers for session management, MCP toolset connections, database connections, and cleanup. The `async with` pattern appears everywhere.
@@ -283,7 +283,7 @@ class SessionManager:
 
 ---
 
-### Day 10: Dict/Kwargs Patterns & Python Data Manipulation
+### [ ] Day 10: Dict/Kwargs Patterns & Python Data Manipulation
 
 **Why ADK needs this:**
 ADK configuration, state management (`session.state`), event actions (`state_delta`), and tool arguments all use dict patterns heavily. Python dicts are far more central than Java Maps.
@@ -319,7 +319,7 @@ class SessionState:
 
 ---
 
-### Day 11: Python Module System & Project Structure
+### [ ] Day 11: Python Module System & Project Structure
 
 **Why ADK needs this:**
 ADK uses namespace packages (`google.adk.agents`), and your agent projects need proper structure for imports, testing, and deployment.
@@ -360,7 +360,7 @@ my_agents/
 
 ---
 
-### Day 12: Error Handling & Logging
+### [ ] Day 12: Error Handling & Logging
 
 **Why ADK needs this:**
 ADK has error callbacks (`on_model_error_callback`, `on_tool_error_callback`), and production agents need robust error handling and observability.
@@ -396,7 +396,7 @@ async def safe_tool_call(tool: BaseTool, args: dict, context: ToolContext) -> Ev
 
 ---
 
-### Day 13: Testing Async Python Code
+### [ ] Day 13: Testing Async Python Code
 
 **Why ADK needs this:**
 You need to test your agents, tools, and flows. Testing async code has specific patterns.
@@ -429,7 +429,7 @@ async def test_search_tool_returns_results():
 
 ---
 
-### Day 14: Putting It All Together — Build a Mini ADK Agent
+### [ ] Day 14: Putting It All Together — Build a Mini ADK Agent
 
 **Why this matters:**
 Integrate everything into one working project that mirrors ADK's architecture.

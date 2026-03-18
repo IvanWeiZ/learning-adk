@@ -34,7 +34,7 @@ BaseMemoryService           (memory/base_memory_service.py — abstract interfac
 
 ## Core Data Types
 
-### MemoryEntry
+### [ ] MemoryEntry
 
 The unit of storage. A memory is a distilled piece of information with metadata:
 
@@ -47,7 +47,7 @@ class MemoryEntry(BaseModel):
     # (Vertex AI backend adds an embedding vector internally)
 ```
 
-### SearchMemoryResponse
+### [ ] SearchMemoryResponse
 
 What comes back from a query:
 
@@ -94,7 +94,7 @@ That's the entire interface — two methods. The complexity lives in the impleme
 
 ## Implementations
 
-### InMemoryMemoryService
+### [ ] InMemoryMemoryService
 
 Stores the full text of all events in a Python list; search is simple substring/keyword matching.
 
@@ -107,7 +107,7 @@ memory_service = InMemoryMemoryService()
 - **Use for:** development, unit tests, demos
 - **Not for:** production (no persistence, no semantic search, no scale)
 
-### VertexAiMemoryBankService
+### [ ] VertexAiMemoryBankService
 
 Sends sessions to Vertex AI Memory Bank, which:
 1. Uses an LLM to extract key facts/summaries from the session
@@ -131,7 +131,7 @@ memory_service = VertexAiMemoryBankService(
 
 ## How Memory Plugs In
 
-### Wiring to Runner
+### [ ] Wiring to Runner
 
 Pass the memory service to `Runner` alongside the session service:
 
@@ -148,7 +148,7 @@ runner = Runner(
 )
 ```
 
-### Saving a Session to Memory
+### [ ] Saving a Session to Memory
 
 After a session completes, call `add_session_to_memory`:
 
@@ -161,7 +161,7 @@ await memory_service.add_session_to_memory(session)
 
 Some apps do this automatically in an `after_agent_callback` or as a post-processing step.
 
-### Querying Memory in a Tool
+### [ ] Querying Memory in a Tool
 
 Inside a tool, use `tool_context` to access the memory service:
 
@@ -200,7 +200,7 @@ Need to remember something?
 
 ## Practical Patterns
 
-### Pattern 1: Automatic Memory on Session End
+### [ ] Pattern 1: Automatic Memory on Session End
 
 ```python
 from google.adk.agents import LlmAgent
@@ -219,7 +219,7 @@ agent = LlmAgent(
 )
 ```
 
-### Pattern 2: Memory-Augmented System Prompt
+### [ ] Pattern 2: Memory-Augmented System Prompt
 
 Fetch relevant memories before the LLM call and inject them into the system prompt via `before_model_callback`:
 
@@ -234,7 +234,7 @@ async def inject_memories(callback_context, llm_request) -> None:
         llm_request.system_instruction += f"\n\nRelevant past context:\n{snippets}"
 ```
 
-### Pattern 3: Explicit Memory Tool
+### [ ] Pattern 3: Explicit Memory Tool
 
 Give the agent a tool to explicitly recall memories on demand — only when the agent judges it relevant:
 

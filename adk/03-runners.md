@@ -45,7 +45,7 @@ runner = Runner(
 
 ## Key Methods
 
-### `run_async` — Text/Chat Mode
+### [ ] `run_async` — Text/Chat Mode
 
 ```python
 async def run_async(
@@ -66,7 +66,7 @@ user message event
   → final agent response event (partial=False)
 ```
 
-### `run_live` — Audio/Video Mode
+### [ ] `run_live` — Audio/Video Mode
 
 ```python
 async def run_live(
@@ -79,7 +79,7 @@ async def run_live(
 
 Bidirectional streaming for real-time audio/video (Gemini Live API). Uses a queue instead of a single message.
 
-### `run` — Sync Wrapper
+### [ ] `run` — Sync Wrapper
 
 ```python
 def run(...) -> Generator[Event, None, None]:

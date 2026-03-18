@@ -77,35 +77,35 @@ When adding or editing documentation, preserve this structure.
 
 These patterns appear throughout the documentation and should be applied consistently in new content:
 
-### 1. Async-First / Streaming
+### [ ] 1. Async-First / Streaming
 Every agent produces an `AsyncGenerator[Event, None]`:
 ```python
 async def _run_async_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
     yield Event(...)
 ```
 
-### 2. Context Threading
+### [ ] 2. Context Threading
 `InvocationContext` is passed through every call chain. It carries the session, state, credentials, and enables callbacks.
 
-### 3. Adapter / Strategy Pattern
+### [ ] 3. Adapter / Strategy Pattern
 Abstract base classes define contracts; multiple concrete implementations exist:
 - `BaseLlm` → `GeminiLlm`, `AnthropicLlm`, `LiteLlm`
 - `BaseSessionService` → `InMemorySessionService`, `SQLiteSessionService`, `DatabaseSessionService`
 - `BaseTool` → `FunctionTool`, `AgentTool`, `LongRunningFunctionTool`
 
-### 4. Hook / Callback Pattern
+### [ ] 4. Hook / Callback Pattern
 LlmAgent supports layered interception:
 - `before_agent_callback` / `after_agent_callback`
 - `before_model_callback` / `after_model_callback`
 - `before_tool_callback` / `after_tool_callback`
 - `on_model_error_callback` / `on_tool_error_callback`
 
-### 5. Pipeline / Processor Pattern
+### [ ] 5. Pipeline / Processor Pattern
 `BaseLlmFlow` runs processors in order:
 - **Request processors**: instructions, contents, functions, output_schema
 - **Response processors**: code_execution, functions, agent_transfer
 
-### 6. Event-Driven Side Effects
+### [ ] 6. Event-Driven Side Effects
 Side effects (state mutations, agent transfers, escalations) are carried in `EventActions` — not via direct method calls.
 
 ---
