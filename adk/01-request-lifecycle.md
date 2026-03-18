@@ -4,6 +4,15 @@ A complete trace of one user message through ADK — from `run_async()` to the f
 
 ---
 
+## Quick Setup
+
+```bash
+pip install google-adk                    # installs ADK + google-genai SDK
+export GOOGLE_API_KEY="your-key-here"     # get one at https://aistudio.google.com/apikey
+```
+
+---
+
 ## Mental Model
 
 Five layers, each with a clear responsibility:
@@ -26,6 +35,7 @@ The flow **loops** until the LLM returns a response with no function calls. A si
 from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.genai import types              # types come from the google-genai SDK
 
 def get_weather(city: str) -> dict:
     """Returns the current weather for a city."""
@@ -53,6 +63,8 @@ async for event in runner.run_async(
 ```
 
 User message: **"What's the weather in Tokyo?"**
+
+> **Just want to run something?** Wrap the above in `async def main(): ...` and call `asyncio.run(main())`. Or use `runner.run(...)` (sync wrapper) for scripts. The rest of this file traces what happens inside — read on when you want to understand the internals.
 
 ---
 

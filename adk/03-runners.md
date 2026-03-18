@@ -45,7 +45,7 @@ runner = Runner(
     auto_create_session=False,             # raise if session not found
 )
 
-# Preferred: pass an App instead of agent+app_name
+# For production: pass an App instead (adds plugins, compaction, caching — see 10-apps.md)
 runner = Runner(
     app=my_app,                            # App bundles agent + plugins + config
     session_service=...,

@@ -110,8 +110,10 @@ generate_content_config: Optional[types.GenerateContentConfig] = None
 # Temperature, safety settings, etc. Tools/instructions must NOT be set here.
 
 output_schema: Optional[SchemaType]
-# Forces structured JSON output. When set, agent cannot use tools.
+# Forces structured JSON output. When set, agent CANNOT use tools (mutual exclusion).
 # SchemaType accepts: type[BaseModel], list[type[BaseModel]], list[primitive], dict, or Schema.
+# Want structured output AND tools? Use output_key to capture text, then parse it.
+# Or use a 2-agent pipeline: agent 1 uses tools, agent 2 formats with output_schema.
 
 output_key: Optional[str]
 # On final response, writes text to session.state[output_key].

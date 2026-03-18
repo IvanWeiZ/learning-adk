@@ -154,6 +154,28 @@ LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
         → back to LLM in next loop iteration
 ```
 
+### Default Error Behavior
+
+If your tool function raises an exception and no `on_tool_error_callback` is set:
+- The exception **propagates up** and terminates the entire invocation
+- The LLM does **not** get a chance to retry — the `run_async()` generator raises the exception to your code
+- To handle gracefully: set `on_tool_error_callback` on the agent, or wrap your tool in try/except and return an error dict
+
+```python
+# Option 1: Handle inside the tool (recommended for simple cases)
+def get_weather(city: str) -> dict:
+    try:
+        return call_weather_api(city)
+    except Exception as e:
+        return {"error": str(e)}  # LLM sees the error and can respond appropriately
+
+# Option 2: Use on_tool_error_callback (handles all tools at once)
+agent = LlmAgent(
+    tools=[get_weather],
+    on_tool_error_callback=lambda tool, args, ctx, err: {"error": str(err)},
+)
+```
+
 ---
 
 ## Tool Resolution in LlmAgent
