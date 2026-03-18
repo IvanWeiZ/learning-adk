@@ -18,12 +18,16 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Agent needs to read/write files on disk | Plain function tool |
 | Agent needs to search Google | Built-in `google_search` tool (no code needed) |
 | Agent needs to call any REST API defined by an OpenAPI spec | `OpenAPIToolset` (no code needed) |
-| Agent needs to export a report that takes 5 minutes to generate | `BaseTool` subclass with `is_long_running=True` |
-| Agent needs to trigger a Cloud Run job and wait for the result | `BaseTool` subclass with `is_long_running=True` |
-| Agent needs to execute Python code it generates | Built-in `BuiltInCodeExecutor` or `BaseTool` for custom sandbox |
+| Agent needs to export a report that takes 5 minutes to generate | `LongRunningFunctionTool` (or `BaseTool` subclass with `is_long_running=True`) |
+| Agent needs to trigger a Cloud Run job and wait for the result | `LongRunningFunctionTool` (or `BaseTool` subclass with `is_long_running=True`) |
+| Human-in-the-loop approval before executing an action | `LongRunningFunctionTool` — same pause mechanism as long-running tools. Invocation pauses, user's next message carries the approval. |
+| Agent needs to execute Python code it generates | `BaseCodeExecutor` subclass. Options: `BuiltInCodeExecutor` (model-native), `ContainerCodeExecutor` (Docker), `UnsafeLocalCodeExecutor` (no isolation), `VertexAiCodeExecutor`, `GkeCodeExecutor`, `AgentEngineSandboxCodeExecutor`. |
 | Agent should expose all tools from an MCP server | `MCPToolset` (no code needed) |
 | Agent should only show certain tools based on user role | `BaseToolset` subclass with `get_tools()` that filters by `ctx.state` |
 | Agent connects to a third-party tool platform (LangChain, CrewAI) | `LangchainTool` / `CrewaiTool` wrapper |
+| Agent needs to recall past conversations or search knowledge | `BaseMemoryService` + `load_memory_tool`. Three backends: `InMemoryMemoryService` (dev), `VertexAiRagMemoryService` (production vector search), `VertexAiMemoryBankService` (LLM-distilled memory). Wire via `Runner(memory_service=...)`. See [09-memory.md](09-memory.md). |
+| Tool needs user OAuth tokens (e.g. Google Drive, GitHub) | `AuthenticatedFunctionTool` wraps any callable with the full OAuth flow. When credentials are missing, the invocation pauses for user authorization. See [20-auth.md](20-auth.md). |
+| Multiple independent API calls in one turn | Automatic. When the LLM returns multiple function calls in a single response, ADK runs them concurrently via `asyncio.gather`. No configuration needed. Don't confuse with `ParallelAgent` (concurrent sub-agents across invocations). |
 
 ### [ ] Agent Callbacks (single-agent hooks)
 
@@ -63,6 +67,8 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Customer support router: billing vs tech vs sales | `LlmAgent` with `sub_agents` (LLM decides routing) |
 | Multi-step form wizard (collect name, then address, then payment) | `SequentialAgent` with one `LlmAgent` per step |
 | Competitive analysis: run 3 different analyst agents in parallel | `ParallelAgent` with 3 specialized `LlmAgent`s |
+| Expose an ADK agent as a remote service for other systems | `to_a2a(agent)` creates a Starlette ASGI app implementing the A2A protocol. |
+| Consume a remote agent as a sub-agent | `RemoteA2aAgent(agent_card=...)` as a drop-in `sub_agent`. |
 
 ### [ ] Custom Agents
 
@@ -71,6 +77,13 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Deterministic FAQ bot with no LLM needed | `BaseAgent` subclass with rule-matching logic |
 | Wrap a LangGraph graph as an ADK agent | `BaseAgent` subclass that calls the graph in `_run_async_impl` |
 | An agent that calls an external orchestration API and streams its events back | `BaseAgent` subclass |
+| Use a non-Gemini model (OpenAI, Anthropic, etc.) | `LiteLlm` adapter supports 100+ providers via `'provider/model-name'` format (e.g., `'openai/gpt-4o'`). For fully custom models, subclass `BaseLlm`, implement `generate_content_async()`, and register via `LLMRegistry.register(MyLlm)`. See [05-models.md](05-models.md). |
+
+### [ ] Runtime & Configuration
+
+| Real-world scenario | What to build |
+|---------------------|---------------|
+| Stream tokens to a web frontend in real-time | `RunConfig(streaming_mode=StreamingMode.SSE)`. Partial events (`event.partial=True`) arrive as LLM generates; final aggregated event follows. For bidirectional audio/video, use `runner.run_live()` with `StreamingMode.BIDI`. |
 
 ---
 
@@ -101,6 +114,16 @@ I need to...
 ├─ Change how an agent THINKS or RESPONDS
 │   ├─ Custom reasoning / planning                 → Custom BasePlanner subclass
 │   └─ Run code the LLM generates                  → BaseCodeExecutor subclass
+│
+├─ Use a non-Gemini model                           → LiteLlm adapter or custom BaseLlm
+│
+├─ Remember past conversations / search knowledge   → BaseMemoryService + load_memory_tool
+│
+├─ Stream tokens to a web UI in real-time           → RunConfig(streaming_mode=SSE) or BIDI
+│
+├─ Expose / consume agents across services          → A2A protocol (to_a2a / RemoteA2aAgent)
+│
+├─ Require user OAuth tokens for a tool             → AuthenticatedFunctionTool
 │
 └─ Change where sessions/memory/artifacts are stored → Custom service backend
 ```
@@ -171,7 +194,7 @@ agent = LlmAgent(
 **TL;DR** — When you need full control: custom schema, long-running behavior, or request-level mutation.
 
 ### [ ] When to use
-- Need `is_long_running=True` (returns operation ID, finishes asynchronously)
+- Need `is_long_running=True` (returns operation ID, finishes asynchronously) — prefer `LongRunningFunctionTool` for simple cases; use `BaseTool` subclass only when you also need a custom schema. The same pause mechanism supports human-in-the-loop approval (invocation pauses, user's next message carries the approval).
 - Need a hand-crafted `FunctionDeclaration` (e.g. complex nested schema, optional fields, enums)
 - Need to modify the `LlmRequest` before it's sent (e.g. inject a special header or flag into the request)
 - Need `custom_metadata` for manifest or tool discovery
@@ -707,6 +730,13 @@ The LLM calls the hidden `transfer_to_agent` function. `AutoFlow` intercepts it 
 | `ParallelAgent` | Concurrent independent tasks | Instantiate directly |
 | `LoopAgent` | Repeat until done | Instantiate directly |
 | LLM-routed sub-agents | LLM decides delegation | `LlmAgent(sub_agents=[...])` |
+| Memory / RAG | Agent needs past conversations or knowledge search | `BaseMemoryService` + `load_memory_tool` |
+| Streaming UI | Real-time token streaming to frontend | `RunConfig(streaming_mode=SSE)` or `BIDI` |
+| OAuth-gated tools | Tool requires user authorization | `AuthenticatedFunctionTool` |
+| A2A protocol | Expose or consume agents as remote services | `to_a2a()` / `RemoteA2aAgent` |
+| Custom model | Non-Gemini LLM provider | `LiteLlm` adapter or `BaseLlm` subclass |
+| Parallel tool execution | Multiple independent tool calls in one turn | Automatic (`asyncio.gather`) |
+| Human-in-the-loop | Pause for user approval | `LongRunningFunctionTool` |
 
 ---
 
