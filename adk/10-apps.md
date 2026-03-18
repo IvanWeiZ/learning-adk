@@ -106,6 +106,21 @@ How compaction works:
 4. Old events are replaced with a single `EventCompaction` event containing the summary
 5. The most recent `overlap_size` invocations are kept verbatim for continuity
 
+```
+BEFORE compaction (50 events):
+┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+│ e01 │ e02 │ e03 │ ... │ e45 │ e46 │ e47 │ e48 │ e49 │ e50 │
+└─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+ ◄──────────── old events ──────────────► ◄── recent ──►
+
+AFTER compaction (overlap_size=2):
+┌──────────────────────────────────┬─────┬─────┬─────┬─────┐
+│  CompactionEvent                 │ e47 │ e48 │ e49 │ e50 │
+│  (LLM summary of e01..e46)      │     │     │     │     │
+└──────────────────────────────────┴─────┴─────┴─────┴─────┘
+ ◄──── 1 summary event ──────────► ◄── kept verbatim ──►
+```
+
 ---
 
 ## Context Cache Config
@@ -164,6 +179,13 @@ Resumability requires that tool calls be **idempotent** (at-least-once execution
 | Complexity | Slightly more setup | Simpler |
 
 For production use, always use `App`. For quick scripts and demos, bare agent is fine.
+
+**Quick decision:**
+```
+Do you need plugins, compaction, context caching, or resumability?
+  Yes → use App(root_agent=agent, ...)
+  No  → use Runner(agent=agent, app_name="my_app", ...)
+```
 
 ---
 

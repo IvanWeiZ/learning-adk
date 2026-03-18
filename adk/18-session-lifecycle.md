@@ -65,6 +65,8 @@ For a standard `run_async` invocation, here is every point where the session ser
  └─────────────────────────────────────────────────────────────────┘
 ```
 
+> **Quick reference:** See the [Latency Optimization Cheat Sheet](#latency-optimization-cheat-sheet) at the bottom of this file for a ranked table of all optimizations with latency savings and effort level.
+
 ### Call 1: `get_session` — Fetch session at invocation start
 
 **Where:** `_get_or_create_session()` (called from `run_async` inside `_run_with_trace`)
@@ -384,6 +386,9 @@ get_session     append(user)   LLM call #1        tool exec    LLM call #2      
   └──┘            └─┘       └──────────────┘      └───┘     └──────────────┘     └─┘└─┘└─┘
   ~1ms           ~0.1ms        500-3000ms         10-500ms     500-3000ms        ~0.3ms total
                                                                                  (in-memory)
+                              ◄────────────── 80-95% of total time ──────────────►
+
+  Takeaway: optimize MODEL calls first. Session I/O barely matters.
 ```
 
 **The LLM calls dominate.** Session service latency only matters when it's database-backed. But there are still meaningful wins across the full stack.

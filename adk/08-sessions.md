@@ -138,6 +138,50 @@ Runner.run_async(user_id, session_id, new_message)
 
 ---
 
+## State Delta Lifecycle
+
+```
+Your code                    EventActions              Session Service
+─────────                    ────────────              ───────────────
+
+ctx.state["city"] = "Tokyo"
+  │
+  ▼
+State._delta["city"] = "Tokyo"
+State._value["city"] = "Tokyo"  ← immediately readable
+  │
+  ▼ (when event is yielded)
+event.actions.state_delta = {"city": "Tokyo"}
+  │
+  ▼ (Runner calls append_event)
+session.state["city"] = "Tokyo"  ← committed
+  │
+  ▼ (subclass persists)
+Database/Memory store updated
+```
+
+## State Scope Visual
+
+```
+┌─ app:config ──────────────────────────────────────────────────┐
+│  Shared by ALL users, ALL sessions                            │
+│                                                               │
+│  ┌─ user:preferences ──────────────────────────────────────┐  │
+│  │  Shared across ALL sessions for this user                │  │
+│  │                                                          │  │
+│  │  ┌─ count (session-scoped) ──────────────────────────┐   │  │
+│  │  │  Lives in THIS session only                        │   │  │
+│  │  │                                                    │   │  │
+│  │  │  ┌─ temp:scratch ──────────────────────────────┐   │   │  │
+│  │  │  │  THIS invocation only — never persisted      │   │   │  │
+│  │  │  └──────────────────────────────────────────────┘   │   │  │
+│  │  └────────────────────────────────────────────────────┘   │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## State Scoping in Practice
 
 ```python

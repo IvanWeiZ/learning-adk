@@ -216,6 +216,29 @@ Here are the Q1 2026 sales results: ...
 
 The planner marks everything before `/*FINAL_ANSWER*/` as thought (internal reasoning), and only the final answer text is surfaced to the user.
 
+```
+What the model outputs vs what the user sees:
+
+RAW MODEL OUTPUT:
+┌──────────────────────────────────────────────────────┐
+│ /*PLANNING*/                                         │  ← thought=True
+│ I need to check the weather first, then book a hotel │     (hidden from user)
+│ /*PLANNING*/                                         │
+│                                                      │
+│ /*ACTION*/                                           │  ← function call
+│ get_weather(city="Tokyo")                            │     (executed by ADK)
+│ /*ACTION*/                                           │
+│                                                      │
+│ /*FINAL_ANSWER*/                                     │  ← thought=False
+│ The weather in Tokyo is 18°C and sunny!              │     (shown to user)
+│ /*FINAL_ANSWER*/                                     │
+└──────────────────────────────────────────────────────┘
+
+WHAT THE USER SEES:
+  "The weather in Tokyo is 18°C and sunny!"
+  (everything before FINAL_ANSWER is internal reasoning)
+```
+
 ---
 
 ## When to Use Which

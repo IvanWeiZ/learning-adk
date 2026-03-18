@@ -30,6 +30,55 @@ BaseLlmFlow  (base_llm_flow.py)  — abstract, implements the loop
 
 ---
 
+## Loop Iteration Flowchart
+
+```
+┌─────────────────────────────────────────────┐
+│              BaseLlmFlow Loop               │
+│                                             │
+│  ┌─────────────┐                            │
+│  │  preprocess  │ ← build LlmRequest        │
+│  │  (history +  │   from session.events      │
+│  │   tools)     │                            │
+│  └──────┬───────┘                            │
+│         ▼                                    │
+│  ┌─────────────┐                            │
+│  │  call LLM   │                            │
+│  └──────┬───────┘                            │
+│         ▼                                    │
+│     Has function    ──── No ──── ► yield     │
+│     calls?                        final      │
+│         │                         Event      │
+│        Yes                        (EXIT)     │
+│         ▼                                    │
+│  ┌─────────────┐                            │
+│  │ execute      │                            │
+│  │ tool(s)      │                            │
+│  └──────┬───────┘                            │
+│         │                                    │
+│         └──────── loop back ─────────────┘   │
+└─────────────────────────────────────────────┘
+```
+
+### Two Iterations in Practice
+
+```
+User: "What's the weather in Tokyo?"
+
+Iteration 1:
+  preprocess  → LlmRequest with [user message]
+  LLM returns → FunctionCall(get_weather, city="Tokyo")
+  execute     → get_weather("Tokyo") → {temp: 18, condition: "cloudy"}
+  → loop back
+
+Iteration 2:
+  preprocess  → LlmRequest with [user message + function call + function response]
+  LLM returns → "The weather in Tokyo is 18°C and cloudy."
+  no function calls → yield final Event → EXIT
+```
+
+---
+
 ## The Loop in Detail
 
 ```

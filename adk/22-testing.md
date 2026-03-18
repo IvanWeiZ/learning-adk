@@ -4,6 +4,42 @@
 
 ---
 
+### Production vs. Test Stack
+
+```
+Production stack:                    Test stack:
+┌──────────────┐                    ┌──────────────┐
+│    Runner    │                    │ InMemoryRunner│
+├──────────────┤                    ├──────────────┤
+│    Agent     │  ← same agent →   │    Agent     │
+├──────────────┤                    ├──────────────┤
+│  BaseLlmFlow │  ← same flow →   │  BaseLlmFlow │
+├──────────────┤                    ├──────────────┤
+│   Gemini     │                    │  MockModel   │ ← swap point
+│  (API call)  │                    │ (canned list)│
+└──────────────┘                    └──────────────┘
+      │                                   │
+Google API                         Pre-loaded responses
+(costs money,                      (free, deterministic,
+ non-deterministic)                 no API key needed)
+```
+
+**Simplest possible test -- no API key needed:**
+
+```python
+from google.adk.agents.llm_agent import Agent
+from tests.unittests.testing_utils import InMemoryRunner, MockModel, simplify_events
+
+def test_hello():
+    mock = MockModel.create(responses=["Hello back!"])
+    agent = Agent(name="greeter", model=mock)
+    runner = InMemoryRunner(agent)
+    events = runner.run("Hello")
+    assert simplify_events(events) == [("greeter", "Hello back!")]
+```
+
+---
+
 ## What It Is
 
 ADK provides a set of test utilities that let you write **fully deterministic** unit tests for agents without making any real LLM API calls. The core idea: replace the LLM with a `MockModel` that returns pre-loaded responses in order, wire it into an `InMemoryRunner` backed by in-memory services, and assert on the resulting events. Every test runs instantly, offline, and with predictable outputs.

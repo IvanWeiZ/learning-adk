@@ -27,6 +27,37 @@ When an LLM response contains multiple tool calls, `functions.py` dispatches the
 - `return_exceptions=True` is **not** used -- one failing tool re-raises immediately while the others keep running in the background. This is a potential resource leak.
 - State deltas from parallel tools are merged via `deep_merge_dicts`. On key conflicts the last-merged tool's value wins silently.
 
+```
+Parallel Tool Execution — Happy Path:
+
+  LLM returns: [FunctionCall("get_weather"), FunctionCall("get_news")]
+                          │                           │
+                          ▼                           ▼
+                   ┌─────────────┐            ┌─────────────┐
+                   │ get_weather │            │  get_news   │
+                   │ (200ms)     │            │  (300ms)    │
+                   └──────┬──────┘            └──────┬──────┘
+                          │                           │
+                          └─────────┬─────────────────┘
+                                    ▼
+                         asyncio.gather() merges results
+                         → single FunctionResponse event
+                         → back to LLM
+
+  Total time: 300ms (not 500ms) — parallel wins!
+
+Collision Scenario — both tools write same state key:
+
+  Tool A: ctx.state["result"] = "sunny"     (finishes first)
+  Tool B: ctx.state["result"] = "breaking"  (finishes second)
+                          │
+                          ▼
+              deep_merge_dicts → last write wins
+              state["result"] = "breaking"  ← Tool A's write is lost!
+
+  Fix: use different state keys per tool
+```
+
 ---
 
 ## Session Locking

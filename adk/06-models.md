@@ -67,6 +67,21 @@ The final `partial=False` chunk is always a complete aggregation. Callers should
 
 Function calls, thoughts, and blobs follow the same pattern — they can arrive in separate `partial=True` chunks.
 
+```
+Streaming Timeline — what goes where:
+
+  chunk 1 (partial)   chunk 2 (partial)   chunk 3 (partial)   final (partial=False)
+  ┌───────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────────────┐
+  │ "The weather" │   │ " in Tokyo"   │   │ " is 18°C"    │   │ full text         │
+  └───────┬───────┘   └───────┬───────┘   └───────┬───────┘   └─────────┬─────────┘
+          │                   │                   │                     │
+          ▼                   ▼                   ▼                     ▼
+     stream to UI        stream to UI        stream to UI         persist to session
+     (real-time)         (real-time)         (real-time)          (source of truth)
+
+  partial=True events are FREE — append_event() skips them
+```
+
 ---
 
 ## LLMRegistry — Auto-Dispatch
@@ -84,6 +99,35 @@ llm = LLMRegistry.new_llm('gemini-2.5-flash')
 ```
 
 `resolve()` is `@lru_cache(maxsize=32)` — repeated resolution of the same model name is fast.
+
+```
+Model string resolution:
+
+  "gemini-2.5-flash"
+       │
+       ▼ LLMRegistry.resolve()
+  Check registered adapters:
+    Gemini.supported_models() → ["gemini-.*"]  ← MATCH
+       │
+       ▼
+  Return Gemini(model="gemini-2.5-flash")
+
+  "claude-sonnet-4-5"
+       │
+       ▼
+    AnthropicLlm.supported_models() → ["claude-.*"]  ← MATCH
+       │
+       ▼
+  Return AnthropicLlm(model="claude-sonnet-4-5")
+
+  "openai/gpt-4o"
+       │
+       ▼
+    LiteLlm.supported_models() → [".+/.+"]  ← MATCH (provider/model format)
+       │
+       ▼
+  Return LiteLlm(model="openai/gpt-4o")
+```
 
 **Error messages are helpful:**
 - `claude-*` → tells you to `pip install google-adk[extensions]`

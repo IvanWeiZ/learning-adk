@@ -127,6 +127,38 @@ memory_service = VertexAiMemoryBankService(
 
 ## How Memory Plugs In
 
+### Visual: Cross-Session Timeline
+
+```
+Session A (March 1)                    Session B (March 5)
+───────────────────                    ───────────────────
+
+User: "I love sushi"                   User: "Where should I eat?"
+Agent: "Great taste!"
+                                       ┌─ load_memory_tool ─────────┐
+End of session:                        │  search_memory("eat")       │
+  add_session_to_memory()              │  → finds: "User loves sushi"│
+  → stored in MemoryService            │  → injected into LLM prompt │
+                                       └────────────────────────────┘
+
+                                       Agent: "Since you love sushi,
+                                        try Tsukiji restaurant!"
+                                        ↑ memory informed this answer
+```
+
+### Without Memory vs With Memory
+
+```
+WITHOUT memory:
+  Session B prompt: "You are a helpful assistant."
+  Agent has NO idea user likes sushi → generic restaurant suggestions
+
+WITH memory:
+  Session B prompt: "You are a helpful assistant.
+    Relevant memories: User mentioned they love sushi (March 1)"
+  Agent recommends sushi restaurants → personalized answer
+```
+
 ### Wiring to Runner
 
 Pass the memory service to `Runner` alongside the session service:

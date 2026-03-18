@@ -938,6 +938,29 @@ You are here ──────────────────────�
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Learning Paths — Pick Your Track
+
+```
+Track 1: Quick Start (1 hour)
+  25-onboarding-guide → 01-request-lifecycle → 09-tools → build something!
+  You'll know: how to create an agent with tools
+
+Track 2: Core Understanding (half day)
+  01-request-lifecycle → 03-runners → 04-agents → 05-flows
+  → 07-events → 08-sessions → 09-tools → 10-apps
+  You'll know: how every layer works and connects
+
+Track 3: Production Ready (2 days)
+  All of Track 2, plus:
+  → 11-memory → 13-auth → 16-error-reference → 17-concurrency
+  → 20-best-practices → 22-testing
+  You'll know: how to build, test, and operate production agents
+
+Track 4: Full Mastery (1 week)
+  All 25 files in order
+  You'll know: every ADK subsystem, pattern, and edge case
+```
+
 ---
 
 ## Cross-references

@@ -17,6 +17,58 @@
 
 A `Session` is essentially just an ordered list of Events. Everything else in the system reads, writes, or transforms Events.
 
+### What's Inside an Event
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Event                                               │
+│                                                      │
+│  ┌─ Identity ──────────────────────────────────────┐ │
+│  │  id: "evt-002"                                  │ │
+│  │  invocation_id: "e-inv-9f2a"                    │ │
+│  │  author: "weather_agent"                        │ │
+│  │  branch: None                                   │ │
+│  │  timestamp: 1741996801.891                      │ │
+│  └─────────────────────────────────────────────────┘ │
+│                                                      │
+│  ┌─ Payload ───────────────────────────────────────┐ │
+│  │  content: Content(role="model", parts=[...])    │ │
+│  │  partial: False                                 │ │
+│  └─────────────────────────────────────────────────┘ │
+│                                                      │
+│  ┌─ Side Effects (EventActions) ───────────────────┐ │
+│  │  state_delta: {"result": "18°C in Tokyo"}       │ │
+│  │  transfer_to_agent: None                        │ │
+│  │  escalate: None                                 │ │
+│  │  artifact_delta: {}                             │ │
+│  └─────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────┘
+```
+
+### Events in a Single Turn
+
+A tool-calling agent produces 4 events for one user turn:
+
+```
+User sends: "What's the weather in Tokyo?"
+
+  evt-001          evt-002            evt-003              evt-004
+  ┌──────┐        ┌──────────┐       ┌──────────┐        ┌──────────────┐
+  │ user │───────►│ model    │──────►│ tool     │───────►│ model        │
+  │ msg  │        │ func call│       │ response │        │ final text   │
+  └──────┘        └──────────┘       └──────────┘        └──────────────┘
+  author:         author:            author:              author:
+   "user"          "weather_agent"    "weather_agent"      "weather_agent"
+                                                          is_final_response()
+  persisted       persisted          persisted             = True ← render
+  (not yielded)   (yielded)          (yielded)            (yielded)
+```
+
+- **evt-001**: Runner creates the user event and appends it to the session, but does not yield it.
+- **evt-002**: LLM decides it needs to call the `get_weather` tool — event contains a `FunctionCall`.
+- **evt-003**: Tool executes and returns a `FunctionResponse` with the weather data.
+- **evt-004**: LLM synthesizes the final answer. `is_final_response()` returns `True`, signaling the caller to render this event.
+
 ---
 
 ## Class Hierarchy

@@ -127,6 +127,35 @@ class ToolContext:
 
 ---
 
+## Tool Invocation Lifecycle
+
+```
+LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
+                    │
+                    ▼
+        ┌─ before_tool_callback ─┐
+        │  Return dict? ──Yes──► use dict as result (skip tool)
+        │  Return None?          │
+        └────────┬───────────────┘
+                 ▼
+        ┌─ tool.run_async() ─────┐
+        │  get_weather("Tokyo")  │
+        │  → {temp: 18}          │
+        │  on error:             │
+        │    on_tool_error_cb    │
+        └────────┬───────────────┘
+                 ▼
+        ┌─ after_tool_callback ──┐
+        │  Return dict? ──Yes──► replace result
+        │  Return None?          │
+        └────────┬───────────────┘
+                 ▼
+        FunctionResponse event yielded
+        → back to LLM in next loop iteration
+```
+
+---
+
 ## Tool Resolution in LlmAgent
 
 ```python

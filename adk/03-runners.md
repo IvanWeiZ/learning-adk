@@ -17,6 +17,17 @@
 
 `Runner` is **stateless** — it holds no conversation state itself. All state lives in `Session` (via `session_service`). This means the same `Runner` instance can handle many concurrent invocations safely.
 
+### Who Owns What
+
+```
+Runner (stateless)      Agent (stateless)       Session (stateful)
+─────────────────       ─────────────────       ──────────────────
+Owns: request lifecycle Owns: behavior          Owns: conversation history
+Holds: service refs     Holds: config           Holds: state + events
+Creates: InvocationCtx  Creates: LlmRequest     Created by: SessionService
+Dies after: run_async() Lives forever           Lives across invocations
+```
+
 ---
 
 ## Construction

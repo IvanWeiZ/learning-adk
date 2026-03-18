@@ -710,6 +710,38 @@ sub_agents=[
 └────┘└────┘└────┘
 ```
 
+**Concrete before/after:**
+
+```
+BEFORE — God Agent:
+  User: "What's the weather in Tokyo and book me a hotel"
+  ┌─────────────────────────────────┐
+  │  god_agent                      │
+  │  tools: [get_weather,           │
+  │    book_hotel, search_flights,  │
+  │    send_email, query_db,        │
+  │    ... 15 more tools]           │
+  └─────────────────────────────────┘
+  Problem: LLM confused by 20 tool schemas → picks wrong tool → hallucinated args
+
+AFTER — Focused Agents:
+  User: "What's the weather in Tokyo and book me a hotel"
+  ┌─────────────────────────────┐
+  │  router_agent               │
+  │  sub_agents:                │
+  │  ┌───────────────────────┐  │
+  │  │ weather_agent         │  │ ← 1 tool: get_weather
+  │  │ tools: [get_weather]  │  │
+  │  └───────────────────────┘  │
+  │  ┌───────────────────────┐  │
+  │  │ hotel_agent           │  │ ← 2 tools: search_hotels, book_hotel
+  │  │ tools: [search,       │  │
+  │  │         book]         │  │
+  │  └───────────────────────┘  │
+  └─────────────────────────────┘
+  Result: each agent sees only relevant tools → correct tool selection
+```
+
 ### Anti-Pattern 2: Deep Nesting
 
 ```

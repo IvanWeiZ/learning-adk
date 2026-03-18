@@ -196,6 +196,42 @@ For OAuth/OIDC, `generate_auth_request` uses `authlib` (if available) to build t
 
 ## The OAuth Round-Trip Flow
 
+### Visual: Two-Invocation Sequence
+
+```
+ADK Agent                              User / Browser
+─────────                              ──────────────
+
+Invocation 1:
+  Tool needs credentials
+  → request_credential(auth_config)
+  → Event with auth_uri sent to caller  ──────────►  User visits auth_uri
+                                                      User logs in + authorizes
+  Invocation pauses                     ◄──────────  Redirect with auth code
+                                                      Code stored in session state
+
+Invocation 2:
+  get_auth_response(auth_config)
+  → credential found in session state
+  → Tool executes with valid token
+  → Final response to user
+```
+
+### Before / After: What Auth Does for Your Tool
+
+```python
+# WITHOUT auth — fails when API requires OAuth
+def search_gmail(query: str) -> dict:
+    return gmail_api.search(query)  # ← no token, 401 error
+
+# WITH auth — ADK handles the OAuth flow automatically
+def search_gmail(query: str, credential: AuthCredential) -> dict:
+    return gmail_api.search(query, token=credential.oauth2.access_token)
+# Wrap with: AuthenticatedFunctionTool(func=search_gmail, auth_config=...)
+```
+
+### Detailed Steps
+
 Here is the detailed sequence for OAuth2 authorization code flow:
 
 1. **Tool calls `request_credential`**: This adds the `AuthConfig` to `EventActions.requested_auth_configs`, keyed by `function_call_id`.

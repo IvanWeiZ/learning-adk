@@ -169,6 +169,29 @@ Artifacts can be scoped to a **session** or to a **user** (shared across session
 
 When `list_artifact_keys` is called with a `session_id`, it returns both session-scoped artifacts for that session and all user-scoped artifacts.
 
+```
+Artifact Scoping — where files are stored:
+
+Session-scoped (default):
+  save_artifact("report.pdf", data)
+  Path: app_name / user_id / session_id / report.pdf / v0
+
+User-scoped (prefix with "user:"):
+  save_artifact("user:avatar.png", data)
+  Path: app_name / user_id / avatar.png / v0
+  ↑ no session_id — shared across ALL sessions for this user
+
+Version Timeline:
+  save_artifact("report.pdf", v1_data)  → returns version 0
+  save_artifact("report.pdf", v2_data)  → returns version 1
+  save_artifact("report.pdf", v3_data)  → returns version 2
+
+  load_artifact("report.pdf")           → returns v3_data (latest)
+  load_artifact("report.pdf", version=1) → returns v2_data (specific)
+
+  Versions are immutable — you can always go back.
+```
+
 ---
 
 ## Three Implementations Compared

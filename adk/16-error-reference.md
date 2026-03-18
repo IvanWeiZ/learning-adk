@@ -8,10 +8,57 @@ Every exception, silent failure, and recovery point in the ADK execution pipelin
 
 ## Error Architecture
 
-ADK errors fall into two tiers:
+ADK errors fall into three tiers:
 
 - **Tier 1 — Recoverable**: errors that fire a callback, giving your code a chance to intercept and continue.
 - **Tier 2 — Fatal**: errors that propagate uncaught to the `run_async()` caller.
+- **Tier 3 — Silent**: errors that produce no exception and no callback -- data is silently lost or skipped.
+
+```
+                    Error occurs
+                        │
+            ┌───────────┼───────────┐
+            ▼           ▼           ▼
+     ┌──────────┐ ┌──────────┐ ┌──────────┐
+     │  Tier 1  │ │  Tier 2  │ │  Tier 3  │
+     │RECOVERABLE│ │  FATAL  │ │  SILENT  │
+     └────┬─────┘ └────┬─────┘ └────┬─────┘
+          │             │             │
+     callback       propagates     no exception
+     can intercept  to caller      no callback
+          │             │             │
+     on_model_error  try/except    data silently
+     on_tool_error   in your code  lost or skipped
+```
+
+### Minimum Error Handling (Copy-Paste Starter)
+
+```python
+from google.adk.agents.invocation_context import LlmCallsLimitExceededError
+from google.adk.errors.session_not_found_error import SessionNotFoundError
+
+# Tier 1: Recoverable — use callbacks
+agent = LlmAgent(
+    on_model_error_callback=lambda ctx, req, err: LlmResponse(
+        content=Content(parts=[Part(text="Sorry, the AI service is temporarily unavailable.")])
+    ) if isinstance(err, ClientError) else None,
+)
+
+# Tier 2: Fatal — wrap run_async
+try:
+    async for event in runner.run_async(...):
+        if event.is_final_response():
+            print(event.content.parts[0].text)
+except LlmCallsLimitExceededError:
+    print("Too many LLM calls — simplify the task")
+except SessionNotFoundError:
+    print("Session not found — create one first")
+
+# Tier 3: Silent — use DatabaseSessionService in production
+# InMemorySessionService can silently drop events (see docs)
+```
+
+### Previous Detailed View
 
 ```
 run_async() invocation

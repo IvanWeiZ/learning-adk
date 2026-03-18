@@ -157,6 +157,24 @@ Scoring logic:
 
 Example: if you expect `[search, summarize]` and agent did `[search, translate, summarize]`, score is 1.0 (both expected steps matched, extras don't penalize).
 
+```
+Scoring Example — tool_trajectory_avg_score:
+
+Expected tool calls:   [search_flights, book_flight]
+Actual tool calls:     [search_flights, get_weather, book_flight]
+                              ✓              extra          ✓
+
+Step 1: search_flights → found in actual? YES ✓ (score: 1)
+Step 2: book_flight    → found in actual? YES ✓ (score: 1)
+Extra:  get_weather    → not penalized (extras are OK)
+
+Final score: (1 + 1) / 2 = 1.0  ← perfect!
+
+If book_flight was MISSING:
+Step 2: book_flight    → found in actual? NO ✗ (score: 0)
+Final score: (1 + 0) / 2 = 0.5
+```
+
 ### 2. `response_match_score`
 
 Measures how well the agent's **final text response** matches the `reference_answer`.
@@ -294,6 +312,26 @@ This checks that the agent *called* the tool without asserting which exact query
 - If you only care about tool trajectory → set `expected_tool_use`, leave `reference_answer` null
 - If you only care about the response content → set `reference_answer`, leave `expected_tool_use` null
 - For full coverage → set both
+
+---
+
+## Testing Pyramid for Agents
+
+```
+                    ┌───────────┐
+                    │   Evals   │  Few, slow, expensive
+                    │ (LLM as   │  Tests: "did the agent give
+                    │  judge)   │   a good answer?"
+                    ├───────────┤
+                    │Integration│  Some, medium speed
+                    │  Tests    │  Tests: "did the right tools
+                    │           │   get called in order?"
+                    ├───────────┤
+                    │ Unit Tests│  Many, fast, cheap
+                    │ (MockModel│  Tests: "does my tool return
+                    │  based)   │   the right data?"
+                    └───────────┘
+```
 
 ---
 

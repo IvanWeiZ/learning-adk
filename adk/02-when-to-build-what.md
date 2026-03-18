@@ -4,6 +4,47 @@ A decision guide for every extensibility point in ADK. Each section answers: **w
 
 ---
 
+## Quick Decision Flowchart
+
+Find your ADK component in 30 seconds:
+
+```
+What are you trying to do?
+│
+├─ Add a capability to an agent?
+│  ├─ Simple function         → FunctionTool (auto-wrapped)
+│  ├─ Needs lifecycle hooks   → BaseTool subclass
+│  ├─ Dynamic set of tools    → BaseToolset
+│  ├─ External API with auth  → AuthenticatedFunctionTool
+│  └─ Long-running / async    → LongRunningFunctionTool
+│
+├─ Compose multiple agents?
+│  ├─ LLM picks which agent   → LlmAgent(sub_agents=[...])  (AutoFlow)
+│  ├─ Fixed sequence           → SequentialAgent
+│  ├─ Run in parallel          → ParallelAgent
+│  ├─ Repeat until done        → LoopAgent
+│  └─ Call a remote agent      → RemoteA2aAgent (as sub_agent)
+│
+├─ Add cross-cutting behavior?
+│  ├─ Guard all agents         → BasePlugin (on App)
+│  ├─ Guard one agent          → before/after_agent_callback
+│  ├─ Intercept LLM calls      → before/after_model_callback
+│  └─ Intercept tool calls     → before/after_tool_callback
+│
+├─ Use a non-Gemini model?
+│  ├─ OpenAI, Groq, etc.      → LiteLlm ("provider/model")
+│  ├─ Claude                   → AnthropicLlm ("claude-*")
+│  └─ Custom model             → BaseLlm subclass + LLMRegistry
+│
+├─ Stream to a web UI?
+│  └─ RunConfig(streaming_mode=StreamingMode.SSE)
+│
+└─ Remember past conversations?
+   └─ BaseMemoryService + load_memory_tool
+```
+
+---
+
 ## Real-World Use Cases → What to Build
 
 The most common concrete scenarios and the exact ADK component that solves each one.

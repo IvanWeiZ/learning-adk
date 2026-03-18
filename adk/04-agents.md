@@ -217,6 +217,60 @@ root_agent (LlmAgent)
 
 The LLM in `root_agent` can say "transfer to search_agent", which triggers `EventActions.transfer_to_agent = 'search_agent'`.
 
+### How Agent Transfer Works
+
+```
+User: "Book me a flight to Tokyo"
+
+┌─ router_agent (AutoFlow) ─────────────────────────────────────┐
+│                                                                │
+│  LLM thinks: "This is a travel request"                       │
+│  LLM calls: transfer_to_agent("travel_agent")                 │
+│                                                                │
+│  ┌─ travel_agent ───────────────────────────────────────────┐  │
+│  │                                                          │  │
+│  │  LLM receives: full conversation history                 │  │
+│  │  LLM calls: search_flights(destination="Tokyo")          │  │
+│  │  Tool returns: [{flight: "JL001", price: "$450"}, ...]   │  │
+│  │  LLM responds: "I found flight JL001 for $450..."        │  │
+│  │                                                          │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  Events flow back to caller with author="travel_agent"         │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Branch in Events
+
+As agents nest, the `branch` field on each event tracks which agent produced it. This lets each agent see only its own lineage when building LLM context:
+
+```
+Event stream with branches:
+
+  evt-001  author="user"           branch=None
+  evt-002  author="router_agent"   branch=None        ← transfer_to_agent
+  evt-003  author="travel_agent"   branch="travel_agent"  ← child branch
+  evt-004  author="travel_agent"   branch="travel_agent"  ← tool call
+  evt-005  author="travel_agent"   branch="travel_agent"  ← final answer
+```
+
+### Minimal Multi-Agent Example
+
+```python
+travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",
+    instruction="You book flights.", tools=[search_flights])
+
+weather_agent = LlmAgent(name="weather_agent", model="gemini-2.5-flash",
+    instruction="You report weather.", tools=[get_weather])
+
+router = LlmAgent(name="router", model="gemini-2.5-flash",
+    instruction="Route to the right specialist.",
+    sub_agents=[travel_agent, weather_agent])
+# AutoFlow is selected automatically because sub_agents is non-empty
+```
+
+When the user says "Book me a flight", the router's LLM sees `travel_agent` and `weather_agent` as available transfer targets (injected as tool definitions by `AutoFlow`). It calls `transfer_to_agent("travel_agent")`, and the framework routes the conversation to `travel_agent` for the rest of the turn.
+
 ---
 
 ## Related Files
