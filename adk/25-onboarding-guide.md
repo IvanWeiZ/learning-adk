@@ -497,25 +497,7 @@ root_agent = LoopAgent(
 
 ## 7. Running Your Agent
 
-### Quick Debug Mode
-
-```python
-from google.adk.runners import InMemoryRunner
-
-runner = InMemoryRunner(agent=root_agent)
-
-# Single message
-await runner.run_debug("What's the weather in Tokyo?")
-
-# Multi-turn conversation
-await runner.run_debug([
-    "Hi there!",
-    "What's the weather in Tokyo?",
-    "Book a hotel there.",
-])
-```
-
-### Production Setup
+### Standard Setup
 
 ```python
 from google.adk.runners import Runner
@@ -640,58 +622,13 @@ event = Event(
 
 ## 9. Session State Scoping
 
-State has three scopes, each with a different lifetime:
+State keys have scopes via prefixes:
+- No prefix → this session only
+- `user:` → shared across all sessions for this user
+- `app:` → shared across all users
+- `temp:` → this invocation only (never persisted)
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    State Scoping                                   │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────┐              │
-│  │  App State (prefix: "app:")                      │              │
-│  │  Shared across ALL users and ALL sessions        │              │
-│  │  Example: app:total_requests, app:model_version  │              │
-│  │                                                   │              │
-│  │  ┌──────────────────────────────────────────┐    │              │
-│  │  │  User State (prefix: "user:")             │    │              │
-│  │  │  Shared across all sessions for ONE user  │    │              │
-│  │  │  Example: user:preferences, user:name     │    │              │
-│  │  │                                            │    │              │
-│  │  │  ┌───────────────────────────────────┐    │    │              │
-│  │  │  │  Session State (no prefix)         │    │    │              │
-│  │  │  │  Specific to one conversation      │    │    │              │
-│  │  │  │  Example: cart, last_query          │    │    │              │
-│  │  │  └───────────────────────────────────┘    │    │              │
-│  │  │                                            │    │              │
-│  │  │  ┌───────────────────────────────────┐    │    │              │
-│  │  │  │  Temp State (prefix: "temp:")      │    │    │              │
-│  │  │  │  Lives in memory ONLY              │    │    │              │
-│  │  │  │  Never persisted to storage        │    │    │              │
-│  │  │  │  Example: temp:auth_token          │    │    │              │
-│  │  │  └───────────────────────────────────┘    │    │              │
-│  │  └──────────────────────────────────────────┘    │              │
-│  └─────────────────────────────────────────────────┘              │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-```python
-# In a tool function:
-def my_tool(query: str, tool_context: ToolContext) -> str:
-    # Session-scoped (default) — this conversation only
-    tool_context.state["last_query"] = query
-
-    # User-scoped — persists across conversations for this user
-    tool_context.state["user:search_count"] = \
-        tool_context.state.get("user:search_count", 0) + 1
-
-    # App-scoped — shared across all users
-    tool_context.state["app:total_queries"] = \
-        tool_context.state.get("app:total_queries", 0) + 1
-
-    # Temp-scoped — in-memory only, never persisted
-    tool_context.state["temp:cached_result"] = expensive_computation()
-
-    return f"Processed query: {query}"
-```
+See [08-sessions.md](08-sessions.md) for the full scoping rules and persistence behavior.
 
 ---
 
@@ -779,7 +716,9 @@ Here's a realistic customer support agent system:
 from google.adk import Agent
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.tools.tool_context import ToolContext
-from google.adk.runners import InMemoryRunner
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
 
 # ─── Tools ─────────────────────────────────────────────
 
@@ -834,12 +773,29 @@ root_agent = Agent(
 # ─── Run It ────────────────────────────────────────────
 
 async def main():
-    runner = InMemoryRunner(agent=root_agent)
-    await runner.run_debug([
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=root_agent,
+        app_name="support_app",
+        session_service=session_service,
+    )
+    session = await session_service.create_session(
+        app_name="support_app", user_id="user_1"
+    )
+
+    for msg in [
         "Hi, I need to check my order ORD-001",
         "Actually, I want a refund for it",
         "The laptop arrived damaged",
-    ])
+    ]:
+        content = types.Content(role="user", parts=[types.Part(text=msg)])
+        async for event in runner.run_async(
+            session_id=session.id, user_id="user_1", new_message=content
+        ):
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        print(f"[{event.author}]: {part.text}")
 ```
 
 ```

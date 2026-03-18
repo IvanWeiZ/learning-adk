@@ -350,8 +350,9 @@ Here are the data you have for Cupertino:
 """,
     output_schema=list[WeatherData],
     output_key="weather_data",
-    tools=[get_current_year],
 )
+# Note: when output_schema is set, tools are silently ignored (see 04-agents.md).
+# Do NOT pass tools=[...] on an agent that uses output_schema.
 ```
 
 ### What happens at runtime

@@ -636,20 +636,7 @@ async def append_event(session: Session, event: Event) -> Event:
 
 ### State Key Scopes
 
-| Prefix | Scope | Persisted? | Notes |
-|---|---|---|---|
-| _(none)_ | This session | Yes | |
-| `app:` | All users of this app | Yes | Shared across users |
-| `user:` | This user, all sessions | Yes | Shared across sessions |
-| `temp:` | This invocation only | **No** | Stripped before storage |
-
-```python
-# From any callback or tool:
-ctx.state["session_key"] = "survives the session"
-ctx.state["temp:scratch"] = "gone after this invocation"
-ctx.state["user:prefs"] = {"theme": "dark"}     # across all sessions for this user
-ctx.state["app:config"] = {"max_results": 10}   # all users of the app
-```
+State keys use prefixes to control scope: no prefix (session), `app:` (all users), `user:` (cross-session), `temp:` (current invocation only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules, persistence behavior, and code examples.
 
 ### Backend Comparison
 

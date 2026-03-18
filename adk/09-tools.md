@@ -188,7 +188,7 @@ agent = LlmAgent(tools=[
 ])
 ```
 
-When there are multiple tools, `GoogleSearchTool` and `VertexAiSearchTool` are automatically wrapped in an agent-based workaround (they can't mix with other tools natively in the Gemini API). This is transparent to the user.
+When there are multiple tools, `GoogleSearchTool` and `VertexAiSearchTool` cannot be mixed with regular function tools in a single Gemini API call. ADK handles this by creating a hidden sub-agent that runs these tools in isolation — this is automatic and transparent to your code.
 
 ---
 

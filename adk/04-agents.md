@@ -79,14 +79,7 @@ async def _run_async_impl(ctx):
 
 ### Which flow does it use?
 
-```python
-@property
-def _llm_flow(self) -> BaseLlmFlow:
-    if self.disallow_transfer_to_parent and self.disallow_transfer_to_peers and not self.sub_agents:
-        return SingleFlow()   # no agent routing needed
-    else:
-        return AutoFlow()     # handles agent transfer/delegation
-```
+If your agent has sub-agents or allows transfers, ADK uses AutoFlow (adds agent-routing). If your agent works alone, ADK uses SingleFlow (simpler). This is automatic — you never set it manually.
 
 ### Key Fields
 

@@ -14,6 +14,8 @@ The flow is responsible for:
 3. Handling the response (stream events, execute tools)
 4. Looping until the LLM produces a final text response
 
+> **Do I need to know this?** You will almost never create or configure a Flow directly — ADK selects the right one automatically. Understanding flows helps when debugging (e.g., why your agent transfers to a sub-agent) or writing custom request/response processors.
+
 ---
 
 ## Flow Variants
