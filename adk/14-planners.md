@@ -30,7 +30,7 @@ BasePlanner           (base_planner.py)         — abstract, defines the two-me
 
 ## How Planners Integrate with Flows
 
-Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningResponse` processors inside the LLM flow pipeline (see [04-flows.md](04-flows.md)). The integration works like this:
+Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningResponse` processors inside the LLM flow pipeline (see [05-flows.md](05-flows.md)). The integration works like this:
 
 ```
 BaseLlmFlow.run_async(ctx)
@@ -291,8 +291,8 @@ agent = Agent(
 
 ## Cross-References
 
-- [02-agents.md](02-agents.md) — `LlmAgent.planner` field definition; agent configuration
-- [04-flows.md](04-flows.md) — How the planning processors fit into the request/response pipeline
-- [05-models.md](05-models.md) — Model adapters and `ThinkingConfig` support
-- [10-when-to-build-what.md](10-when-to-build-what.md) — Decision tree for custom `BasePlanner` subclasses
-- [14-advanced-adk.md](14-advanced-adk.md) — Additional planner examples in the advanced topics section
+- [04-agents.md](04-agents.md) — `LlmAgent.planner` field definition; agent configuration
+- [05-flows.md](05-flows.md) — How the planning processors fit into the request/response pipeline
+- [06-models.md](06-models.md) — Model adapters and `ThinkingConfig` support
+- [02-when-to-build-what.md](02-when-to-build-what.md) — Decision tree for custom `BasePlanner` subclasses
+- [23-advanced-internals.md](23-advanced-internals.md) — Additional planner examples in the advanced topics section

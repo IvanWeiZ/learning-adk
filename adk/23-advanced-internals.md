@@ -1,6 +1,6 @@
 # Advanced ADK — Internals, Patterns, and Deep Customization
 
-**Audience:** Developers who have completed the [onboarding guide](12-onboarding-guide.md) and [best practices](13-best-practices.md), and want to master ADK's internals.
+**Audience:** Developers who have completed the [onboarding guide](25-onboarding-guide.md) and [best practices](20-best-practices.md), and want to master ADK's internals.
 
 ---
 
@@ -1138,11 +1138,11 @@ agent = Agent(
 
 ## Cross-references
 
-- [12-onboarding-guide.md](12-onboarding-guide.md) — Start here if you're new
-- [13-best-practices.md](13-best-practices.md) — Common mistakes to avoid
-- [01-events.md](01-events.md) — Event class deep dive
-- [04-flows.md](04-flows.md) — Flow architecture
-- [07-tools.md](07-tools.md) — Tool system reference
-- [08-apps.md](08-apps.md) — App container and plugins
-- [09-memory.md](09-memory.md) — Memory and long-term recall
-- [request-lifecycle.md](request-lifecycle.md) — Full traced request
+- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you're new
+- [20-best-practices.md](20-best-practices.md) — Common mistakes to avoid
+- [07-events.md](07-events.md) — Event class deep dive
+- [05-flows.md](05-flows.md) — Flow architecture
+- [09-tools.md](09-tools.md) — Tool system reference
+- [10-apps.md](10-apps.md) — App container and plugins
+- [11-memory.md](11-memory.md) — Memory and long-term recall
+- [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request

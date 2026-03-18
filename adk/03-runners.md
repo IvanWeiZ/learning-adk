@@ -175,5 +175,5 @@ This prevents `Session.events` from growing unboundedly in long conversations.
 - [`agents/invocation_context.py`](../adk-python/src/google/adk/agents/invocation_context.py) — context object Runner creates
 - [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) — session persistence
 - [`apps/compaction.py`](../adk-python/src/google/adk/apps/compaction.py) — event compaction logic
-- [17-session-service-lifecycle.md](17-session-service-lifecycle.md) — Session service call timeline and latency optimization
-- [18-error-reference.md](18-error-reference.md) — Error reference (SessionNotFoundError, LlmCallsLimitExceededError)
+- [18-session-lifecycle.md](18-session-lifecycle.md) — Session service call timeline and latency optimization
+- [16-error-reference.md](16-error-reference.md) — Error reference (SessionNotFoundError, LlmCallsLimitExceededError)

@@ -2,7 +2,7 @@
 
 **Audience:** ADK developers building multi-user or multi-tenant agent systems where session isolation and data privacy are critical.
 
-**Prerequisites:** [06-sessions.md](06-sessions.md), [01-events.md](01-events.md), [13-best-practices.md](13-best-practices.md)
+**Prerequisites:** [08-sessions.md](08-sessions.md), [07-events.md](07-events.md), [20-best-practices.md](20-best-practices.md)
 
 **Source:** [`sessions/state.py`](../adk-python/src/google/adk/sessions/state.py) · [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](../adk-python/src/google/adk/sessions/in_memory_session_service.py) · [`sessions/database_session_service.py`](../adk-python/src/google/adk/sessions/database_session_service.py) · [`sessions/_session_util.py`](../adk-python/src/google/adk/sessions/_session_util.py)
 
@@ -1029,9 +1029,9 @@ The last point deserves emphasis: **when you delete a session, `user:` state and
 
 ## Cross-references
 
-- [06-sessions.md](06-sessions.md) — Session data model and service implementations
-- [01-events.md](01-events.md) — Event structure and what gets persisted
+- [08-sessions.md](08-sessions.md) — Session data model and service implementations
+- [07-events.md](07-events.md) — Event structure and what gets persisted
 - [03-runners.md](03-runners.md) — How Runner manages session lifecycle
-- [13-best-practices.md](13-best-practices.md) — General ADK best practices
-- [08-apps.md](08-apps.md) — App configuration and plugins
-- [07-tools.md](07-tools.md) — Tool system (relevant to data returned by tools)
+- [20-best-practices.md](20-best-practices.md) — General ADK best practices
+- [10-apps.md](10-apps.md) — App configuration and plugins
+- [09-tools.md](09-tools.md) — Tool system (relevant to data returned by tools)

@@ -330,5 +330,5 @@ This checks that the agent *called* the tool without asserting which exact query
 - [`evaluation/agent_evaluator.py`](../adk-python/src/google/adk/evaluation/agent_evaluator.py) — main entry point
 - [`evaluation/evaluator.py`](../adk-python/src/google/adk/evaluation/evaluator.py) — BaseEvaluator, metric implementations
 - [`python-testing-and-mocking-guide.md`](./python-testing-and-mocking-guide.md) — unit testing with pytest/AsyncMock
-- [`07-tools.md`](./07-tools.md) — tool system (what evals are testing)
-- [`10-when-to-build-what.md`](./10-when-to-build-what.md) — decision guide including when to write evals
+- [`09-tools.md`](./09-tools.md) — tool system (what evals are testing)
+- [`02-when-to-build-what.md`](./02-when-to-build-what.md) — decision guide including when to write evals

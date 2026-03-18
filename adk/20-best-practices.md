@@ -1,6 +1,6 @@
 # ADK Best Practices & Common Mistakes
 
-**Audience:** ADK developers who have completed the [onboarding guide](12-onboarding-guide.md) and want to write production-quality agent systems.
+**Audience:** ADK developers who have completed the [onboarding guide](25-onboarding-guide.md) and want to write production-quality agent systems.
 
 ---
 
@@ -836,10 +836,10 @@ Agent not responding correctly?
 
 ## Cross-references
 
-- [12-onboarding-guide.md](12-onboarding-guide.md) — Start here if you're new
-- [14-advanced-adk.md](14-advanced-adk.md) — Advanced patterns and internals
-- [02-agents.md](02-agents.md) — Agent types deep dive
-- [07-tools.md](07-tools.md) — Tool system reference
-- [06-sessions.md](06-sessions.md) — Session state details
-- [10-when-to-build-what.md](10-when-to-build-what.md) — Decision guide
-- [request-lifecycle.md](request-lifecycle.md) — Full traced request
+- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you're new
+- [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
+- [04-agents.md](04-agents.md) — Agent types deep dive
+- [09-tools.md](09-tools.md) — Tool system reference
+- [08-sessions.md](08-sessions.md) — Session state details
+- [02-when-to-build-what.md](02-when-to-build-what.md) — Decision guide
+- [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request

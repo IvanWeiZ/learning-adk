@@ -161,5 +161,5 @@ tool_context.state['app:feature_flags'] = {'beta': True}
 - [`sessions/sqlite_session_service.py`](../adk-python/src/google/adk/sessions/sqlite_session_service.py) — local persistence
 - [`sessions/database_session_service.py`](../adk-python/src/google/adk/sessions/database_session_service.py) — production DB
 - [`sessions/state.py`](../adk-python/src/google/adk/sessions/state.py) — state scoping constants
-- [16-session-event-security.md](16-session-event-security.md) — Session event security considerations
-- [17-session-service-lifecycle.md](17-session-service-lifecycle.md) — Session service call timeline and optimization
+- [19-session-security.md](19-session-security.md) — Session event security considerations
+- [18-session-lifecycle.md](18-session-lifecycle.md) — Session service call timeline and optimization

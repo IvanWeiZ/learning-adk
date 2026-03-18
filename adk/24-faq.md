@@ -1005,10 +1005,10 @@ tool_context.state["temp:cache"] = expensive_result  # Temp: this request only
 
 ## Cross-references
 
-- [12-onboarding-guide.md](12-onboarding-guide.md) — Start here if you're new
-- [13-best-practices.md](13-best-practices.md) — Common mistakes to avoid
-- [14-advanced-adk.md](14-advanced-adk.md) — Advanced patterns and internals
-- [06-sessions.md](06-sessions.md) — Session state deep dive
-- [07-tools.md](07-tools.md) — Tool system reference
-- [02-agents.md](02-agents.md) — Agent types and configuration
-- [request-lifecycle.md](request-lifecycle.md) — Full traced request example
+- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you're new
+- [20-best-practices.md](20-best-practices.md) — Common mistakes to avoid
+- [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
+- [08-sessions.md](08-sessions.md) — Session state deep dive
+- [09-tools.md](09-tools.md) — Tool system reference
+- [04-agents.md](04-agents.md) — Agent types and configuration
+- [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request example

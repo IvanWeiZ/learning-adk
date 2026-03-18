@@ -919,22 +919,22 @@ Agent(
 ```
 You are here ────────────────────────────────────────────────────┐
 │                                                                 │
-│  ✅ 12-onboarding-guide.md (this file)                          │
+│  ✅ 25-onboarding-guide.md (this file)                          │
 │     │                                                           │
 │     ├── Want to avoid common mistakes?                          │
-│     │   → 13-best-practices.md                                  │
+│     │   → 20-best-practices.md                                  │
 │     │                                                           │
 │     ├── Want to go deeper into advanced patterns?               │
-│     │   → 14-advanced-adk.md                                    │
+│     │   → 23-advanced-internals.md                                    │
 │     │                                                           │
 │     ├── Want to understand a specific component?                │
-│     │   → 01-events.md through 08-apps.md (in order)            │
+│     │   → 07-events.md through 10-apps.md (in order)            │
 │     │                                                           │
 │     ├── Want to see a full traced request?                      │
-│     │   → request-lifecycle.md                                   │
+│     │   → 01-request-lifecycle.md                                   │
 │     │                                                           │
 │     └── Need to decide which ADK component to use?              │
-│         → 10-when-to-build-what.md                               │
+│         → 02-when-to-build-what.md                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -942,11 +942,11 @@ You are here ──────────────────────�
 
 ## Cross-references
 
-- [01-events.md](01-events.md) — Deep dive on the Event class
-- [02-agents.md](02-agents.md) — All agent types in detail
+- [07-events.md](07-events.md) — Deep dive on the Event class
+- [04-agents.md](04-agents.md) — All agent types in detail
 - [03-runners.md](03-runners.md) — Runner lifecycle
-- [07-tools.md](07-tools.md) — Complete tool system reference
-- [06-sessions.md](06-sessions.md) — Session state and storage backends
-- [10-when-to-build-what.md](10-when-to-build-what.md) — Decision guide
-- [13-best-practices.md](13-best-practices.md) — Best practices and common mistakes
-- [14-advanced-adk.md](14-advanced-adk.md) — Advanced patterns and internals
+- [09-tools.md](09-tools.md) — Complete tool system reference
+- [08-sessions.md](08-sessions.md) — Session state and storage backends
+- [02-when-to-build-what.md](02-when-to-build-what.md) — Decision guide
+- [20-best-practices.md](20-best-practices.md) — Best practices and common mistakes
+- [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals

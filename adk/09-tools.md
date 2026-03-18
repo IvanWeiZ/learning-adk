@@ -179,5 +179,5 @@ class MyTool(BaseTool):
 - [`tools/mcp_tool/`](../adk-python/src/google/adk/tools/mcp_tool/) — MCP protocol support
 - [`tools/openapi_tool/`](../adk-python/src/google/adk/tools/openapi_tool/) — OpenAPI/REST tools
 - [`tools/google_search_tool.py`](../adk-python/src/google/adk/tools/google_search_tool.py) — Google Search
-- [19-artifacts.md](19-artifacts.md) — Artifact service deep dive (save_artifact, load_artifact)
-- [20-auth.md](20-auth.md) — Authentication deep dive (OAuth, credential service)
+- [12-artifacts.md](12-artifacts.md) — Artifact service deep dive (save_artifact, load_artifact)
+- [13-auth.md](13-auth.md) — Authentication deep dive (OAuth, credential service)

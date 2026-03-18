@@ -17,16 +17,32 @@ A curated documentation and learning resource for **Google ADK (Agent Developmen
 ```
 learning-adk/
 ├── README.md                                      # Architecture overview and reading order
-├── 01-events.md                                   # Event class hierarchy and side-effects
-├── 02-agents.md                                   # Agent types (LlmAgent, Loop, Parallel, Sequential)
-├── 03-runners.md                                  # Runner lifecycle (fetch → build → run → persist)
-├── 04-flows.md                                    # LLM reason-act loop (SingleFlow, AutoFlow)
-├── 05-models.md                                   # LLM adapters (Gemini, Anthropic, LiteLLM)
-├── 06-sessions.md                                 # Session state and storage backends
-├── 07-tools.md                                    # Tool system (FunctionTool, BaseTool, Toolset)
-├── 08-apps.md                                     # App container, plugins, compaction
-├── 10-when-to-build-what.md                       # Decision guide: scenario → ADK component
-├── request-lifecycle.md                           # Full traced request example with payloads
+├── adk/
+│   ├── 01-request-lifecycle.md                    # Full traced request — the mental model
+│   ├── 02-when-to-build-what.md                   # Decision guide: scenario → ADK component
+│   ├── 03-runners.md                              # Runner lifecycle (fetch → build → run → persist)
+│   ├── 04-agents.md                               # Agent types (LlmAgent, Loop, Parallel, Sequential)
+│   ├── 05-flows.md                                # LLM reason-act loop (SingleFlow, AutoFlow)
+│   ├── 06-models.md                               # LLM adapters (Gemini, Anthropic, LiteLLM)
+│   ├── 07-events.md                               # Event class hierarchy and side-effects
+│   ├── 08-sessions.md                             # Session state and storage backends
+│   ├── 09-tools.md                                # Tool system (FunctionTool, BaseTool, Toolset)
+│   ├── 10-apps.md                                 # App container, plugins, compaction
+│   ├── 11-memory.md                               # Cross-session recall, RAG
+│   ├── 12-artifacts.md                            # Binary file storage
+│   ├── 13-auth.md                                 # OAuth, credential management
+│   ├── 14-planners.md                             # Thinking mode, plan-then-act
+│   ├── 15-evaluation.md                           # Agent quality testing
+│   ├── 16-error-reference.md                      # Error paths, recovery, silent failures
+│   ├── 17-concurrency.md                          # Thread safety, parallel tools, locking
+│   ├── 18-session-lifecycle.md                    # Session service timeline, optimization
+│   ├── 19-session-security.md                     # Security considerations
+│   ├── 20-best-practices.md                       # Anti-patterns, common mistakes
+│   ├── 21-advanced-patterns.md                    # YAML configs, ReflectAndRetry, triage gates
+│   ├── 22-testing.md                              # MockModel, deterministic testing
+│   ├── 23-advanced-internals.md                   # Processor pipeline, plugins, A2A internals
+│   ├── 24-faq.md                                  # Tool versioning, state scoping
+│   └── 25-onboarding-guide.md                     # Zero-to-first-agent walkthrough
 ├── python-for-adk-learning-plan.md                # 2-week Python curriculum
 ├── python-asyncio-deep-dive.md                    # Async/await patterns
 ├── python-decorators-metaprogramming-deep-dive.md # Decorators and metaprogramming
@@ -143,7 +159,7 @@ Need to add a capability to an agent?
 **Add:**
 - Deep dives on any ADK component not yet covered (e.g., `memory`, `artifacts`, `auth`, `a2a`, `code_executors`, `evaluation`)
 - Additional Python guides (e.g., `python-generators-deep-dive.md`, `python-context-managers-deep-dive.md`)
-- Real-world scenario walkthroughs following the `request-lifecycle.md` format
+- Real-world scenario walkthroughs following the `01-request-lifecycle.md` format
 - Java-to-Python comparison tables where helpful
 
 **Avoid:**
@@ -178,8 +194,8 @@ git push -u origin claude/add-claude-documentation-OCX0K
 ## Reading Order for New Contributors
 
 1. `README.md` — big picture architecture
-2. `01-events.md` through `08-apps.md` — component deep dives (in order)
-3. `request-lifecycle.md` — see it all connected
+2. `01-request-lifecycle.md` — full traced request through every layer
+3. `03-runners.md` through `09-tools.md` — core layers in execution order
 4. `10-when-to-build-what.md` — practical decision guide
 5. `python-for-adk-learning-plan.md` — if you need Python fundamentals
 6. Python deep dives as needed (asyncio, Pydantic, decorators, testing)

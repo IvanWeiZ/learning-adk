@@ -179,6 +179,6 @@ agent = LlmAgent(
 
 ## Cross-References
 
-- [Request Lifecycle](request-lifecycle.md) — full traced request showing where errors can occur at each stage
+- [Request Lifecycle](01-request-lifecycle.md) — full traced request showing where errors can occur at each stage
 - [Runners](03-runners.md) — `Runner.run_async()` orchestration and session lookup
-- [Tools](07-tools.md) — tool execution model and `FunctionTool` error handling
+- [Tools](09-tools.md) — tool execution model and `FunctionTool` error handling

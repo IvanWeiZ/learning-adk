@@ -72,7 +72,7 @@ Plugins run **strictly sequentially** (a `for` loop with `await` on each plugin)
 
 ## Cross-References
 
-- [Request Lifecycle](request-lifecycle.md) -- full traced request showing where session calls happen
-- [Sessions](06-sessions.md) -- session state model and storage backends
-- [Session Service Lifecycle](17-session-service-lifecycle.md) -- detailed `append_event` flow and state delta mechanics
-- [Error Reference](18-error-reference.md) -- what happens when tool or model calls fail mid-execution
+- [Request Lifecycle](01-request-lifecycle.md) -- full traced request showing where session calls happen
+- [Sessions](08-sessions.md) -- session state model and storage backends
+- [Session Service Lifecycle](18-session-lifecycle.md) -- detailed `append_event` flow and state delta mechanics
+- [Error Reference](16-error-reference.md) -- what happens when tool or model calls fail mid-execution

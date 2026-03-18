@@ -585,8 +585,8 @@ runner = Runner(agent=agent, app_name="my_app", session_service=session_service)
 
 ## Cross-References
 
-- [06-sessions.md](06-sessions.md) — Session data model, state scoping, service interface
+- [08-sessions.md](08-sessions.md) — Session data model, state scoping, service interface
 - [03-runners.md](03-runners.md) — Runner lifecycle and how it orchestrates session calls
-- [01-events.md](01-events.md) — Event structure and EventActions (state_delta)
-- [request-lifecycle.md](request-lifecycle.md) — Full traced request showing session service calls in context
-- [08-apps.md](08-apps.md) — Compaction (which also appends events post-invocation)
+- [07-events.md](07-events.md) — Event structure and EventActions (state_delta)
+- [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request showing session service calls in context
+- [10-apps.md](10-apps.md) — Compaction (which also appends events post-invocation)

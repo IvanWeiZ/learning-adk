@@ -228,4 +228,4 @@ The LLM in `root_agent` can say "transfer to search_agent", which triggers `Even
 - [`agents/parallel_agent.py`](../adk-python/src/google/adk/agents/parallel_agent.py) — parallel composition
 - [`agents/sequential_agent.py`](../adk-python/src/google/adk/agents/sequential_agent.py) — sequential composition
 - [`agents/callback_context.py`](../adk-python/src/google/adk/agents/callback_context.py) — context passed to callbacks
-- [21-planners.md](21-planners.md) — BuiltInPlanner and PlanReActPlanner deep dive
+- [14-planners.md](14-planners.md) — BuiltInPlanner and PlanReActPlanner deep dive
