@@ -14,8 +14,7 @@ The `models/` package is a thin adapter layer between ADK's internal types (`Llm
 
 ```
 BaseLlm  (base_llm.py)   — abstract interface
-    ├── GeminiLlm         — Gemini models via google-genai SDK (primary)
-    ├── GoogleLlm         — Google-hosted Gemini via Vertex AI
+    ├── Gemini            — Gemini models via google-genai SDK (primary, in google_llm.py)
     ├── AnthropicLlm      — Claude models via anthropic SDK (optional dep)
     └── LiteLlm           — 100+ providers via litellm (optional dep)
 ```
@@ -76,12 +75,12 @@ Function calls, thoughts, and blobs follow the same pattern — they can arrive 
 
 ```python
 # Registration (done at module import time in each adapter):
-LLMRegistry.register(GeminiLlm)
-# GeminiLlm.supported_models() = [r'gemini-.*', r'learnlm-.*', ...]
+LLMRegistry.register(Gemini)
+# Gemini.supported_models() = [r'gemini-.*', r'learnlm-.*', ...]
 
 # Resolution:
 llm = LLMRegistry.new_llm('gemini-2.5-flash')
-# → finds GeminiLlm via regex match → returns GeminiLlm(model='gemini-2.5-flash')
+# → finds Gemini via regex match → returns Gemini(model='gemini-2.5-flash')
 ```
 
 `resolve()` is `@lru_cache(maxsize=32)` — repeated resolution of the same model name is fast.
@@ -100,13 +99,19 @@ The request object assembled by the flow before calling the model:
 class LlmRequest:
     model: str                              # model name to use
     contents: list[types.Content]           # conversation history
-    system_instruction: types.Content       # system prompt
-    tools: list[types.Tool]                 # tool definitions (FunctionDeclarations)
-    config: types.GenerateContentConfig     # temperature, safety, response_schema, etc.
+    config: types.GenerateContentConfig     # system_instruction, tools, temperature, safety, etc.
     tools_dict: dict[str, BaseTool]         # name → BaseTool (internal routing map)
+    cache_config: Optional[...]             # context cache configuration
+    cache_metadata: Optional[...]           # context cache metadata
+    cacheable_contents_token_count: int     # token count for cacheable contents
+    live_connect_config: Optional[...]      # Live API connection config
+    previous_interaction_id: Optional[str]  # for resumable invocations
+
+    # Note: system_instruction and tools live inside config (GenerateContentConfig),
+    # not as top-level fields on LlmRequest.
 
     def append_tools(self, tools: list[BaseTool]) -> None:
-        # Adds FunctionDeclarations to self.tools and populates tools_dict.
+        # Adds FunctionDeclarations to config.tools and populates tools_dict.
 ```
 
 ---
@@ -174,7 +179,6 @@ LLMRegistry.register(MyLlm)
 - [`models/registry.py`](../adk-python/src/google/adk/models/registry.py) — model dispatch
 - [`models/llm_request.py`](../adk-python/src/google/adk/models/llm_request.py) — request object
 - [`models/llm_response.py`](../adk-python/src/google/adk/models/llm_response.py) — response object
-- [`models/gemini_llm.py`](../adk-python/src/google/adk/models/gemini_llm.py) — Gemini adapter
-- [`models/google_llm.py`](../adk-python/src/google/adk/models/google_llm.py) — Vertex AI adapter
+- [`models/google_llm.py`](../adk-python/src/google/adk/models/google_llm.py) — Gemini adapter (`class Gemini`)
 - [`models/anthropic_llm.py`](../adk-python/src/google/adk/models/anthropic_llm.py) — Anthropic adapter
 - [`models/lite_llm.py`](../adk-python/src/google/adk/models/lite_llm.py) — LiteLLM adapter

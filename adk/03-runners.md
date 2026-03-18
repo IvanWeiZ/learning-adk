@@ -49,12 +49,18 @@ runner = Runner(
 
 ```python
 async def run_async(
+    self,
+    *,
     user_id: str,
     session_id: str,
-    new_message: types.Content,
+    invocation_id: Optional[str] = None,
+    new_message: Optional[types.Content] = None,
+    state_delta: Optional[dict[str, Any]] = None,
     run_config: Optional[RunConfig] = None,
 ) -> AsyncGenerator[Event, None]:
 ```
+
+Note: all parameters are **keyword-only** (after `*`). `new_message` is `Optional` (can be `None` for resumable invocations). `invocation_id` allows specifying a custom invocation ID, and `state_delta` allows injecting state changes at invocation time.
 
 The main entry point. Yields Events as they are produced:
 

@@ -231,7 +231,7 @@ CallbackContext(
     user_content: Optional[types.Content],  # original user message (read-only)
     state: State,                            # mutable — writes queue a state_delta
     session: Session,                        # read-only view of session
-    user_id: str,
+    # user_id is NOT a direct property — access via: callback_context.session.user_id
     actions: EventActions,                  # accumulated side-effects
 )
 ```
@@ -608,9 +608,11 @@ async def append_event(session: Session, event: Event) -> Event:
             session.state[key] = value         # 2. Write temp: keys to in-memory state immediately
                                                #    so later agents in this invocation can read them
 
-    event = event.copy(state_delta={           # 3. Strip temp: keys from the event before storage
-        k: v for k, v in state_delta.items() if not k.startswith("temp:")
-    })
+    # 3. Strip temp: keys from the delta before writing to storage
+    event.actions.state_delta = {
+        k: v for k, v in event.actions.state_delta.items()
+        if not k.startswith("temp:")
+    }
 
     session.state.update(event.actions.state_delta)  # 4. Commit remaining state
     session.events.append(event)                      # 5. Add to in-memory history

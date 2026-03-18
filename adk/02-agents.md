@@ -57,7 +57,7 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 name: str               # must be a valid Python identifier, unique in tree
 description: str        # one-line summary; LLM uses this to decide delegation
 sub_agents: list[BaseAgent]    # child agents in the hierarchy
-parent_agent: BaseAgent        # set automatically, not in constructor
+parent_agent: Optional[BaseAgent]  # set automatically, defaults to None, not in constructor
 before_agent_callback: ...     # runs before _run_async_impl; can short-circuit
 after_agent_callback: ...      # runs after _run_async_impl; can append events
 ```
@@ -92,7 +92,9 @@ def _llm_flow(self) -> BaseLlmFlow:
 
 ```python
 model: Union[str, BaseLlm]  # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
-                             # Default: 'gemini-2.5-flash'
+                             # Default: '' (empty string). Resolution walks up parent agents;
+                             # falls back to class variable DEFAULT_MODEL ('gemini-2.5-flash')
+                             # only if no ancestor sets a model.
 
 instruction: Union[str, InstructionProvider]
 # System prompt. Supports {variable} placeholders resolved from session state.
@@ -107,8 +109,9 @@ tools: list[ToolUnion]
 generate_content_config: types.GenerateContentConfig
 # Temperature, safety settings, etc. Tools/instructions must NOT be set here.
 
-output_schema: Optional[type[BaseModel]]
+output_schema: Optional[SchemaType]
 # Forces structured JSON output. When set, agent cannot use tools.
+# SchemaType accepts: type[BaseModel], list[type[BaseModel]], list[primitive], dict, or Schema.
 
 output_key: Optional[str]
 # On final response, writes text to session.state[output_key].

@@ -13,7 +13,7 @@
 - Context cache configuration
 - Resumability configuration (pause/resume long-running invocations)
 
-Without `App`, you can pass `agent=` and `app_name=` directly to `Runner`. With `App`, you pass `app=` to `Runner` and get all the above for free.
+Without `App`, you can pass `agent=` and `app_name=` directly to `Runner`. With `App`, you pass `app=` to `Runner` and get all the above for free. The root agent is set via the `root_agent` field.
 
 ---
 
@@ -22,7 +22,7 @@ Without `App`, you can pass `agent=` and `app_name=` directly to `Runner`. With 
 ```python
 class App(BaseModel):
     name: str                                    # app identifier (valid Python identifier)
-    agent: BaseAgent                             # the root agent
+    root_agent: BaseAgent                        # the root agent
     plugins: list[BasePlugin] = []               # app-level hooks
     events_compaction_config: Optional[EventsCompactionConfig] = None
     context_cache_config: Optional[ContextCacheConfig] = None
@@ -41,7 +41,7 @@ from google.adk.sessions import InMemorySessionService
 
 agent = LlmAgent(name='my_agent', model='gemini-2.5-flash', instruction='...')
 
-app = App(name='my_app', agent=agent)
+app = App(name='my_app', root_agent=agent)
 
 runner = Runner(app=app, session_service=InMemorySessionService())
 ```
@@ -73,7 +73,7 @@ class MyLoggingPlugin(BasePlugin):
         print(f'Agent {agent.name} starting...')
         return None  # don't short-circuit
 
-app = App(name='my_app', agent=agent, plugins=[MyLoggingPlugin()])
+app = App(name='my_app', root_agent=agent, plugins=[MyLoggingPlugin()])
 ```
 
 ---
@@ -87,7 +87,7 @@ from google.adk.apps.app import EventsCompactionConfig
 
 app = App(
     name='my_app',
-    agent=agent,
+    root_agent=agent,
     events_compaction_config=EventsCompactionConfig(
         compaction_interval=10,   # compact after every 10 new user turns
         overlap_size=2,           # keep 2 most recent turns verbatim (for context)
@@ -114,7 +114,7 @@ from google.adk.agents.context_cache_config import ContextCacheConfig
 
 app = App(
     name='my_app',
-    agent=agent,
+    root_agent=agent,
     context_cache_config=ContextCacheConfig(
         # Explicit cache config — creates a named cache on Vertex AI
         use_context_cache=True,
@@ -136,7 +136,7 @@ from google.adk.apps.app import ResumabilityConfig
 
 app = App(
     name='my_app',
-    agent=agent,
+    root_agent=agent,
     resumability_config=ResumabilityConfig(is_resumable=True),
 )
 ```

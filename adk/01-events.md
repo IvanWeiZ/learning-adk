@@ -23,14 +23,14 @@ A `Session` is essentially just an ordered list of Events. Everything else in th
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```
-google.genai.types.Content   (raw LLM content from genai SDK)
+pydantic.BaseModel
         ↑
-    LlmResponse              (models/llm_response.py — wraps Content + metadata)
+    LlmResponse              (models/llm_response.py — contains content: Optional[types.Content])
         ↑
       Event                  (events/event.py — adds author, invocation_id, actions, branch)
 ```
 
-`Event` extends `LlmResponse` which extends the genai SDK's content type. This means an Event can carry anything an LLM response can: text, function calls, function responses, blobs, thoughts.
+`Event` extends `LlmResponse` which extends `pydantic.BaseModel` and *contains* a `content: Optional[types.Content]` field (it does not inherit from `Content`). This means an Event can carry anything an LLM response can: text, function calls, function responses, blobs, thoughts.
 
 ---
 
@@ -65,7 +65,7 @@ class EventActions(BaseModel):
     transfer_to_agent: Optional[str]    # route control to this named agent
     escalate: Optional[bool]            # signal parent agent to take over
     skip_summarization: Optional[bool]  # don't summarize this tool response
-    requested_auth_configs: dict        # tool is asking for OAuth credentials
+    requested_auth_configs: dict[str, AuthConfig]  # tool is asking for OAuth credentials
     compaction: Optional[EventCompaction]  # summary of compacted old events
     end_of_agent: Optional[bool]        # agent finished its current run
     agent_state: Optional[dict]         # checkpoint for resumable invocations

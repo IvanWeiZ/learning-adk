@@ -101,7 +101,7 @@ class ToolContext:
     async def load_artifact(filename, version=None)      # returns artifact
 
     # Request OAuth credentials:
-    async def request_credential(auth_config: AuthConfig) -> None
+    def request_credential(auth_config: AuthConfig) -> None
 
     # Interact with memory:
     async def search_memory(query: str) -> SearchMemoryResponse
@@ -157,14 +157,16 @@ Tools can request human confirmation before executing:
 ```python
 class MyTool(BaseTool):
     async def run_async(self, args, tool_context):
-        # Request confirmation
-        tool_context.actions.requested_tool_confirmations[call_id] = ToolConfirmation(
-            title='Delete file?',
-            message=f'Are you sure you want to delete {args["filename"]}?'
+        # Request confirmation via the clean API
+        tool_context.request_confirmation(
+            hint='Delete file?',
+            payload={'filename': args['filename']}
         )
         # Tool execution pauses; client shows confirmation dialog
         # On next invocation, if confirmed, the tool runs for real
 ```
+
+`ToolConfirmation` uses `hint` and `payload` fields (not `title`/`message`).
 
 ---
 
