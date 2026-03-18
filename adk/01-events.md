@@ -4,7 +4,8 @@
 
 ---
 
-## What It Is
+## [x] What It Is
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 `Event` is the single shared data type that flows through the entire ADK system. Every observable action produces an Event:
 
@@ -18,7 +19,8 @@ A `Session` is essentially just an ordered list of Events. Everything else in th
 
 ---
 
-## Class Hierarchy
+## [x] Class Hierarchy
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```
 google.genai.types.Content   (raw LLM content from genai SDK)
@@ -32,7 +34,8 @@ google.genai.types.Content   (raw LLM content from genai SDK)
 
 ---
 
-## Key Fields
+## [x] Key Fields
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```python
 class Event(LlmResponse):
@@ -50,7 +53,8 @@ class Event(LlmResponse):
 
 ---
 
-## EventActions — The Side-Effect Envelope
+## [x] EventActions — The Side-Effect Envelope
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 `EventActions` carries all side-effects that an event triggers. Stored on `event.actions`.
 
@@ -71,7 +75,8 @@ class EventActions(BaseModel):
 
 ---
 
-## Key Methods on Event
+## [x] Key Methods on Event
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```python
 event.is_final_response() -> bool
@@ -91,7 +96,8 @@ event.has_trailing_code_execution_result() -> bool
 
 ---
 
-## The Branch Field
+## [x] The Branch Field
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 In a multi-agent tree, sibling agents should not see each other's conversation history. The `branch` field encodes the path from root to the current agent:
 
@@ -103,7 +109,8 @@ When building LLM context, the flow filters events by branch so each agent only 
 
 ---
 
-## How Events Flow
+## [x] How Events Flow
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```
 1. User sends message
@@ -127,7 +134,8 @@ When building LLM context, the flow filters events by branch so each agent only 
 
 ---
 
-## Related Files
+## [x] Related Files
+<!-- completed: 2026-03-18T03:27:24.773Z -->
 
 - [`events/event_actions.py`](../adk-python/src/google/adk/events/event_actions.py) — `EventActions` definition
 - [`models/llm_response.py`](../adk-python/src/google/adk/models/llm_response.py) — parent class

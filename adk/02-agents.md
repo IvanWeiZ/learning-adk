@@ -51,7 +51,7 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 
 `@final` means subclasses must **not** override `run_async` — only `_run_async_impl`.
 
-### [ ] BaseAgent Fields
+### BaseAgent Fields
 
 ```python
 name: str               # must be a valid Python identifier, unique in tree
@@ -77,7 +77,7 @@ async def _run_async_impl(ctx):
         yield event
 ```
 
-### [ ] Which flow does it use?
+### Which flow does it use?
 
 ```python
 @property
@@ -88,7 +88,7 @@ def _llm_flow(self) -> BaseLlmFlow:
         return AutoFlow()     # handles agent transfer/delegation
 ```
 
-### [ ] Key Fields
+### Key Fields
 
 ```python
 model: Union[str, BaseLlm]  # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
@@ -124,7 +124,7 @@ planner: Optional[BasePlanner]   # step-by-step planning / thinking
 code_executor: Optional[BaseCodeExecutor]  # run generated code blocks
 ```
 
-### [ ] Callbacks on LlmAgent
+### Callbacks on LlmAgent
 
 LlmAgent adds finer-grained hooks compared to BaseAgent:
 
