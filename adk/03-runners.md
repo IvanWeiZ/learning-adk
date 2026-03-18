@@ -34,21 +34,21 @@ Dies after: run_async() Lives forever Lives across invocations
 
 ```python
 runner = Runner(
- agent=root_agent, # the root agent to run
- app_name='my_app',
- session_service=InMemorySessionService(),
+    agent=root_agent, # the root agent to run
+    app_name='my_app',
+    session_service=InMemorySessionService(),
 
- # optional:
- artifact_service=...,
- memory_service=...,
- credential_service=...,
- auto_create_session=False, # raise if session not found
+    # optional:
+    artifact_service=...,
+    memory_service=...,
+    credential_service=...,
+    auto_create_session=False, # raise if session not found
 )
 
 # For production: pass an App instead (adds plugins, compaction, caching — see 10-apps.md)
 runner = Runner(
- app=my_app, # App bundles agent + plugins + config
- session_service=...,
+    app=my_app, # App bundles agent + plugins + config
+    session_service=...,
 )
 ```
 
@@ -60,14 +60,14 @@ runner = Runner(
 
 ```python
 async def run_async(
- self,
- *,
- user_id: str,
- session_id: str,
- invocation_id: Optional[str] = None,
- new_message: Optional[types.Content] = None,
- state_delta: Optional[dict[str, Any]] = None,
- run_config: Optional[RunConfig] = None,
+    self,
+    *,
+    user_id: str,
+    session_id: str,
+    invocation_id: Optional[str] = None,
+    new_message: Optional[types.Content] = None,
+    state_delta: Optional[dict[str, Any]] = None,
+    run_config: Optional[RunConfig] = None,
 ) -> AsyncGenerator[Event, None]:
 ```
 
@@ -87,10 +87,10 @@ user message event
 
 ```python
 async def run_live(
- user_id: str,
- session_id: str,
- live_request_queue: LiveRequestQueue,
- run_config: Optional[RunConfig] = None,
+    user_id: str,
+    session_id: str,
+    live_request_queue: LiveRequestQueue,
+    run_config: Optional[RunConfig] = None,
 ) -> AsyncGenerator[Event, None]:
 ```
 
@@ -148,11 +148,11 @@ Default `auto_create_session=False` raises `SessionNotFoundError` for unknown se
 
 ```python
 class RunConfig:
- streaming_mode: StreamingMode # SSE, NONE
- max_llm_calls: int # safety cap on LLM calls per invocation
- save_input_blobs_as_artifacts: bool
- support_cfc: bool # client function calling
- custom_metadata: dict # attached to all events from this run
+    streaming_mode: StreamingMode # SSE, NONE
+    max_llm_calls: int # safety cap on LLM calls per invocation
+    save_input_blobs_as_artifacts: bool
+    support_cfc: bool # client function calling
+    custom_metadata: dict # attached to all events from this run
 ```
 
 ---

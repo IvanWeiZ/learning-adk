@@ -75,14 +75,14 @@ AutoFlow processors:
 # AutoFlow injects transfer_to_agent as a tool when sub_agents exist
 # The LLM sees this in its function declarations:
 {
- "name": "transfer_to_agent",
- "description": "Transfer to another agent for specialized handling",
- "parameters": {
- "agent_name": {
- "type": "string",
- "description": "Name of the agent to transfer to"
- }
- }
+    "name": "transfer_to_agent",
+    "description": "Transfer to another agent for specialized handling",
+    "parameters": {
+    "agent_name": {
+    "type": "string",
+    "description": "Name of the agent to transfer to"
+    }
+    }
 }
 ```
 
@@ -148,16 +148,16 @@ When the LLM returns multiple function calls, ADK runs them concurrently:
 ```python
 # Inside handle_function_calls_async():
 async def _execute_tools_parallel(function_calls, tool_context):
- tasks = []
- for fc in function_calls:
- tool = find_tool(fc.name)
- task = asyncio.create_task(
- _execute_single_tool(tool, fc.args, tool_context)
- )
- tasks.append(task)
+    tasks = []
+    for fc in function_calls:
+    tool = find_tool(fc.name)
+    task = asyncio.create_task(
+    _execute_single_tool(tool, fc.args, tool_context)
+    )
+    tasks.append(task)
 
- results = await asyncio.gather(*tasks, return_exceptions=True)
- return results
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    return results
 ```
 
 ```
@@ -239,42 +239,42 @@ import logging
 logger = logging.getLogger(__name__)
 
 class MetricsPlugin(BasePlugin):
- """Tracks latency and token usage across all agents."""
+    """Tracks latency and token usage across all agents."""
 
- name = "metrics_plugin"
+    name = "metrics_plugin"
 
- async def before_run_callback(self, callback_context, **kwargs):
- callback_context.state["temp:run_start"] = time.time()
- return None # Continue normally
+    async def before_run_callback(self, callback_context, **kwargs):
+    callback_context.state["temp:run_start"] = time.time()
+    return None # Continue normally
 
- async def before_model_callback(self, callback_context, llm_request, **kwargs):
- callback_context.state["temp:model_start"] = time.time()
- msg_count = len(llm_request.contents) if llm_request.contents else 0
- logger.info(f"LLM call with {msg_count} messages")
- return None
+    async def before_model_callback(self, callback_context, llm_request, **kwargs):
+    callback_context.state["temp:model_start"] = time.time()
+    msg_count = len(llm_request.contents) if llm_request.contents else 0
+    logger.info(f"LLM call with {msg_count} messages")
+    return None
 
- async def after_model_callback(self, callback_context, llm_response, **kwargs):
- start = callback_context.state.get("temp:model_start", 0)
- latency = time.time() - start
- logger.info(f"LLM responded in {latency:.2f}s")
+    async def after_model_callback(self, callback_context, llm_response, **kwargs):
+    start = callback_context.state.get("temp:model_start", 0)
+    latency = time.time() - start
+    logger.info(f"LLM responded in {latency:.2f}s")
 
- # Track cumulative token usage in user-scoped state
- if llm_response and llm_response.usage_metadata:
- total = callback_context.state.get("user:total_tokens", 0)
- total += llm_response.usage_metadata.total_token_count or 0
- callback_context.state["user:total_tokens"] = total
- return None
+    # Track cumulative token usage in user-scoped state
+    if llm_response and llm_response.usage_metadata:
+    total = callback_context.state.get("user:total_tokens", 0)
+    total += llm_response.usage_metadata.total_token_count or 0
+    callback_context.state["user:total_tokens"] = total
+    return None
 
- async def on_event_callback(self, callback_context, event, **kwargs):
- # Log every event for observability
- logger.debug(f"Event from {event.author}: {event.id}")
- return None
+    async def on_event_callback(self, callback_context, event, **kwargs):
+    # Log every event for observability
+    logger.debug(f"Event from {event.author}: {event.id}")
+    return None
 
- async def after_run_callback(self, callback_context, **kwargs):
- start = callback_context.state.get("temp:run_start", 0)
- total = time.time() - start
- logger.info(f"Total run time: {total:.2f}s")
- return None
+    async def after_run_callback(self, callback_context, **kwargs):
+    start = callback_context.state.get("temp:run_start", 0)
+    total = time.time() - start
+    logger.info(f"Total run time: {total:.2f}s")
+    return None
 ```
 
 ### Registering Plugins
@@ -283,11 +283,11 @@ class MetricsPlugin(BasePlugin):
 from google.adk.apps import App
 
 app = App(
- agent=root_agent,
- plugins=[
- MetricsPlugin(),
- DebugLoggingPlugin(), # Built-in
- ],
+    agent=root_agent,
+    plugins=[
+    MetricsPlugin(),
+    DebugLoggingPlugin(), # Built-in
+    ],
 )
 ```
 
@@ -304,61 +304,61 @@ from google.genai import types
 import aiohttp
 
 class HttpApiTool(BaseTool):
- """A tool that calls any HTTP API endpoint."""
+    """A tool that calls any HTTP API endpoint."""
 
- def __init__(self, name: str, base_url: str, endpoints: dict):
- super().__init__(
- name=name,
- description=f"Call HTTP APIs at {base_url}",
- )
- self.base_url = base_url
- self.endpoints = endpoints # {"search": {"method": "GET", "path": "/search"}}
+    def __init__(self, name: str, base_url: str, endpoints: dict):
+    super().__init__(
+    name=name,
+    description=f"Call HTTP APIs at {base_url}",
+    )
+    self.base_url = base_url
+    self.endpoints = endpoints # {"search": {"method": "GET", "path": "/search"}}
 
- def _get_declaration(self) -> types.FunctionDeclaration:
- """Define what the LLM sees."""
- return types.FunctionDeclaration(
- name=self.name,
- description=self.description,
- parameters=types.Schema(
- type="OBJECT",
- properties={
- "endpoint": types.Schema(
- type="STRING",
- description=f"API endpoint. Options: {list(self.endpoints.keys())}",
- ),
- "params": types.Schema(
- type="OBJECT",
- description="Query parameters as key-value pairs",
- ),
- },
- required=["endpoint"],
- ),
- )
+    def _get_declaration(self) -> types.FunctionDeclaration:
+    """Define what the LLM sees."""
+    return types.FunctionDeclaration(
+    name=self.name,
+    description=self.description,
+    parameters=types.Schema(
+    type="OBJECT",
+    properties={
+    "endpoint": types.Schema(
+    type="STRING",
+    description=f"API endpoint. Options: {list(self.endpoints.keys())}",
+    ),
+    "params": types.Schema(
+    type="OBJECT",
+    description="Query parameters as key-value pairs",
+    ),
+    },
+    required=["endpoint"],
+    ),
+    )
 
- async def run_async(
- self,
- *,
- args: dict,
- tool_context: ToolContext,
- ) -> dict:
- """Execute the API call."""
- endpoint_name = args.get("endpoint")
- params = args.get("params", {})
+    async def run_async(
+    self,
+    *,
+    args: dict,
+    tool_context: ToolContext,
+    ) -> dict:
+    """Execute the API call."""
+    endpoint_name = args.get("endpoint")
+    params = args.get("params", {})
 
- if endpoint_name not in self.endpoints:
- return {"error": f"Unknown endpoint: {endpoint_name}"}
+    if endpoint_name not in self.endpoints:
+    return {"error": f"Unknown endpoint: {endpoint_name}"}
 
- endpoint = self.endpoints[endpoint_name]
- url = f"{self.base_url}{endpoint['path']}"
+    endpoint = self.endpoints[endpoint_name]
+    url = f"{self.base_url}{endpoint['path']}"
 
- async with aiohttp.ClientSession() as session:
- async with session.request(
- method=endpoint["method"],
- url=url,
- params=params,
- ) as response:
- data = await response.json()
- return {"status": response.status, "data": data}
+    async with aiohttp.ClientSession() as session:
+    async with session.request(
+    method=endpoint["method"],
+    url=url,
+    params=params,
+    ) as response:
+    data = await response.json()
+    return {"status": response.status, "data": data}
 ```
 
 ### LongRunningFunctionTool (Async Operations)
@@ -370,22 +370,22 @@ from google.adk.tools import LongRunningFunctionTool
 from google.adk.tools.tool_context import ToolContext
 
 def start_deployment(
- service: str,
- version: str,
- tool_context: ToolContext,
+    service: str,
+    version: str,
+    tool_context: ToolContext,
 ) -> dict:
- """Start a deployment pipeline. Returns immediately with a tracking ID."""
- deploy_id = f"deploy-{service}-{version}-{uuid4().hex[:8]}"
+    """Start a deployment pipeline. Returns immediately with a tracking ID."""
+    deploy_id = f"deploy-{service}-{version}-{uuid4().hex[:8]}"
 
- # Save tracking ID to state for later polling
- tool_context.state["pending_deploy"] = deploy_id
+    # Save tracking ID to state for later polling
+    tool_context.state["pending_deploy"] = deploy_id
 
- # Return immediately — the LLM won't retry
- return {
- "deploy_id": deploy_id,
- "status": "started",
- "message": f"Deployment {deploy_id} started. It will take ~5 minutes.",
- }
+    # Return immediately — the LLM won't retry
+    return {
+    "deploy_id": deploy_id,
+    "status": "started",
+    "message": f"Deployment {deploy_id} started. It will take ~5 minutes.",
+    }
 
 # Wrap with LongRunningFunctionTool
 deploy_tool = LongRunningFunctionTool(func=start_deployment)
@@ -421,23 +421,23 @@ from google.adk.tools.agent_tool import AgentTool
 
 # Define a specialist agent
 research_agent = Agent(
- model="gemini-2.5-pro",
- name="deep_researcher",
- instruction="Do thorough research on the given topic. Return detailed findings.",
- tools=[web_search, read_paper],
+    model="gemini-2.5-pro",
+    name="deep_researcher",
+    instruction="Do thorough research on the given topic. Return detailed findings.",
+    tools=[web_search, read_paper],
 )
 
 # Wrap it as a tool — the parent agent can call it like any other tool
 research_tool = AgentTool(
- agent=research_agent,
- skip_summarization=False, # LLM summarizes research output
+    agent=research_agent,
+    skip_summarization=False, # LLM summarizes research output
 )
 
 # Parent uses it as a regular tool
 root_agent = Agent(
- name="coordinator",
- instruction="Use the deep_researcher tool for complex questions.",
- tools=[research_tool, simple_search], # Mix of tool types
+    name="coordinator",
+    instruction="Use the deep_researcher tool for complex questions.",
+    tools=[research_tool, simple_search], # Mix of tool types
 )
 ```
 
@@ -494,44 +494,44 @@ from google.adk.tools import BaseToolset, BaseTool, FunctionTool
 from google.adk.tools.tool_context import ToolContext
 
 class DatabaseToolset(BaseToolset):
- """Provides query tools based on user's database permissions."""
+    """Provides query tools based on user's database permissions."""
 
- def __init__(self, db_connection):
- super().__init__()
- self.db = db_connection
+    def __init__(self, db_connection):
+    super().__init__()
+    self.db = db_connection
 
- async def get_tools(
- self,
- readonly_context,
- ) -> list[BaseTool]:
- """Return tools based on user permissions."""
- user_role = readonly_context.state.get("user:role", "viewer")
- tools = []
+    async def get_tools(
+    self,
+    readonly_context,
+    ) -> list[BaseTool]:
+    """Return tools based on user permissions."""
+    user_role = readonly_context.state.get("user:role", "viewer")
+    tools = []
 
- # Everyone can query
- def run_query(sql: str, tool_context: ToolContext) -> str:
- """Run a read-only SQL query against the database."""
- if any(kw in sql.upper() for kw in ["DROP", "DELETE", "UPDATE", "INSERT"]):
- return "Error: Only SELECT queries are allowed."
- results = self.db.execute(sql)
- return str(results[:100]) # Limit results
+    # Everyone can query
+    def run_query(sql: str, tool_context: ToolContext) -> str:
+    """Run a read-only SQL query against the database."""
+    if any(kw in sql.upper() for kw in ["DROP", "DELETE", "UPDATE", "INSERT"]):
+    return "Error: Only SELECT queries are allowed."
+    results = self.db.execute(sql)
+    return str(results[:100]) # Limit results
 
- tools.append(FunctionTool(func=run_query))
+    tools.append(FunctionTool(func=run_query))
 
- # Only admins can modify
- if user_role == "admin":
- def modify_data(sql: str) -> str:
- """Execute a data modification query (admin only)."""
- self.db.execute(sql)
- return "Query executed successfully."
+    # Only admins can modify
+    if user_role == "admin":
+    def modify_data(sql: str) -> str:
+    """Execute a data modification query (admin only)."""
+    self.db.execute(sql)
+    return "Query executed successfully."
 
- tools.append(FunctionTool(func=modify_data))
+    tools.append(FunctionTool(func=modify_data))
 
- return tools
+    return tools
 
- async def close(self):
- """Clean up database connection."""
- await self.db.close()
+    async def close(self):
+    """Clean up database connection."""
+    await self.db.close()
 ```
 
 ```
@@ -617,43 +617,43 @@ from google.adk.tools.tool_context import ToolContext
 from google.adk.auth import AuthConfig, AuthCredential, AuthCredentialTypes, OAuth2Auth
 
 GITHUB_AUTH = AuthConfig(
- auth_scheme=OAuth2Auth(
- authorization_url="https://github.com/login/oauth/authorize",
- token_url="https://github.com/login/oauth/access_token",
- scopes=["repo", "read:user"],
- ),
- raw_auth_credential=AuthCredential(
- auth_type=AuthCredentialTypes.OAUTH2,
- oauth2={"client_id": "your_client_id", "client_secret": "your_secret"},
- ),
+    auth_scheme=OAuth2Auth(
+    authorization_url="https://github.com/login/oauth/authorize",
+    token_url="https://github.com/login/oauth/access_token",
+    scopes=["repo", "read:user"],
+    ),
+    raw_auth_credential=AuthCredential(
+    auth_type=AuthCredentialTypes.OAUTH2,
+    oauth2={"client_id": "your_client_id", "client_secret": "your_secret"},
+    ),
 )
 
 async def list_repos(username: str, tool_context: ToolContext) -> str:
- """List GitHub repositories for a user."""
- # Try to load existing credential
- credential = tool_context.load_credential(
- "github_token",
- GITHUB_AUTH,
- )
+    """List GitHub repositories for a user."""
+    # Try to load existing credential
+    credential = tool_context.load_credential(
+    "github_token",
+    GITHUB_AUTH,
+    )
 
- if not credential or not credential.oauth2.access_token:
- # No credential — request from user
- tool_context.request_credential(GITHUB_AUTH)
- return "Please authenticate with GitHub to continue."
+    if not credential or not credential.oauth2.access_token:
+    # No credential — request from user
+    tool_context.request_credential(GITHUB_AUTH)
+    return "Please authenticate with GitHub to continue."
 
- # Use the credential
- token = credential.oauth2.access_token
- async with aiohttp.ClientSession() as session:
- async with session.get(
- f"https://api.github.com/users/{username}/repos",
- headers={"Authorization": f"Bearer {token}"},
- ) as resp:
- repos = await resp.json()
- return "\n".join(r["full_name"] for r in repos[:10])
+    # Use the credential
+    token = credential.oauth2.access_token
+    async with aiohttp.ClientSession() as session:
+    async with session.get(
+    f"https://api.github.com/users/{username}/repos",
+    headers={"Authorization": f"Bearer {token}"},
+    ) as resp:
+    repos = await resp.json()
+    return "\n".join(r["full_name"] for r in repos[:10])
 
 agent = Agent(
- name="github_agent",
- tools=[list_repos],
+    name="github_agent",
+    tools=[list_repos],
 )
 ```
 
@@ -703,23 +703,23 @@ from google.genai import types
 import json
 
 async def generate_report(topic: str, tool_context: ToolContext) -> str:
- """Generate a report and save it as an artifact."""
- report = f"# Report on {topic}\n\nDetailed analysis..."
+    """Generate a report and save it as an artifact."""
+    report = f"# Report on {topic}\n\nDetailed analysis..."
 
- # Save as artifact (returns version number)
- version = await tool_context.save_artifact(
- filename=f"report_{topic}.md",
- artifact=types.Part.from_text(report),
- )
+    # Save as artifact (returns version number)
+    version = await tool_context.save_artifact(
+    filename=f"report_{topic}.md",
+    artifact=types.Part.from_text(report),
+    )
 
- return f"Report saved as 'report_{topic}.md' (version {version})"
+    return f"Report saved as 'report_{topic}.md' (version {version})"
 
 async def load_previous_report(filename: str, tool_context: ToolContext) -> str:
- """Load a previously generated report."""
- artifact = await tool_context.load_artifact(filename=filename)
- if artifact is None:
- return f"No report found with name '{filename}'"
- return artifact.text
+    """Load a previously generated report."""
+    artifact = await tool_context.load_artifact(filename=filename)
+    if artifact is None:
+    return f"No report found with name '{filename}'"
+    return artifact.text
 ```
 
 ---
@@ -773,16 +773,16 @@ from google.adk.code_executors import BuiltInCodeExecutor
 from google.adk import Agent
 
 agent = Agent(
- name="data_analyst",
- model="gemini-2.5-pro",
- instruction="""You are a data analyst. Write Python code to analyze data.
- Use pandas for data manipulation and matplotlib for charts.""",
- code_executor=BuiltInCodeExecutor(
- stateful=True, # Variables persist between code blocks
- optimize_data_file=True, # Pre-process CSV files
- error_retry_attempts=2, # Auto-retry on errors
- timeout_seconds=30, # Execution timeout
- ),
+    name="data_analyst",
+    model="gemini-2.5-pro",
+    instruction="""You are a data analyst. Write Python code to analyze data.
+    Use pandas for data manipulation and matplotlib for charts.""",
+    code_executor=BuiltInCodeExecutor(
+    stateful=True, # Variables persist between code blocks
+    optimize_data_file=True, # Pre-process CSV files
+    error_retry_attempts=2, # Auto-retry on errors
+    timeout_seconds=30, # Execution timeout
+    ),
 )
 ```
 
@@ -846,13 +846,13 @@ from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
 agent = Agent(
- name="thinker",
- model="gemini-2.5-pro",
- planner=BuiltInPlanner(
- thinking_config=types.ThinkingConfig(
- thinking_budget_tokens=2048, # Token budget for internal reasoning
- ),
- ),
+    name="thinker",
+    model="gemini-2.5-pro",
+    planner=BuiltInPlanner(
+    thinking_config=types.ThinkingConfig(
+    thinking_budget_tokens=2048, # Token budget for internal reasoning
+    ),
+    ),
 )
 ```
 
@@ -893,13 +893,13 @@ A2A enables agents running in different services to communicate:
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 
 executor = A2aAgentExecutor(
- runner=my_runner, # Or a callable that returns a Runner
- config=A2aAgentExecutorConfig(
- # Interceptors for request/response transformation
- before_agent_interceptors=[validate_request],
- after_agent_interceptors=[transform_response],
- after_event_interceptors=[log_event],
- ),
+    runner=my_runner, # Or a callable that returns a Runner
+    config=A2aAgentExecutorConfig(
+    # Interceptors for request/response transformation
+    before_agent_interceptors=[validate_request],
+    after_agent_interceptors=[transform_response],
+    after_event_interceptors=[log_event],
+    ),
 )
 ```
 
@@ -944,11 +944,11 @@ from google.adk.apps import App
 from google.adk.apps.events_compaction_config import EventsCompactionConfig
 
 app = App(
- agent=root_agent,
- events_compaction_config=EventsCompactionConfig(
- compaction_interval=5, # Compact every 5 turns
- overlap_size=1, # Keep 1 recent turn uncompacted
- ),
+    agent=root_agent,
+    events_compaction_config=EventsCompactionConfig(
+    compaction_interval=5, # Compact every 5 turns
+    overlap_size=1, # Keep 1 recent turn uncompacted
+    ),
 )
 ```
 
@@ -1031,12 +1031,12 @@ Before sending back to LLM, ADK strips the "adk-" prefix:
 ```python
 # Events are yielded as they're produced
 async for event in runner.run_async(session_id, user_id, message):
- if event.content:
- for part in event.content.parts:
- if part.text:
- print(part.text, end="", flush=True) # Stream text
- elif part.function_call:
- print(f"\n[Calling {part.function_call.name}...]")
+    if event.content:
+    for part in event.content.parts:
+    if part.text:
+    print(part.text, end="", flush=True) # Stream text
+    elif part.function_call:
+    print(f"\n[Calling {part.function_call.name}...]")
 ```
 
 ### Live Mode (Bidirectional Streaming)
@@ -1055,14 +1055,14 @@ User ──msg──▶ Agent User ◀══════▶ Agent
 ```python
 # Live mode tools receive a LiveRequestQueue for input streaming
 async def live_tool(
- query: str,
- input_stream: LiveRequestQueue, # ADK detects this parameter
- tool_context: ToolContext,
+    query: str,
+    input_stream: LiveRequestQueue, # ADK detects this parameter
+    tool_context: ToolContext,
 ) -> AsyncGenerator[str, None]:
- """A streaming tool that receives live input."""
- async for chunk in input_stream:
- processed = process(chunk)
- yield processed # Stream results back
+    """A streaming tool that receives live input."""
+    async for chunk in input_stream:
+    processed = process(chunk)
+    yield processed # Stream results back
 ```
 
 ---
@@ -1073,23 +1073,23 @@ async def live_tool(
 
 ```python
 async def safety_check(callback_context, llm_response):
- """Block unsafe responses before they reach the user."""
- if llm_response and llm_response.content:
- text = str(llm_response.content)
- if contains_pii(text):
- # Replace response with safe version
- from google.adk.models import LlmResponse
- return LlmResponse(
- content=types.Content(
- role="model",
- parts=[types.Part(text="I can't share personal information.")],
- ),
- )
- return None # Allow original response
+    """Block unsafe responses before they reach the user."""
+    if llm_response and llm_response.content:
+    text = str(llm_response.content)
+    if contains_pii(text):
+    # Replace response with safe version
+    from google.adk.models import LlmResponse
+    return LlmResponse(
+    content=types.Content(
+    role="model",
+    parts=[types.Part(text="I can't share personal information.")],
+    ),
+    )
+    return None # Allow original response
 
 agent = Agent(
- name="safe_agent",
- after_model_callback=safety_check,
+    name="safe_agent",
+    after_model_callback=safety_check,
 )
 ```
 
@@ -1097,40 +1097,40 @@ agent = Agent(
 
 ```python
 async def retry_on_tool_error(tool, args, tool_context, tool_response):
- """If a tool returns an error, add context for the LLM to retry smarter."""
- if isinstance(tool_response, dict) and "error" in tool_response:
- error = tool_response["error"]
- # Enrich error with guidance
- return {
- "error": error,
- "suggestion": f"The tool '{tool.name}' failed. "
- f"Consider adjusting your parameters and trying again.",
- "failed_args": args,
- }
- return None
+    """If a tool returns an error, add context for the LLM to retry smarter."""
+    if isinstance(tool_response, dict) and "error" in tool_response:
+    error = tool_response["error"]
+    # Enrich error with guidance
+    return {
+    "error": error,
+    "suggestion": f"The tool '{tool.name}' failed. "
+    f"Consider adjusting your parameters and trying again.",
+    "failed_args": args,
+    }
+    return None
 ```
 
 ### Pattern: Dynamic Instruction Based on Conversation Phase
 
 ```python
 async def phase_aware_instruction(ctx) -> str:
- """Change agent behavior based on conversation progress."""
- turn_count = ctx.state.get("temp:turn_count", 0)
- ctx.state["temp:turn_count"] = turn_count + 1
+    """Change agent behavior based on conversation progress."""
+    turn_count = ctx.state.get("temp:turn_count", 0)
+    ctx.state["temp:turn_count"] = turn_count + 1
 
- if turn_count == 0:
- return """You are a sales assistant. Start by greeting the customer
- and asking what they're looking for."""
- elif turn_count < 5:
- return """You are a sales assistant in the discovery phase.
- Ask about preferences, budget, and requirements."""
- else:
- return """You are a sales assistant in the closing phase.
- Summarize options and guide toward a purchase decision."""
+    if turn_count == 0:
+    return """You are a sales assistant. Start by greeting the customer
+    and asking what they're looking for."""
+    elif turn_count < 5:
+    return """You are a sales assistant in the discovery phase.
+    Ask about preferences, budget, and requirements."""
+    else:
+    return """You are a sales assistant in the closing phase.
+    Summarize options and guide toward a purchase decision."""
 
 agent = Agent(
- name="adaptive_sales",
- instruction=phase_aware_instruction,
+    name="adaptive_sales",
+    instruction=phase_aware_instruction,
 )
 ```
 

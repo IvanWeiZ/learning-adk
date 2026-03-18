@@ -35,11 +35,11 @@ Every saved artifact version gets an `ArtifactVersion` record:
 
 ```python
 class ArtifactVersion(BaseModel):
- version: int # 0-based, monotonically increasing
- canonical_uri: str # URI pointing to the persisted payload
- custom_metadata: dict[str, Any] = {} # user-supplied key-value pairs
- create_time: float # unix timestamp (seconds)
- mime_type: str | None = None # MIME type of the payload
+    version: int # 0-based, monotonically increasing
+    canonical_uri: str # URI pointing to the persisted payload
+    custom_metadata: dict[str, Any] = {} # user-supplied key-value pairs
+    create_time: float # unix timestamp (seconds)
+    mime_type: str | None = None # MIME type of the payload
 ```
 
 Fields use camelCase aliases for JSON serialization (`populate_by_name=True`).
@@ -54,14 +54,14 @@ All methods are `async` with keyword-only arguments, scoped by `app_name`, `user
 
 ```python
 async def save_artifact(
- self,
- *,
- app_name: str,
- user_id: str,
- filename: str,
- artifact: types.Part | dict[str, Any],
- session_id: str | None = None,
- custom_metadata: dict[str, Any] | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    filename: str,
+    artifact: types.Part | dict[str, Any],
+    session_id: str | None = None,
+    custom_metadata: dict[str, Any] | None = None,
 ) -> int:
 ```
 
@@ -71,13 +71,13 @@ Saves a new version of the artifact identified by `filename`. Returns the versio
 
 ```python
 async def load_artifact(
- self,
- *,
- app_name: str,
- user_id: str,
- filename: str,
- session_id: str | None = None,
- version: int | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    filename: str,
+    session_id: str | None = None,
+    version: int | None = None,
 ) -> types.Part | None:
 ```
 
@@ -87,11 +87,11 @@ Loads a specific version. If `version` is `None`, returns the latest version. Re
 
 ```python
 async def list_artifact_keys(
- self,
- *,
- app_name: str,
- user_id: str,
- session_id: str | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    session_id: str | None = None,
 ) -> list[str]:
 ```
 
@@ -101,12 +101,12 @@ Returns all artifact filenames. If `session_id` is provided, returns both sessio
 
 ```python
 async def delete_artifact(
- self,
- *,
- app_name: str,
- user_id: str,
- filename: str,
- session_id: str | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    filename: str,
+    session_id: str | None = None,
 ) -> None:
 ```
 
@@ -116,12 +116,12 @@ Deletes all versions of an artifact.
 
 ```python
 async def list_versions(
- self,
- *,
- app_name: str,
- user_id: str,
- filename: str,
- session_id: str | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    filename: str,
+    session_id: str | None = None,
 ) -> list[int]:
 ```
 
@@ -131,12 +131,12 @@ Returns a list of version numbers (integers) available for the artifact.
 
 ```python
 async def list_artifact_versions(
- self,
- *,
- app_name: str,
- user_id: str,
- filename: str,
- session_id: str | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    filename: str,
+    session_id: str | None = None,
 ) -> list[ArtifactVersion]:
 ```
 
@@ -146,13 +146,13 @@ Returns full `ArtifactVersion` metadata for every version.
 
 ```python
 async def get_artifact_version(
- self,
- *,
- app_name: str,
- user_id: str,
- filename: str,
- session_id: str | None = None,
- version: int | None = None,
+    self,
+    *,
+    app_name: str,
+    user_id: str,
+    filename: str,
+    session_id: str | None = None,
+    version: int | None = None,
 ) -> ArtifactVersion | None:
 ```
 
@@ -255,29 +255,29 @@ Uses `google.cloud.storage` to read/write blobs. Blob names follow the pattern `
 # CallbackContext methods (available in both ToolContext and callbacks)
 
 async def save_artifact(
- self,
- filename: str,
- artifact: types.Part,
- custom_metadata: dict[str, Any] | None = None,
+    self,
+    filename: str,
+    artifact: types.Part,
+    custom_metadata: dict[str, Any] | None = None,
 ) -> int:
- """Saves an artifact, returns the version number."""
+    """Saves an artifact, returns the version number."""
 
 async def load_artifact(
- self,
- filename: str,
- version: int | None = None,
+    self,
+    filename: str,
+    version: int | None = None,
 ) -> types.Part | None:
- """Loads an artifact by filename. Returns None if not found."""
+    """Loads an artifact by filename. Returns None if not found."""
 
 async def list_artifacts(self) -> list[str]:
- """Lists all artifact filenames for the current session."""
+    """Lists all artifact filenames for the current session."""
 
 async def get_artifact_version(
- self,
- filename: str,
- version: int | None = None,
+    self,
+    filename: str,
+    version: int | None = None,
 ) -> ArtifactVersion | None:
- """Gets metadata for a specific artifact version."""
+    """Gets metadata for a specific artifact version."""
 ```
 
 These methods raise `ValueError` if no `artifact_service` is configured on the Runner.
@@ -294,10 +294,10 @@ from google.adk.artifacts import InMemoryArtifactService
 from google.adk.sessions import InMemorySessionService
 
 runner = Runner(
- app_name="my_app",
- agent=my_agent,
- artifact_service=InMemoryArtifactService(),
- session_service=InMemorySessionService(),
+    app_name="my_app",
+    agent=my_agent,
+    artifact_service=InMemoryArtifactService(),
+    session_service=InMemorySessionService(),
 )
 ```
 
@@ -307,10 +307,10 @@ For production with GCS:
 from google.adk.artifacts import GcsArtifactService
 
 runner = Runner(
- app_name="my_app",
- agent=my_agent,
- artifact_service=GcsArtifactService(bucket_name="my-artifacts-bucket"),
- session_service=session_service,
+    app_name="my_app",
+    agent=my_agent,
+    artifact_service=GcsArtifactService(bucket_name="my-artifacts-bucket"),
+    session_service=session_service,
 )
 ```
 
@@ -320,10 +320,10 @@ For local file-based persistence:
 from google.adk.artifacts import FileArtifactService
 
 runner = Runner(
- app_name="my_app",
- agent=my_agent,
- artifact_service=FileArtifactService(root_dir="./artifact_store"),
- session_service=session_service,
+    app_name="my_app",
+    agent=my_agent,
+    artifact_service=FileArtifactService(root_dir="./artifact_store"),
+    session_service=session_service,
 )
 ```
 
@@ -339,77 +339,77 @@ from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
 async def generate_report(
- topic: str,
- tool_context: ToolContext,
+    topic: str,
+    tool_context: ToolContext,
 ) -> dict[str, str]:
- """Generates a report and saves it as an artifact."""
- report_text = f"# Report on {topic}\n\nThis is the report content."
+    """Generates a report and saves it as an artifact."""
+    report_text = f"# Report on {topic}\n\nThis is the report content."
 
- version = await tool_context.save_artifact(
- filename="report.md",
- artifact=types.Part(text=report_text),
- )
- return {"status": "saved", "filename": "report.md", "version": version}
+    version = await tool_context.save_artifact(
+        filename="report.md",
+        artifact=types.Part(text=report_text),
+    )
+    return {"status": "saved", "filename": "report.md", "version": version}
 
 async def read_report(tool_context: ToolContext) -> dict[str, str]:
- """Reads the latest version of the report artifact."""
- part = await tool_context.load_artifact("report.md")
- if part is None:
- return {"error": "No report found"}
- return {"content": part.text}
+    """Reads the latest version of the report artifact."""
+    part = await tool_context.load_artifact("report.md")
+    if part is None:
+        return {"error": "No report found"}
+    return {"content": part.text}
 ```
 
 ### Saving a binary artifact (image)
 
 ```python
 async def save_chart(
- chart_bytes: bytes,
- tool_context: ToolContext,
+    chart_bytes: bytes,
+    tool_context: ToolContext,
 ) -> dict[str, str]:
- """Saves a PNG chart as a binary artifact."""
- version = await tool_context.save_artifact(
- filename="chart.png",
- artifact=types.Part(
- inline_data=types.Blob(
- mime_type="image/png",
- data=chart_bytes,
- )
- ),
- custom_metadata={"generated_by": "charting_tool"},
- )
- return {"filename": "chart.png", "version": version}
+    """Saves a PNG chart as a binary artifact."""
+    version = await tool_context.save_artifact(
+        filename="chart.png",
+        artifact=types.Part(
+            inline_data=types.Blob(
+                mime_type="image/png",
+                data=chart_bytes,
+            )
+        ),
+        custom_metadata={"generated_by": "charting_tool"},
+    )
+    return {"filename": "chart.png", "version": version}
 ```
 
 ### User-scoped artifacts (shared across sessions)
 
 ```python
 async def save_user_preference(
- preferences_json: str,
- tool_context: ToolContext,
+    preferences_json: str,
+    tool_context: ToolContext,
 ) -> dict[str, str]:
- """Saves preferences visible from all sessions for this user."""
- version = await tool_context.save_artifact(
- filename="user:preferences.json", # "user:" prefix = user-scoped
- artifact=types.Part(text=preferences_json),
- )
- return {"version": version}
+    """Saves preferences visible from all sessions for this user."""
+    version = await tool_context.save_artifact(
+        filename="user:preferences.json", # "user:" prefix = user-scoped
+        artifact=types.Part(text=preferences_json),
+    )
+    return {"version": version}
 ```
 
 ### Listing and inspecting artifact versions
 
 ```python
 async def inspect_artifacts(tool_context: ToolContext) -> dict[str, Any]:
- """Lists all artifacts and checks version info."""
- filenames = await tool_context.list_artifacts()
- result: dict[str, Any] = {"artifacts": filenames}
+    """Lists all artifacts and checks version info."""
+    filenames = await tool_context.list_artifacts()
+    result: dict[str, Any] = {"artifacts": filenames}
 
- for name in filenames:
- version_info = await tool_context.get_artifact_version(name)
- if version_info:
- result[name] = {
- "latest_version": version_info.version,
- "mime_type": version_info.mime_type,
- "created": version_info.create_time,
- }
- return result
+    for name in filenames:
+        version_info = await tool_context.get_artifact_version(name)
+        if version_info:
+            result[name] = {
+                "latest_version": version_info.version,
+                "mime_type": version_info.mime_type,
+                "created": version_info.create_time,
+            }
+    return result
 ```

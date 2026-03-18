@@ -60,8 +60,8 @@ The Python functions live in `__init__.py` alongside the YAML files and are plai
 ```python
 # __init__.py
 def roll_die(sides: int) -> int:
- """Roll a die and return the rolled result."""
- return random.randint(1, sides)
+    """Roll a die and return the rolled result."""
+    return random.randint(1, sides)
 ```
 
 **Source:** `contributing/samples/multi_agent_llm_config/`
@@ -76,8 +76,8 @@ Intercepts tool failures, sends reflection guidance to the LLM, retries up to a 
 
 ```python
 from google.adk.plugins.reflect_retry_tool_plugin import (
- ReflectAndRetryToolPlugin,
- TrackingScope,
+    ReflectAndRetryToolPlugin,
+    TrackingScope,
 )
 
 # Default: 3 retries, raises on exhaustion, per-invocation tracking
@@ -85,9 +85,9 @@ plugin = ReflectAndRetryToolPlugin()
 
 # Global tracking, no exception on exhaustion
 plugin = ReflectAndRetryToolPlugin(
- max_retries=5,
- throw_exception_if_retry_exceeded=False,
- tracking_scope=TrackingScope.GLOBAL,
+    max_retries=5,
+    throw_exception_if_retry_exceeded=False,
+    tracking_scope=TrackingScope.GLOBAL,
 )
 ```
 
@@ -97,12 +97,12 @@ Override `extract_error_from_result` to detect errors in successful responses:
 
 ```python
 class CustomRetryPlugin(ReflectAndRetryToolPlugin):
- async def extract_error_from_result(
- self, *, tool, tool_args, tool_context, result
- ):
- if isinstance(result, dict) and result.get("status") == "error":
- return result # Returning non-None triggers retry logic
- return None # No error detected
+    async def extract_error_from_result(
+        self, *, tool, tool_args, tool_context, result
+    ):
+        if isinstance(result, dict) and result.get("status") == "error":
+            return result # Returning non-None triggers retry logic
+        return None # No error detected
 ```
 
 ### How it works internally
@@ -143,40 +143,40 @@ from google.genai import types
 from typing_extensions import override
 
 class QueryLargeDataTool(FunctionTool):
- def __init__(self):
- super().__init__(query_large_data)
+    def __init__(self):
+        super().__init__(query_large_data)
 
- @override
- async def process_llm_request(
- self,
- *,
- tool_context: ToolContext,
- llm_request: LlmRequest,
- ) -> None:
- # Always call super() first to preserve default behavior
- await super().process_llm_request(
- tool_context=tool_context, llm_request=llm_request
- )
- # Check if the last message is our tool's function response
- if llm_request.contents and llm_request.contents[-1].parts:
- fn_resp = llm_request.contents[-1].parts[0].function_response
- if fn_resp and fn_resp.name == "query_large_data":
- artifact_name = fn_resp.response.get("artifact_name")
- if artifact_name:
- artifact = await tool_context.load_artifact(artifact_name)
- if artifact:
- # Append ephemeral content — visible to LLM, not saved to session
- llm_request.contents.append(
- types.Content(
- role="user",
- parts=[
- types.Part.from_text(
- text=f"Artifact {artifact_name} is:"
- ),
- artifact,
- ],
- )
- )
+    @override
+    async def process_llm_request(
+        self,
+        *,
+        tool_context: ToolContext,
+        llm_request: LlmRequest,
+    ) -> None:
+        # Always call super() first to preserve default behavior
+        await super().process_llm_request(
+            tool_context=tool_context, llm_request=llm_request
+        )
+        # Check if the last message is our tool's function response
+        if llm_request.contents and llm_request.contents[-1].parts:
+            fn_resp = llm_request.contents[-1].parts[0].function_response
+            if fn_resp and fn_resp.name == "query_large_data":
+                artifact_name = fn_resp.response.get("artifact_name")
+                if artifact_name:
+                    artifact = await tool_context.load_artifact(artifact_name)
+                    if artifact:
+                        # Append ephemeral content — visible to LLM, not saved to session
+                        llm_request.contents.append(
+                            types.Content(
+                                role="user",
+                                parts=[
+                                    types.Part.from_text(
+                                        text=f"Artifact {artifact_name} is:"
+                                    ),
+                                    artifact,
+                                ],
+                            )
+                        )
 ```
 
 ### Why not just return the data from the tool?
@@ -200,24 +200,24 @@ from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
 
 def before_agent_callback_check_relevance(
- agent_name: str,
+    agent_name: str,
 ) -> BeforeAgentCallback:
- """Returns a closure that skips the agent if it is not in the execution list."""
+    """Returns a closure that skips the agent if it is not in the execution list."""
 
- def callback(callback_context: CallbackContext) -> Optional[types.Content]:
- if agent_name not in callback_context.state["execution_agents"]:
- # Returning Content short-circuits — the agent does not run
- return types.Content(
- parts=[
- types.Part(
- text=f"Skipping execution agent {agent_name} as it is "
- "not relevant to the current state."
- )
- ]
- )
- # Returning None lets the agent proceed normally
+    def callback(callback_context: CallbackContext) -> Optional[types.Content]:
+        if agent_name not in callback_context.state["execution_agents"]:
+            # Returning Content short-circuits — the agent does not run
+            return types.Content(
+                parts=[
+                    types.Part(
+                        text=f"Skipping execution agent {agent_name} as it is "
+                        "not relevant to the current state."
+                    )
+                ]
+            )
+        # Returning None lets the agent proceed normally
 
- return callback
+    return callback
 ```
 
 ### Wiring it up
@@ -228,24 +228,24 @@ Triage agent writes relevant names to `state["execution_agents"]`. `ParallelAgen
 from google.adk.agents import Agent, ParallelAgent, SequentialAgent
 
 code_agent = Agent(
- model="gemini-2.5-flash",
- name="code_agent",
- instruction="You are the Code Agent...",
- before_agent_callback=before_agent_callback_check_relevance("code_agent"),
- output_key="code_agent_output",
+    model="gemini-2.5-flash",
+    name="code_agent",
+    instruction="You are the Code Agent...",
+    before_agent_callback=before_agent_callback_check_relevance("code_agent"),
+    output_key="code_agent_output",
 )
 
 math_agent = Agent(
- model="gemini-2.5-flash",
- name="math_agent",
- instruction="You are the Math Agent...",
- before_agent_callback=before_agent_callback_check_relevance("math_agent"),
- output_key="math_agent_output",
+    model="gemini-2.5-flash",
+    name="math_agent",
+    instruction="You are the Math Agent...",
+    before_agent_callback=before_agent_callback_check_relevance("math_agent"),
+    output_key="math_agent_output",
 )
 
 worker_parallel_agent = ParallelAgent(
- name="worker_parallel_agent",
- sub_agents=[code_agent, math_agent],
+    name="worker_parallel_agent",
+    sub_agents=[code_agent, math_agent],
 )
 ```
 
@@ -268,9 +268,9 @@ Non-None return replaces the tool response (tool never runs):
 
 ```python
 def before_tool_cb(tool, args, tool_context):
- if args.get("sides") > 100:
- # Short-circuit: return a response dict instead of running the tool
- return {"error": "Maximum 100 sides allowed"}
+    if args.get("sides") > 100:
+        # Short-circuit: return a response dict instead of running the tool
+        return {"error": "Maximum 100 sides allowed"}
 ```
 
 ### Mode 2: Mutate args in place (return None)
@@ -279,10 +279,10 @@ def before_tool_cb(tool, args, tool_context):
 
 ```python
 def before_tool_cb(tool, args, tool_context):
- # Clamp sides to a maximum of 20
- if args.get("sides", 0) > 20:
- args["sides"] = 20
- # Return None — tool runs with the modified args
+    # Clamp sides to a maximum of 20
+    if args.get("sides", 0) > 20:
+        args["sides"] = 20
+    # Return None — tool runs with the modified args
 ```
 
 ### Callback lists
@@ -291,11 +291,11 @@ Callbacks can be a single callable or list. First non-None return short-circuits
 
 ```python
 root_agent = Agent(
- model="gemini-2.0-flash",
- name="data_processing_agent",
- tools=[roll_die, check_prime],
- before_tool_callback=[before_tool_cb1, before_tool_cb2, before_tool_cb3],
- after_tool_callback=[after_tool_cb1, after_tool_cb2, after_tool_cb3],
+    model="gemini-2.0-flash",
+    name="data_processing_agent",
+    tools=[roll_die, check_prime],
+    before_tool_callback=[before_tool_cb1, before_tool_cb2, before_tool_cb3],
+    after_tool_callback=[after_tool_cb1, after_tool_cb2, after_tool_cb3],
 )
 ```
 
@@ -305,8 +305,8 @@ root_agent = Agent(
 
 ```python
 def after_tool_cb2(tool, args, tool_context, tool_response):
- # Replace the tool response with a wrapped version
- return {"test": "after_tool_cb2", "response": tool_response}
+    # Replace the tool response with a wrapped version
+    return {"test": "after_tool_cb2", "response": tool_response}
 ```
 
 **Source:** `contributing/samples/callbacks/agent.py`, `src/google/adk/flows/llm_flows/functions.py`
@@ -324,14 +324,14 @@ from google.adk import Agent
 from pydantic import BaseModel
 
 class WeatherData(BaseModel):
- temperature: str
- humidity: str
- wind_speed: str
+    temperature: str
+    humidity: str
+    wind_speed: str
 
 root_agent = Agent(
- name="root_agent",
- model="gemini-2.5-flash",
- instruction="""\
+    name="root_agent",
+    model="gemini-2.5-flash",
+    instruction="""\
 Answer user's questions based on the data you have.
 
 Here are the data you have for San Jose:
@@ -344,8 +344,8 @@ Here are the data you have for Cupertino:
 * humidity: 10%
 * wind_speed: 13 mph
 """,
- output_schema=list[WeatherData],
- output_key="weather_data",
+    output_schema=list[WeatherData],
+    output_key="weather_data",
 )
 # Note: when output_schema is set, tools are silently ignored (see 04-agents.md).
 # Do NOT pass tools=[...] on an agent that uses output_schema.
@@ -380,25 +380,25 @@ from google.adk.tools.function_tool import FunctionTool
 from google.adk.tools.tool_context import ToolContext
 
 def reimburse(amount: int, tool_context: ToolContext) -> str:
- """Reimburse the employee for the given amount."""
- return {"status": "ok"}
+    """Reimburse the employee for the given amount."""
+    return {"status": "ok"}
 
 async def confirmation_threshold(
- amount: int, tool_context: ToolContext
+    amount: int, tool_context: ToolContext
 ) -> bool:
- """Returns true if the amount is greater than 1000."""
- return amount > 1000
+    """Returns true if the amount is greater than 1000."""
+    return amount > 1000
 
 root_agent = Agent(
- model="gemini-2.5-flash",
- name="time_off_agent",
- instruction="You are a helpful assistant...",
- tools=[
- FunctionTool(
- reimburse,
- require_confirmation=confirmation_threshold,
- ),
- ],
+    model="gemini-2.5-flash",
+    name="time_off_agent",
+    instruction="You are a helpful assistant...",
+    tools=[
+        FunctionTool(
+            reimburse,
+            require_confirmation=confirmation_threshold,
+        ),
+    ],
 )
 ```
 
@@ -410,22 +410,22 @@ For complex flows, use `tool_context.request_confirmation` directly:
 
 ```python
 def request_time_off(days: int, tool_context: ToolContext):
- """Request day off for the employee."""
- if days <= 2:
- return {"status": "ok", "approved_days": days}
+    """Request day off for the employee."""
+    if days <= 2:
+        return {"status": "ok", "approved_days": days}
 
- tool_confirmation = tool_context.tool_confirmation
- if not tool_confirmation:
- # First call — request confirmation with a payload
- tool_context.request_confirmation(
- hint="Please approve or reject the time off request.",
- payload={"approved_days": 0},
- )
- return {"status": "Manager approval is required."}
+    tool_confirmation = tool_context.tool_confirmation
+    if not tool_confirmation:
+        # First call — request confirmation with a payload
+        tool_context.request_confirmation(
+            hint="Please approve or reject the time off request.",
+            payload={"approved_days": 0},
+        )
+        return {"status": "Manager approval is required."}
 
- # Second call — confirmation has been provided
- approved_days = tool_confirmation.payload["approved_days"]
- return {"status": "ok", "approved_days": min(approved_days, days)}
+    # Second call — confirmation has been provided
+    approved_days = tool_confirmation.payload["approved_days"]
+    return {"status": "ok", "approved_days": min(approved_days, days)}
 ```
 
 ### Resumability
@@ -436,9 +436,9 @@ Enable resumability for confirmation flows:
 from google.adk.apps import App, ResumabilityConfig
 
 app = App(
- name="human_tool_confirmation",
- root_agent=root_agent,
- resumability_config=ResumabilityConfig(is_resumable=True),
+    name="human_tool_confirmation",
+    root_agent=root_agent,
+    resumability_config=ResumabilityConfig(is_resumable=True),
 )
 ```
 

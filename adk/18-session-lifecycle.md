@@ -28,13 +28,13 @@ This is the critical method. Every subclass calls `super().append_event()` first
 
 ```python
 async def append_event(self, session: Session, event: Event) -> Event:
- if event.partial:
- return event # 1. Skip partial events (never persisted)
- self._apply_temp_state(session, event) # 2. Write temp:* keys to in-memory session
- event = self._trim_temp_delta_state(event) # 3. Remove temp:* from persisted delta
- self._update_session_state(session, event) # 4. Apply remaining delta to session.state
- session.events.append(event) # 5. Append event to in-memory event list
- return event
+    if event.partial:
+        return event # 1. Skip partial events (never persisted)
+    self._apply_temp_state(session, event) # 2. Write temp:* keys to in-memory session
+    event = self._trim_temp_delta_state(event) # 3. Remove temp:* from persisted delta
+    self._update_session_state(session, event) # 4. Apply remaining delta to session.state
+    session.events.append(event) # 5. Append event to in-memory event list
+    return event
 ```
 
 **Why temp state is special:** `temp:`-prefixed keys are written to the in-memory session so downstream agents in the same invocation can read them, but they are trimmed from `state_delta` before persistence — they vanish on session reload.
@@ -73,10 +73,10 @@ For a standard `run_async` invocation, here is every point where the session ser
 
 ```python
 session = await self.session_service.get_session(
- app_name=self.app_name,
- user_id=user_id,
- session_id=session_id,
- config=get_session_config,
+    app_name=self.app_name,
+    user_id=user_id,
+    session_id=session_id,
+    config=get_session_config,
 )
 ```
 
@@ -88,7 +88,7 @@ session = await self.session_service.get_session(
 
 ```python
 session = await self.session_service.create_session(
- app_name=self.app_name, user_id=user_id, session_id=session_id
+    app_name=self.app_name, user_id=user_id, session_id=session_id
 )
 ```
 
@@ -112,7 +112,7 @@ The event has `author='user'` and carries the user's `new_message` content plus 
 
 ```python
 if event.partial is not True:
- await self.session_service.append_event(session=session, event=event)
+    await self.session_service.append_event(session=session, event=event)
 ```
 
 **Why:** Every non-partial event (model responses, function calls, function responses, state changes, agent transfers) must be persisted so that: (a) history is durable, (b) state mutations are committed, and (c) the session can be resumed later.
@@ -200,7 +200,7 @@ Default choice when durability is not needed.
 from google.adk.sessions import GetSessionConfig
 
 run_config = RunConfig(
- get_session_config=GetSessionConfig(num_recent_events=20)
+    get_session_config=GetSessionConfig(num_recent_events=20)
 )
 ```
 
@@ -219,27 +219,27 @@ from google.adk.sessions import InMemorySessionService, Session
 from google.adk.events import Event
 
 class FastSessionService(InMemorySessionService):
- """Session service optimized for latency over durability.
+    """Session service optimized for latency over durability.
 
- - Skips deepcopy on get_session (caller and storage share the same object)
- - State still works correctly through the normal append_event flow
- """
+    - Skips deepcopy on get_session (caller and storage share the same object)
+    - State still works correctly through the normal append_event flow
+    """
 
- async def get_session(self, *, app_name, user_id, session_id, config=None):
- # Skip the deepcopy — return the storage session directly
- # Safe when only one Runner uses this session at a time
- app_sessions = self.sessions.get(app_name, {})
- user_sessions = app_sessions.get(user_id, {})
- session = user_sessions.get(session_id)
- if session is None:
- return None
- # Still merge scoped state
- merged_state = {}
- merged_state.update(self.app_state.get(app_name, {}))
- merged_state.update(self.user_state.get(app_name, {}).get(user_id, {}))
- merged_state.update(session.state)
- session.state = merged_state
- return session
+    async def get_session(self, *, app_name, user_id, session_id, config=None):
+        # Skip the deepcopy — return the storage session directly
+        # Safe when only one Runner uses this session at a time
+        app_sessions = self.sessions.get(app_name, {})
+        user_sessions = app_sessions.get(user_id, {})
+        session = user_sessions.get(session_id)
+        if session is None:
+            return None
+        # Still merge scoped state
+        merged_state = {}
+        merged_state.update(self.app_state.get(app_name, {}))
+        merged_state.update(self.user_state.get(app_name, {}).get(user_id, {}))
+        merged_state.update(session.state)
+        session.state = merged_state
+        return session
 ```
 
 **Latency savings:** Eliminates `deepcopy` overhead, which is O(n) on the number of events and state entries. For sessions with 100+ events, this can save 1–10ms per `get_session` call.
@@ -252,34 +252,34 @@ If you must use a database but want lower latency, batch event writes:
 
 ```python
 class BatchingDatabaseSessionService(DatabaseSessionService):
- """Buffers events in memory and flushes to DB periodically or at invocation end."""
+    """Buffers events in memory and flushes to DB periodically or at invocation end."""
 
- def __init__(self, *args, flush_interval: int = 10, **kwargs):
- super().__init__(*args, **kwargs)
- self._buffer: dict[str, list[Event]] = {}
- self._flush_interval = flush_interval
+    def __init__(self, *args, flush_interval: int = 10, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._buffer: dict[str, list[Event]] = {}
+        self._flush_interval = flush_interval
 
- async def append_event(self, session: Session, event: Event) -> Event:
- # Still update in-memory state (critical for agent correctness)
- event = await BaseSessionService.append_event(self, session=session, event=event)
+    async def append_event(self, session: Session, event: Event) -> Event:
+        # Still update in-memory state (critical for agent correctness)
+        event = await BaseSessionService.append_event(self, session=session, event=event)
 
- # Buffer the event instead of writing to DB immediately
- key = f"{session.app_name}:{session.user_id}:{session.id}"
- self._buffer.setdefault(key, []).append(event)
+        # Buffer the event instead of writing to DB immediately
+        key = f"{session.app_name}:{session.user_id}:{session.id}"
+        self._buffer.setdefault(key, []).append(event)
 
- if len(self._buffer[key]) >= self._flush_interval:
- await self._flush(session)
- return event
+        if len(self._buffer[key]) >= self._flush_interval:
+            await self._flush(session)
+        return event
 
- async def _flush(self, session: Session):
- key = f"{session.app_name}:{session.user_id}:{session.id}"
- events = self._buffer.pop(key, [])
- if events:
- # Write all buffered events in a single DB transaction
- async with self._engine.begin() as conn:
- for event in events:
- # ... insert event rows ...
- pass
+    async def _flush(self, session: Session):
+        key = f"{session.app_name}:{session.user_id}:{session.id}"
+        events = self._buffer.pop(key, [])
+        if events:
+            # Write all buffered events in a single DB transaction
+            async with self._engine.begin() as conn:
+                for event in events:
+                    # ... insert event rows ...
+                    pass
 ```
 
 **Latency savings:** Turns N database round-trips into 1. For a 10-event turn, this can save 50–200ms depending on DB latency.
@@ -296,36 +296,36 @@ from google.adk.sessions import BaseSessionService, Session
 from google.adk.events import Event
 
 class FireAndForgetSessionService(BaseSessionService):
- """Maintains state in-memory only. append_event never blocks on I/O."""
+    """Maintains state in-memory only. append_event never blocks on I/O."""
 
- def __init__(self):
- self._sessions: dict[str, Session] = {}
+    def __init__(self):
+        self._sessions: dict[str, Session] = {}
 
- async def create_session(self, *, app_name, user_id, state=None, session_id=None):
- session_id = session_id or str(uuid.uuid4())
- session = Session(
- app_name=app_name, user_id=user_id, id=session_id,
- state=state or {}, events=[], last_update_time=time.time()
- )
- self._sessions[session_id] = session
- return session
+    async def create_session(self, *, app_name, user_id, state=None, session_id=None):
+        session_id = session_id or str(uuid.uuid4())
+        session = Session(
+            app_name=app_name, user_id=user_id, id=session_id,
+            state=state or {}, events=[], last_update_time=time.time()
+        )
+        self._sessions[session_id] = session
+        return session
 
- async def get_session(self, *, app_name, user_id, session_id, config=None):
- return self._sessions.get(session_id)
+    async def get_session(self, *, app_name, user_id, session_id, config=None):
+        return self._sessions.get(session_id)
 
- async def list_sessions(self, *, app_name, user_id=None):
- # Minimal implementation
- return ListSessionsResponse(sessions=[
- s for s in self._sessions.values()
- if s.app_name == app_name and (user_id is None or s.user_id == user_id)
- ])
+    async def list_sessions(self, *, app_name, user_id=None):
+        # Minimal implementation
+        return ListSessionsResponse(sessions=[
+            s for s in self._sessions.values()
+            if s.app_name == app_name and (user_id is None or s.user_id == user_id)
+        ])
 
- async def delete_session(self, *, app_name, user_id, session_id):
- self._sessions.pop(session_id, None)
+    async def delete_session(self, *, app_name, user_id, session_id):
+        self._sessions.pop(session_id, None)
 
- async def append_event(self, session: Session, event: Event) -> Event:
- # Only do the in-memory state bookkeeping — no I/O, no copies
- return await super().append_event(session=session, event=event)
+    async def append_event(self, session: Session, event: Event) -> Event:
+        # Only do the in-memory state bookkeeping — no I/O, no copies
+        return await super().append_event(session=session, event=event)
 ```
 
 **Latency savings:** `append_event` is pure in-memory dict operations. No deepcopy, no storage sync, no locking. This is the theoretical minimum.
@@ -417,9 +417,9 @@ ADK streams by default. Partial events improve perceived responsiveness (TTFT) w
 
 ```python
 async for event in runner.run_async(...):
- if event.partial:
- print(event.content.parts[0].text, end='', flush=True) # stream to UI
- # partial events are NOT passed to append_event (skipped automatically)
+    if event.partial:
+        print(event.content.parts[0].text, end='', flush=True) # stream to UI
+    # partial events are NOT passed to append_event (skipped automatically)
 ```
 
 Partial events are free: `append_event` skips them. Only the final event is persisted.
@@ -449,7 +449,7 @@ Tools are awaited in the flow loop. A slow tool blocks the turn.
 ```python
 # BAD: slow tool blocks the LLM loop
 async def search_database(query: str) -> list[dict]:
- return await slow_db_query(query) # 500ms
+    return await slow_db_query(query) # 500ms
 
 # BETTER: pre-warm connections, add caching
 from functools import lru_cache
@@ -457,16 +457,16 @@ from functools import lru_cache
 _db_pool = None # connection pool initialized once
 
 async def search_database(query: str, tool_context: ToolContext) -> list[dict]:
- global _db_pool
- if _db_pool is None:
- _db_pool = await create_pool()
- # Use cached result if same query was made recently
- cache_key = f"search:{query}"
- if cached := tool_context.state.get(f"temp:{cache_key}"):
- return cached
- result = await _db_pool.fetch(query)
- tool_context.state[f"temp:{cache_key}"] = result # temp: = not persisted
- return result
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = await create_pool()
+    # Use cached result if same query was made recently
+    cache_key = f"search:{query}"
+    if cached := tool_context.state.get(f"temp:{cache_key}"):
+        return cached
+    result = await _db_pool.fetch(query)
+    tool_context.state[f"temp:{cache_key}"] = result # temp: = not persisted
+    return result
 ```
 
 **For I/O-heavy tools:** Consider `LongRunningFunctionTool` which returns immediately with a pending status and completes asynchronously.
@@ -478,14 +478,14 @@ More events = larger prompt = slower LLM calls.
 ```python
 # Limit what the LLM sees
 run_config = RunConfig(
- get_session_config=GetSessionConfig(num_recent_events=20)
+    get_session_config=GetSessionConfig(num_recent_events=20)
 )
 
 # Or use compaction to summarize old events
 from google.adk.apps import App
 app = App(
- agent=agent,
- plugins=[CompactionPlugin(max_events=50)] # auto-summarize when history > 50 events
+    agent=agent,
+    plugins=[CompactionPlugin(max_events=50)] # auto-summarize when history > 50 events
 )
 ```
 
@@ -498,14 +498,14 @@ Large instructions slow preprocessing and LLM calls.
 ```python
 # BAD: huge instruction with many tools
 agent = LlmAgent(
- instruction="You are an agent that can... [2000 words]...",
- tools=[tool1, tool2, ..., tool20], # 20 tool schemas in the prompt
+    instruction="You are an agent that can... [2000 words]...",
+    tools=[tool1, tool2, ..., tool20], # 20 tool schemas in the prompt
 )
 
 # BETTER: focused agent with minimal tools
 agent = LlmAgent(
- instruction="Answer weather questions using the get_weather tool.",
- tools=[get_weather], # 1 tool schema
+    instruction="Answer weather questions using the get_weather tool.",
+    tools=[get_weather], # 1 tool schema
 )
 ```
 
@@ -525,9 +525,9 @@ Unset callbacks are fast no-ops. Non-None callbacks add latency if they do I/O.
 ```python
 # Only set callbacks you actually need
 agent = LlmAgent(
- # before_model_callback=None, # default — no overhead
- # after_model_callback=None, # default — no overhead
- before_tool_callback=my_auth_check, # only if needed
+    # before_model_callback=None, # default — no overhead
+    # after_model_callback=None, # default — no overhead
+    before_tool_callback=my_auth_check, # only if needed
 )
 ```
 
@@ -548,10 +548,10 @@ User → Router Agent (LLM call #1) → transfer → Weather Agent (LLM call #2)
 
 ```python
 agent = LlmAgent(
- disallow_transfer_to_parent=True,
- disallow_transfer_to_peers=True,
- sub_agents=[], # no sub-agents
- # → ADK auto-selects SingleFlow
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
+    sub_agents=[], # no sub-agents
+    # → ADK auto-selects SingleFlow
 )
 ```
 

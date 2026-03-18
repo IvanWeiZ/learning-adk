@@ -39,63 +39,63 @@ AgentEvaluator (evaluation/agent_evaluator.py — orchestrates runs + scoring)
 
 ```python
 class EvalCase(BaseModel):
- eval_id: str # unique name for this case
+    eval_id: str # unique name for this case
 
- # The conversation to replay:
- conversation: list[ConversationTurn]
- # Each turn has a user message and optionally an expected agent response.
+    # The conversation to replay:
+    conversation: list[ConversationTurn]
+    # Each turn has a user message and optionally an expected agent response.
 
- # What the agent should have done (optional, for trajectory scoring):
- expected_tool_use: list[ToolUse] | None = None
+    # What the agent should have done (optional, for trajectory scoring):
+    expected_tool_use: list[ToolUse] | None = None
 
- # Reference answer for response quality scoring:
- reference_answer: str | None = None
+    # Reference answer for response quality scoring:
+    reference_answer: str | None = None
 
- # Per-case metric config overrides (inherits from EvalSet if absent):
- eval_metrics: list[EvalMetric] | None = None
+    # Per-case metric config overrides (inherits from EvalSet if absent):
+    eval_metrics: list[EvalMetric] | None = None
 
- session_input: SessionInput | None = None # pre-seeded state/history
+    session_input: SessionInput | None = None # pre-seeded state/history
 ```
 
 ### ConversationTurn
 
 ```python
 class ConversationTurn(BaseModel):
- user_content: types.Content # the user's message for this turn
- expected_tool_use: list[ToolUse] | None = None
- reference_answer: str | None = None # expected agent reply for this turn
+    user_content: types.Content # the user's message for this turn
+    expected_tool_use: list[ToolUse] | None = None
+    reference_answer: str | None = None # expected agent reply for this turn
 ```
 
 ### ToolUse — Expected Tool Call
 
 ```python
 class ToolUse(BaseModel):
- tool_name: str # e.g. "search_web"
- tool_input: dict[str, Any] | None # expected arguments (None = any args ok)
- tool_output: str | None # optional: mock output to inject
+    tool_name: str # e.g. "search_web"
+    tool_input: dict[str, Any] | None # expected arguments (None = any args ok)
+    tool_output: str | None # optional: mock output to inject
 ```
 
 ### EvalSet — A Suite of Cases
 
 ```python
 class EvalSet(BaseModel):
- eval_set_id: str
- eval_cases: list[EvalCase]
- eval_metrics: list[EvalMetric] # default metrics for all cases
- creation_timestamp: float
+    eval_set_id: str
+    eval_cases: list[EvalCase]
+    eval_metrics: list[EvalMetric] # default metrics for all cases
+    creation_timestamp: float
 ```
 
 ### EvalMetric — What to Measure
 
 ```python
 class EvalMetric(BaseModel):
- metric_name: EvalMetricEnum # which metric (see below)
- threshold: float # minimum passing score (0.0–1.0)
+    metric_name: EvalMetricEnum # which metric (see below)
+    threshold: float # minimum passing score (0.0–1.0)
 
 class EvalMetricEnum(str, Enum):
- TOOL_TRAJECTORY_AVG_SCORE = "tool_trajectory_avg_score"
- RESPONSE_MATCH_SCORE = "response_match_score"
- # (custom metrics can be registered)
+    TOOL_TRAJECTORY_AVG_SCORE = "tool_trajectory_avg_score"
+    RESPONSE_MATCH_SCORE = "response_match_score"
+    # (custom metrics can be registered)
 ```
 
 ---
@@ -112,9 +112,9 @@ class EvalMetricEnum(str, Enum):
 from google.adk.evaluation import AgentEvaluator
 
 results = await AgentEvaluator.evaluate(
- agent_module="my_package.my_agent", # importable module with 'agent' variable
- eval_dataset_file_path_or_dir="tests/evals/", # .evalset.json files
- num_runs=1, # how many times to run each case
+    agent_module="my_package.my_agent", # importable module with 'agent' variable
+    eval_dataset_file_path_or_dir="tests/evals/", # .evalset.json files
+    num_runs=1, # how many times to run each case
 )
 ```
 
@@ -126,19 +126,19 @@ The returned `results` is a list of `EvalCaseResult` objects, one per case.
 
 ```python
 class EvalCaseResult(BaseModel):
- eval_set_id: str
- eval_id: str # matches EvalCase.eval_id
- final_eval_status: EvalStatus # PASSED | FAILED
- eval_metric_results: list[EvalMetricResult]
- session_id: str # the session used for this run
+    eval_set_id: str
+    eval_id: str # matches EvalCase.eval_id
+    final_eval_status: EvalStatus # PASSED | FAILED
+    eval_metric_results: list[EvalMetricResult]
+    session_id: str # the session used for this run
 ```
 
 ```python
 class EvalMetricResult(BaseModel):
- metric_name: str
- score: float # actual score (0.0–1.0)
- threshold: float # passing threshold
- eval_status: EvalStatus # PASSED | FAILED
+    metric_name: str
+    score: float # actual score (0.0–1.0)
+    threshold: float # passing threshold
+    eval_status: EvalStatus # PASSED | FAILED
 ```
 
 ---
@@ -248,15 +248,15 @@ import asyncio
 from google.adk.evaluation import AgentEvaluator
 
 async def run_evals():
- results = await AgentEvaluator.evaluate(
- agent_module="my_weather_agent",
- eval_dataset_file_path_or_dir="tests/evals/",
- )
- for r in results:
- status = r.final_eval_status.value
- print(f"{r.eval_id}: {status}")
- for m in r.eval_metric_results:
- print(f" {m.metric_name}: {m.score:.2f} (threshold {m.threshold})")
+    results = await AgentEvaluator.evaluate(
+        agent_module="my_weather_agent",
+        eval_dataset_file_path_or_dir="tests/evals/",
+    )
+    for r in results:
+        status = r.final_eval_status.value
+        print(f"{r.eval_id}: {status}")
+        for m in r.eval_metric_results:
+            print(f"  {m.metric_name}: {m.score:.2f} (threshold {m.threshold})")
 
 asyncio.run(run_evals())
 ```
@@ -274,15 +274,15 @@ from google.adk.evaluation import AgentEvaluator, EvalStatus
 
 @pytest.mark.asyncio
 async def test_weather_agent_evals():
- results = await AgentEvaluator.evaluate(
- agent_module="weather_agent",
- eval_dataset_file_path_or_dir="tests/evals/",
- )
- failures = [r for r in results if r.final_eval_status == EvalStatus.FAILED]
- assert not failures, (
- f"{len(failures)} eval case(s) failed: "
- + ", ".join(f.eval_id for f in failures)
- )
+    results = await AgentEvaluator.evaluate(
+        agent_module="weather_agent",
+        eval_dataset_file_path_or_dir="tests/evals/",
+    )
+    failures = [r for r in results if r.final_eval_status == EvalStatus.FAILED]
+    assert not failures, (
+        f"{len(failures)} eval case(s) failed: "
+        + ", ".join(f.eval_id for f in failures)
+    )
 ```
 
 Run with: `pytest tests/test_agent_eval.py -v`

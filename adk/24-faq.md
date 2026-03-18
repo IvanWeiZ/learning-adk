@@ -12,19 +12,19 @@ Run versions side-by-side. The LLM picks based on description.
 
 ```python
 def search_products_v1(query: str) -> str:
- """Search products by name (basic text match).
- Use this for simple keyword searches."""
- return legacy_search(query)
+    """Search products by name (basic text match).
+    Use this for simple keyword searches."""
+    return legacy_search(query)
 
 def search_products_v2(query: str, category: str = "all", sort: str = "relevance") -> str:
- """Search products with filtering and sorting (recommended).
- Use this for all product searches — supports category filtering and sort order."""
- return advanced_search(query, category, sort)
+    """Search products with filtering and sorting (recommended).
+    Use this for all product searches — supports category filtering and sort order."""
+    return advanced_search(query, category, sort)
 
 agent = Agent(
- name="shop_assistant",
- tools=[search_products_v1, search_products_v2],
- instruction="Prefer search_products_v2 over v1 for all searches.",
+    name="shop_assistant",
+    tools=[search_products_v1, search_products_v2],
+    instruction="Prefer search_products_v2 over v1 for all searches.",
 )
 ```
 
@@ -55,35 +55,35 @@ Use a `BaseToolset` to serve different versions based on context:
 from google.adk.tools import BaseToolset, FunctionTool
 
 class VersionedToolset(BaseToolset):
- """Serves tool versions based on user's feature flags."""
+    """Serves tool versions based on user's feature flags."""
 
- def __init__(self, tool_versions: dict):
- super().__init__()
- # {"search": {"v1": func_v1, "v2": func_v2, "default": "v2"}}
- self.tool_versions = tool_versions
+    def __init__(self, tool_versions: dict):
+        super().__init__()
+        # {"search": {"v1": func_v1, "v2": func_v2, "default": "v2"}}
+        self.tool_versions = tool_versions
 
- async def get_tools(self, readonly_context) -> list:
- feature_flags = readonly_context.state.get("user:feature_flags", {})
- tools = []
+    async def get_tools(self, readonly_context) -> list:
+        feature_flags = readonly_context.state.get("user:feature_flags", {})
+        tools = []
 
- for tool_name, versions in self.tool_versions.items():
- # Check if user has a specific version flag
- version = feature_flags.get(f"{tool_name}_version", versions["default"])
- func = versions.get(version, versions[versions["default"]])
- tools.append(FunctionTool(func=func))
+        for tool_name, versions in self.tool_versions.items():
+            # Check if user has a specific version flag
+            version = feature_flags.get(f"{tool_name}_version", versions["default"])
+            func = versions.get(version, versions[versions["default"]])
+            tools.append(FunctionTool(func=func))
 
- return tools
+        return tools
 
 # Usage:
 agent = Agent(
- name="shop",
- tools=[VersionedToolset(tool_versions={
- "search": {
- "v1": search_products_v1,
- "v2": search_products_v2,
- "default": "v2",
- },
- })],
+    name="shop",
+    tools=[VersionedToolset(tool_versions={
+        "search": {
+            "v1": search_products_v1,
+            "v2": search_products_v2,
+            "default": "v2",
+        },
+    })],
 )
 ```
 
@@ -112,24 +112,24 @@ Use `before_tool_callback` to silently redirect old tool calls to new implementa
 
 ```python
 async def version_migration_callback(tool, args, tool_context):
- """Redirect old tool calls to new implementations."""
- migrations = {
- "search_products": ("search_products_v2", lambda a: {**a, "sort": "relevance"}),
- }
+    """Redirect old tool calls to new implementations."""
+    migrations = {
+        "search_products": ("search_products_v2", lambda a: {**a, "sort": "relevance"}),
+    }
 
- if tool.name in migrations:
- new_name, transform_args = migrations[tool.name]
- new_tool = find_tool(new_name)
- new_args = transform_args(args)
- # Execute new version, return its result (skips old tool)
- result = await new_tool.run_async(args=new_args, tool_context=tool_context)
- return result
+    if tool.name in migrations:
+        new_name, transform_args = migrations[tool.name]
+        new_tool = find_tool(new_name)
+        new_args = transform_args(args)
+        # Execute new version, return its result (skips old tool)
+        result = await new_tool.run_async(args=new_args, tool_context=tool_context)
+        return result
 
- return None # No migration, run original
+    return None # No migration, run original
 
 agent = Agent(
- name="shop",
- before_tool_callback=version_migration_callback,
+    name="shop",
+    before_tool_callback=version_migration_callback,
 )
 ```
 
@@ -160,29 +160,29 @@ from google.adk.tools.tool_context import ToolContext
 
 @pytest.mark.asyncio
 async def test_add_to_cart():
- """Test a tool function in isolation with a mock ToolContext."""
- # Create a mock ToolContext with real state behavior
- mock_context = MagicMock(spec=ToolContext)
- mock_context.state = {} # Real dict for state
+    """Test a tool function in isolation with a mock ToolContext."""
+    # Create a mock ToolContext with real state behavior
+    mock_context = MagicMock(spec=ToolContext)
+    mock_context.state = {} # Real dict for state
 
- # Call the tool directly
- result = add_to_cart("Laptop", 1, tool_context=mock_context)
+    # Call the tool directly
+    result = add_to_cart("Laptop", 1, tool_context=mock_context)
 
- # Assert tool behavior
- assert "Laptop" in result
- assert mock_context.state["cart"] == [{"item": "Laptop", "qty": 1}]
+    # Assert tool behavior
+    assert "Laptop" in result
+    assert mock_context.state["cart"] == [{"item": "Laptop", "qty": 1}]
 
 @pytest.mark.asyncio
 async def test_tool_handles_missing_data():
- """Test tool error handling."""
- mock_context = MagicMock(spec=ToolContext)
- mock_context.state = {}
+    """Test tool error handling."""
+    mock_context = MagicMock(spec=ToolContext)
+    mock_context.state = {}
 
- result = lookup_order("NONEXISTENT", tool_context=mock_context)
+    result = lookup_order("NONEXISTENT", tool_context=mock_context)
 
- assert "not found" in result.lower()
- # Verify no state corruption
- assert "current_order" not in mock_context.state
+    assert "not found" in result.lower()
+    # Verify no state corruption
+    assert "current_order" not in mock_context.state
 ```
 
 ```
@@ -208,40 +208,40 @@ from unittest.mock import MagicMock
 
 @pytest.mark.asyncio
 async def test_rate_limit_callback():
- """Test before_model_callback in isolation."""
- mock_context = MagicMock()
- mock_context.state = {"temp:last_llm_call": 0}
+    """Test before_model_callback in isolation."""
+    mock_context = MagicMock()
+    mock_context.state = {"temp:last_llm_call": 0}
 
- mock_request = MagicMock()
- mock_request.contents = [MagicMock(), MagicMock()]
+    mock_request = MagicMock()
+    mock_request.contents = [MagicMock(), MagicMock()]
 
- result = await rate_limit_callback(mock_context, mock_request)
+    result = await rate_limit_callback(mock_context, mock_request)
 
- # Callback should return None (continue) and update timestamp
- assert result is None
- assert mock_context.state["temp:last_llm_call"] > 0
+    # Callback should return None (continue) and update timestamp
+    assert result is None
+    assert mock_context.state["temp:last_llm_call"] > 0
 ```
 
 #### Testing Agent Configuration (No LLM Call)
 
 ```python
 def test_agent_configuration():
- """Verify agent is configured correctly without calling the LLM."""
- agent = build_support_agent()
+    """Verify agent is configured correctly without calling the LLM."""
+    agent = build_support_agent()
 
- # Check structure
- assert agent.name == "support_bot"
- assert len(agent.sub_agents) == 2
- assert agent.sub_agents[0].name == "order_agent"
- assert agent.sub_agents[1].name == "refund_agent"
+    # Check structure
+    assert agent.name == "support_bot"
+    assert len(agent.sub_agents) == 2
+    assert agent.sub_agents[0].name == "order_agent"
+    assert agent.sub_agents[1].name == "refund_agent"
 
- # Check tools are attached
- tool_names = [t.name for t in agent.tools]
- assert "transfer_to_human" in tool_names
+    # Check tools are attached
+    tool_names = [t.name for t in agent.tools]
+    assert "transfer_to_human" in tool_names
 
- # Check sub-agent tools
- order_tools = [t.name for t in agent.sub_agents[0].tools]
- assert "lookup_order" in order_tools
+    # Check sub-agent tools
+    order_tools = [t.name for t in agent.sub_agents[0].tools]
+    assert "lookup_order" in order_tools
 ```
 
 #### Testing Plugins (Isolated)
@@ -249,20 +249,20 @@ def test_agent_configuration():
 ```python
 @pytest.mark.asyncio
 async def test_metrics_plugin_tracks_tokens():
- """Test plugin callback in isolation."""
- plugin = MetricsPlugin()
- mock_context = MagicMock()
- mock_context.state = {}
+    """Test plugin callback in isolation."""
+    plugin = MetricsPlugin()
+    mock_context = MagicMock()
+    mock_context.state = {}
 
- mock_response = MagicMock()
- mock_response.usage_metadata.total_token_count = 500
+    mock_response = MagicMock()
+    mock_response.usage_metadata.total_token_count = 500
 
- await plugin.after_model_callback(
- callback_context=mock_context,
- llm_response=mock_response,
- )
+    await plugin.after_model_callback(
+        callback_context=mock_context,
+        llm_response=mock_response,
+    )
 
- assert mock_context.state["user:total_tokens"] == 500
+    assert mock_context.state["user:total_tokens"] == 500
 ```
 
 ### Integration Testing (Real ADK, Mock LLM)
@@ -277,51 +277,51 @@ from google.genai import types
 
 @pytest.mark.asyncio
 async def test_agent_uses_tool_correctly():
- """Integration test: real ADK pipeline, real tools, real LLM."""
- # Use a cheap/fast model for integration tests
- agent = Agent(
- model="gemini-2.5-flash",
- name="test_agent",
- instruction="Use get_weather to answer weather questions.",
- tools=[mock_get_weather], # Real FunctionTool, mock implementation
- )
+    """Integration test: real ADK pipeline, real tools, real LLM."""
+    # Use a cheap/fast model for integration tests
+    agent = Agent(
+        model="gemini-2.5-flash",
+        name="test_agent",
+        instruction="Use get_weather to answer weather questions.",
+        tools=[mock_get_weather], # Real FunctionTool, mock implementation
+    )
 
- session_service = InMemorySessionService()
- runner = Runner(
- agent=agent,
- app_name="test",
- session_service=session_service,
- )
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=agent,
+        app_name="test",
+        session_service=session_service,
+    )
 
- session = await session_service.create_session(
- app_name="test", user_id="test_user"
- )
+    session = await session_service.create_session(
+        app_name="test", user_id="test_user"
+    )
 
- events = []
- async for event in runner.run_async(
- session_id=session.id,
- user_id="test_user",
- new_message=types.Content(
- role="user",
- parts=[types.Part(text="What's the weather in Tokyo?")],
- ),
- ):
- events.append(event)
+    events = []
+    async for event in runner.run_async(
+        session_id=session.id,
+        user_id="test_user",
+        new_message=types.Content(
+            role="user",
+            parts=[types.Part(text="What's the weather in Tokyo?")],
+        ),
+    ):
+        events.append(event)
 
- # Verify a tool was called
- tool_events = [e for e in events if e.content and any(
- p.function_call for p in (e.content.parts or [])
- )]
- assert len(tool_events) > 0
+    # Verify a tool was called
+    tool_events = [e for e in events if e.content and any(
+        p.function_call for p in (e.content.parts or [])
+    )]
+    assert len(tool_events) > 0
 
- # Verify final response mentions Tokyo
- final_text = ""
- for e in events:
- if e.content and e.content.parts:
- for p in e.content.parts:
- if p.text:
- final_text += p.text
- assert "tokyo" in final_text.lower() or "22" in final_text
+    # Verify final response mentions Tokyo
+    final_text = ""
+    for e in events:
+        if e.content and e.content.parts:
+            for p in e.content.parts:
+                if p.text:
+                    final_text += p.text
+    assert "tokyo" in final_text.lower() or "22" in final_text
 ```
 
 ### E2E Testing (Full Agent System)
@@ -329,59 +329,59 @@ async def test_agent_uses_tool_correctly():
 ```python
 @pytest.mark.asyncio
 async def test_multi_agent_e2e():
- """End-to-end test: full multi-agent conversation."""
- # Build the complete agent tree
- root_agent = build_production_agent()
+    """End-to-end test: full multi-agent conversation."""
+    # Build the complete agent tree
+    root_agent = build_production_agent()
 
- session_service = InMemorySessionService()
- runner = Runner(
- agent=root_agent,
- app_name="e2e_test",
- session_service=session_service,
- )
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=root_agent,
+        app_name="e2e_test",
+        session_service=session_service,
+    )
 
- session = await session_service.create_session(
- app_name="e2e_test", user_id="test_user"
- )
+    session = await session_service.create_session(
+        app_name="e2e_test", user_id="test_user"
+    )
 
- # Simulate multi-turn conversation
- conversation = [
- "I need to check my order ORD-001",
- "I want a refund for it",
- "The laptop arrived damaged",
- ]
+    # Simulate multi-turn conversation
+    conversation = [
+        "I need to check my order ORD-001",
+        "I want a refund for it",
+        "The laptop arrived damaged",
+    ]
 
- all_events = []
- for msg in conversation:
- async for event in runner.run_async(
- session_id=session.id,
- user_id="test_user",
- new_message=types.Content(
- role="user",
- parts=[types.Part(text=msg)],
- ),
- ):
- all_events.append(event)
+    all_events = []
+    for msg in conversation:
+        async for event in runner.run_async(
+            session_id=session.id,
+            user_id="test_user",
+            new_message=types.Content(
+                role="user",
+                parts=[types.Part(text=msg)],
+            ),
+        ):
+            all_events.append(event)
 
- # Verify agent transfers happened
- authors = {e.author for e in all_events if e.author}
- assert "order_agent" in authors or "refund_agent" in authors
+    # Verify agent transfers happened
+    authors = {e.author for e in all_events if e.author}
+    assert "order_agent" in authors or "refund_agent" in authors
 
- # Verify refund was initiated
- final_text = " ".join(
- p.text for e in all_events
- if e.content and e.content.parts
- for p in e.content.parts if p.text
- )
- assert "refund" in final_text.lower()
+    # Verify refund was initiated
+    final_text = " ".join(
+        p.text for e in all_events
+        if e.content and e.content.parts
+        for p in e.content.parts if p.text
+    )
+    assert "refund" in final_text.lower()
 
- # Verify session state was updated
- updated_session = await session_service.get_session(
- app_name="e2e_test",
- user_id="test_user",
- session_id=session.id,
- )
- assert "current_order" in updated_session.state
+    # Verify session state was updated
+    updated_session = await session_service.get_session(
+        app_name="e2e_test",
+        user_id="test_user",
+        session_id=session.id,
+    )
+    assert "current_order" in updated_session.state
 ```
 
 ### Test Strategy Summary
@@ -419,41 +419,41 @@ import re
 from google.adk import Agent
 
 async def enrich_request(callback_context):
- """Extract IDs from user message and fetch additional data before the agent runs."""
- # Get the latest user message from session events
- session = callback_context.state._session # Access session
- last_user_msg = ""
- for event in reversed(session.events):
- if event.content and event.content.role == "user":
- for part in event.content.parts:
- if part.text:
- last_user_msg = part.text
- break
- break
+    """Extract IDs from user message and fetch additional data before the agent runs."""
+    # Get the latest user message from session events
+    session = callback_context.state._session # Access session
+    last_user_msg = ""
+    for event in reversed(session.events):
+        if event.content and event.content.role == "user":
+            for part in event.content.parts:
+                if part.text:
+                    last_user_msg = part.text
+                    break
+            break
 
- # Extract IDs using regex
- order_ids = re.findall(r'ORD-\d+', last_user_msg)
- customer_ids = re.findall(r'CUST-\d+', last_user_msg)
+    # Extract IDs using regex
+    order_ids = re.findall(r'ORD-\d+', last_user_msg)
+    customer_ids = re.findall(r'CUST-\d+', last_user_msg)
 
- # Fetch additional data for each ID
- if order_ids:
- order_data = await fetch_order_details(order_ids[0])
- callback_context.state["temp:order_context"] = order_data
+    # Fetch additional data for each ID
+    if order_ids:
+        order_data = await fetch_order_details(order_ids[0])
+        callback_context.state["temp:order_context"] = order_data
 
- if customer_ids:
- customer_data = await fetch_customer_profile(customer_ids[0])
- callback_context.state["temp:customer_context"] = customer_data
+    if customer_ids:
+        customer_data = await fetch_customer_profile(customer_ids[0])
+        callback_context.state["temp:customer_context"] = customer_data
 
- return None # Continue to agent (don't short-circuit)
+    return None # Continue to agent (don't short-circuit)
 
 root_agent = Agent(
- name="support",
- instruction="""You are a support agent.
- Check state key 'temp:order_context' for pre-loaded order data.
- Check state key 'temp:customer_context' for pre-loaded customer data.
- Use this data to assist the user without re-fetching.""",
- before_agent_callback=enrich_request,
- tools=[lookup_order, update_order],
+    name="support",
+    instruction="""You are a support agent.
+    Check state key 'temp:order_context' for pre-loaded order data.
+    Check state key 'temp:customer_context' for pre-loaded customer data.
+    Use this data to assist the user without re-fetching.""",
+    before_agent_callback=enrich_request,
+    tools=[lookup_order, update_order],
 )
 ```
 
@@ -499,42 +499,42 @@ from google.adk.plugins import BasePlugin
 import re
 
 class IdEnrichmentPlugin(BasePlugin):
- """Extracts IDs from user messages and pre-fetches data."""
+    """Extracts IDs from user messages and pre-fetches data."""
 
- name = "id_enrichment"
+    name = "id_enrichment"
 
- def __init__(self, patterns: dict, fetchers: dict):
- """
- patterns: {"order": r'ORD-\\d+', "customer": r'CUST-\\d+'}
- fetchers: {"order": fetch_order_fn, "customer": fetch_customer_fn}
- """
- self.patterns = patterns
- self.fetchers = fetchers
+    def __init__(self, patterns: dict, fetchers: dict):
+        """
+        patterns: {"order": r'ORD-\\d+', "customer": r'CUST-\\d+'}
+        fetchers: {"order": fetch_order_fn, "customer": fetch_customer_fn}
+        """
+        self.patterns = patterns
+        self.fetchers = fetchers
 
- async def before_agent_callback(self, callback_context, **kwargs):
- session = callback_context.state._session
- last_msg = self._get_last_user_message(session)
+    async def before_agent_callback(self, callback_context, **kwargs):
+        session = callback_context.state._session
+        last_msg = self._get_last_user_message(session)
 
- for key, pattern in self.patterns.items():
- matches = re.findall(pattern, last_msg)
- if matches and key in self.fetchers:
- data = await self.fetchers[key](matches[0])
- callback_context.state[f"temp:{key}_context"] = data
+        for key, pattern in self.patterns.items():
+            matches = re.findall(pattern, last_msg)
+            if matches and key in self.fetchers:
+                data = await self.fetchers[key](matches[0])
+                callback_context.state[f"temp:{key}_context"] = data
 
- return None
+        return None
 
- def _get_last_user_message(self, session) -> str:
- for event in reversed(session.events):
- if event.content and event.content.role == "user":
- for part in event.content.parts:
- if part.text:
- return part.text
- return ""
+    def _get_last_user_message(self, session) -> str:
+        for event in reversed(session.events):
+            if event.content and event.content.role == "user":
+                for part in event.content.parts:
+                    if part.text:
+                        return part.text
+        return ""
 
 # Reuse across all agents
 enrichment = IdEnrichmentPlugin(
- patterns={"order": r'ORD-\d+', "customer": r'CUST-\d+'},
- fetchers={"order": fetch_order, "customer": fetch_customer},
+    patterns={"order": r'ORD-\d+', "customer": r'CUST-\d+'},
+    fetchers={"order": fetch_order, "customer": fetch_customer},
 )
 
 app = App(agent=root_agent, plugins=[enrichment])
@@ -548,29 +548,29 @@ from google.adk.agents.sequential_agent import SequentialAgent
 
 # Step 1: Extract and enrich
 preprocessor = Agent(
- name="preprocessor",
- model="gemini-2.5-flash",
- instruction="""Extract any IDs from the user message (order IDs like ORD-XXX,
- customer IDs like CUST-XXX). Look up their details using the provided tools.
- Save results to state.""",
- tools=[lookup_order, lookup_customer],
- output_key="preprocessed_context",
+    name="preprocessor",
+    model="gemini-2.5-flash",
+    instruction="""Extract any IDs from the user message (order IDs like ORD-XXX,
+    customer IDs like CUST-XXX). Look up their details using the provided tools.
+    Save results to state.""",
+    tools=[lookup_order, lookup_customer],
+    output_key="preprocessed_context",
 )
 
 # Step 2: Main agent uses enriched state
 main_agent = Agent(
- name="support_agent",
- model="gemini-2.5-pro",
- instruction="""You are a support agent.
- The preprocessor has already fetched relevant data.
- Check state key 'preprocessed_context' for details.
- Help the user with their request.""",
- tools=[update_order, initiate_refund],
+    name="support_agent",
+    model="gemini-2.5-pro",
+    instruction="""You are a support agent.
+    The preprocessor has already fetched relevant data.
+    Check state key 'preprocessed_context' for details.
+    Help the user with their request.""",
+    tools=[update_order, initiate_refund],
 )
 
 root_agent = SequentialAgent(
- name="support_pipeline",
- sub_agents=[preprocessor, main_agent],
+    name="support_pipeline",
+    sub_agents=[preprocessor, main_agent],
 )
 ```
 
@@ -611,22 +611,22 @@ Agents in the same session share state via `output_key` or direct writes:
 ```python
 # Agent A writes to state
 agent_a = Agent(
- name="researcher",
- instruction="Research the topic and save findings.",
- output_key="research_findings", # Auto-saves text output to state
+    name="researcher",
+    instruction="Research the topic and save findings.",
+    output_key="research_findings", # Auto-saves text output to state
 )
 
 # Agent B reads from state
 agent_b = Agent(
- name="writer",
- instruction="""Write an article based on state key 'research_findings'.
- Use the pre-researched material.""",
+    name="writer",
+    instruction="""Write an article based on state key 'research_findings'.
+    Use the pre-researched material.""",
 )
 
 # Sequential pipeline: A → B
 root = SequentialAgent(
- name="pipeline",
- sub_agents=[agent_a, agent_b],
+    name="pipeline",
+    sub_agents=[agent_a, agent_b],
 )
 ```
 
@@ -662,30 +662,30 @@ For more control over what gets passed:
 
 ```python
 def save_analysis(
- sentiment: str,
- confidence: float,
- key_themes: list[str],
- tool_context: ToolContext,
+    sentiment: str,
+    confidence: float,
+    key_themes: list[str],
+    tool_context: ToolContext,
 ) -> str:
- """Save structured analysis results for downstream agents."""
- tool_context.state["analysis"] = {
- "sentiment": sentiment,
- "confidence": confidence,
- "themes": key_themes,
- }
- return "Analysis saved."
+    """Save structured analysis results for downstream agents."""
+    tool_context.state["analysis"] = {
+        "sentiment": sentiment,
+        "confidence": confidence,
+        "themes": key_themes,
+    }
+    return "Analysis saved."
 
 # Agent A uses the tool to write structured data
 agent_a = Agent(
- name="analyzer",
- instruction="Analyze the text, then call save_analysis with your findings.",
- tools=[save_analysis],
+    name="analyzer",
+    instruction="Analyze the text, then call save_analysis with your findings.",
+    tools=[save_analysis],
 )
 
 # Agent B reads the structured data
 agent_b = Agent(
- name="reporter",
- instruction="Read state['analysis'] and generate a report.",
+    name="reporter",
+    instruction="Read state['analysis'] and generate a report.",
 )
 ```
 
@@ -695,20 +695,20 @@ Transfer carries full session history:
 
 ```python
 root = Agent(
- name="router",
- instruction="Route to the right specialist.",
- sub_agents=[
- Agent(
- name="billing",
- description="Handles billing and payment questions",
- instruction="Handle billing issues. Transfer back when done.",
- ),
- Agent(
- name="technical",
- description="Handles technical problems and bugs",
- instruction="Handle technical issues. Transfer back when done.",
- ),
- ],
+    name="router",
+    instruction="Route to the right specialist.",
+    sub_agents=[
+        Agent(
+            name="billing",
+            description="Handles billing and payment questions",
+            instruction="Handle billing issues. Transfer back when done.",
+        ),
+        Agent(
+            name="technical",
+            description="Handles technical problems and bugs",
+            instruction="Handle technical issues. Transfer back when done.",
+        ),
+    ],
 )
 ```
 
@@ -743,16 +743,16 @@ Isolated execution without shared history:
 from google.adk.tools.agent_tool import AgentTool
 
 helper = Agent(
- name="summarizer",
- instruction="Summarize the given text in 2-3 sentences.",
+    name="summarizer",
+    instruction="Summarize the given text in 2-3 sentences.",
 )
 
 helper_tool = AgentTool(agent=helper)
 
 main_agent = Agent(
- name="main",
- instruction="Use summarizer tool when you need to condense text.",
- tools=[helper_tool],
+    name="main",
+    instruction="Use summarizer tool when you need to condense text.",
+    tools=[helper_tool],
 )
 ```
 

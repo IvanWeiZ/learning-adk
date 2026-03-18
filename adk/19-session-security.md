@@ -25,24 +25,24 @@ Covers common session/event leak vectors and their mitigations.
 ```python
 # ❌ DANGEROUS: Hardcoded or missing user_id
 session = await session_service.get_session(
- app_name="my_app",
- user_id="default", # Every user gets the SAME sessions!
- session_id=request.session_id,
+    app_name="my_app",
+    user_id="default", # Every user gets the SAME sessions!
+    session_id=request.session_id,
 )
 
 # ❌ DANGEROUS: user_id from untrusted input without validation
 session = await session_service.get_session(
- app_name="my_app",
- user_id=request.headers["X-User-Id"], # Client can spoof this!
- session_id=request.session_id,
+    app_name="my_app",
+    user_id=request.headers["X-User-Id"], # Client can spoof this!
+    session_id=request.session_id,
 )
 
 # ✅ CORRECT: user_id from authenticated identity (e.g., JWT, OAuth)
 user_id = get_authenticated_user_id(request) # Verified server-side
 session = await session_service.get_session(
- app_name="my_app",
- user_id=user_id,
- session_id=request.session_id,
+    app_name="my_app",
+    user_id=user_id,
+    session_id=request.session_id,
 )
 ```
 
@@ -74,7 +74,7 @@ The `BaseSessionService.list_sessions()` accepts an **optional** `user_id`. If y
 ```python
 # From base_session_service.py:
 async def list_sessions(
- self, *, app_name: str, user_id: Optional[str] = None # Optional!
+    self, *, app_name: str, user_id: Optional[str] = None # Optional!
 ) -> ListSessionsResponse:
 
 # ❌ DANGEROUS: If your API endpoint exposes this without forcing user_id
@@ -83,8 +83,8 @@ sessions = await session_service.list_sessions(app_name="my_app")
 
 # ✅ CORRECT: Always scope list_sessions to the authenticated user
 sessions = await session_service.list_sessions(
- app_name="my_app",
- user_id=authenticated_user_id,
+    app_name="my_app",
+    user_id=authenticated_user_id,
 )
 ```
 
@@ -97,16 +97,16 @@ This is critical to understand: **`Runner` performs zero authentication or autho
 ```python
 # Runner.run_async() trusts the caller completely:
 async def run_async(
- self,
- *,
- user_id: str, # No validation — Runner trusts this is correct
- session_id: str,
- new_message: Content,
- ...
+    self,
+    *,
+    user_id: str, # No validation — Runner trusts this is correct
+    session_id: str,
+    new_message: Content,
+    ...
 ) -> AsyncGenerator[Event, None]:
- session = await self._get_or_create_session(user_id, session_id)
- # → Calls session_service.get_session(app_name=self.app_name, user_id=user_id, ...)
- # → If auto_create_session=True, creates a new session under this user_id
+    session = await self._get_or_create_session(user_id, session_id)
+    # → Calls session_service.get_session(app_name=self.app_name, user_id=user_id, ...)
+    # → If auto_create_session=True, creates a new session under this user_id
 ```
 
 **This means your application layer is the ONLY security boundary.** If a bug in your API handler passes the wrong `user_id` to `runner.run_async()`, ADK will happily serve the wrong user's session. There are no guardrails inside ADK itself.
@@ -117,27 +117,27 @@ async def run_async(
 from fastapi import Depends, HTTPException
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
- """Extract and verify user identity from JWT token."""
- payload = verify_jwt(token) # Raises on invalid/expired tokens
- user_id = payload.get("sub")
- if not user_id:
- raise HTTPException(status_code=401, detail="Invalid token")
- return user_id
+    """Extract and verify user identity from JWT token."""
+    payload = verify_jwt(token) # Raises on invalid/expired tokens
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user_id
 
 @app.post("/chat")
 async def chat(
- message: str,
- session_id: str,
- user_id: str = Depends(get_current_user), # Always from verified token
+    message: str,
+    session_id: str,
+    user_id: str = Depends(get_current_user), # Always from verified token
 ):
- session = await session_service.get_session(
- app_name="my_app",
- user_id=user_id,
- session_id=session_id,
- )
- if session is None:
- raise HTTPException(status_code=404, detail="Session not found")
- # ...
+    session = await session_service.get_session(
+        app_name="my_app",
+        user_id=user_id,
+        session_id=session_id,
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    # ...
 ```
 
 ---
@@ -153,23 +153,23 @@ If session IDs are sequential or predictable, an attacker can guess other users'
 session_counter = 0
 
 async def create_user_session(user_id: str):
- global session_counter
- session_counter += 1
- return await session_service.create_session(
- app_name="my_app",
- user_id=user_id,
- session_id=str(session_counter), # "1", "2", "3"... trivially guessable
- )
+    global session_counter
+    session_counter += 1
+    return await session_service.create_session(
+        app_name="my_app",
+        user_id=user_id,
+        session_id=str(session_counter), # "1", "2", "3"... trivially guessable
+    )
 
 # ❌ DANGEROUS: User-provided session IDs without ownership check
 @app.get("/session/{session_id}")
 async def get_session(session_id: str):
- # Any user can request any session_id!
- return await session_service.get_session(
- app_name="my_app",
- user_id=request.user_id,
- session_id=session_id,
- )
+    # Any user can request any session_id!
+    return await session_service.get_session(
+        app_name="my_app",
+        user_id=request.user_id,
+        session_id=session_id,
+    )
 ```
 
 ### Defense: Use UUIDs and Always Check Ownership
@@ -179,16 +179,16 @@ import uuid
 
 # ✅ CORRECT: Random UUIDs — not guessable
 session = await session_service.create_session(
- app_name="my_app",
- user_id=user_id,
- session_id=str(uuid.uuid4()), # "a3f8b2c1-..."
+    app_name="my_app",
+    user_id=user_id,
+    session_id=str(uuid.uuid4()), # "a3f8b2c1-..."
 )
 
 # ✅ CORRECT: Let ADK generate the session ID (it uses UUIDs internally)
 session = await session_service.create_session(
- app_name="my_app",
- user_id=user_id,
- # session_id omitted — ADK generates a UUID
+    app_name="my_app",
+    user_id=user_id,
+    # session_id omitted — ADK generates a UUID
 )
 ```
 
@@ -197,7 +197,7 @@ ADK's `get_session` already requires matching `(app_name, user_id, session_id)`,
 ```python
 # From database_session_service.py:
 storage_session = await sql_session.get(
- schema.StorageSession, (app_name, user_id, session_id) # Composite PK
+    schema.StorageSession, (app_name, user_id, session_id) # Composite PK
 )
 ```
 
@@ -207,9 +207,9 @@ In `InMemorySessionService`, it's enforced via nested dict lookup:
 # From in_memory_session_service.py:
 # self.sessions is: dict[app_name, dict[user_id, dict[session_id, Session]]]
 if user_id not in self.sessions[app_name]:
- return None
+    return None
 if session_id not in self.sessions[app_name][user_id]:
- return None
+    return None
 ```
 
 But relying on this alone is insufficient — always use unpredictable IDs as defense in depth.
@@ -227,16 +227,16 @@ Understanding the implementation is critical for reasoning about security. ADK d
 ```python
 # From _session_util.py — this runs on every state write:
 def extract_state_delta(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
- deltas = {"app": {}, "user": {}, "session": {}}
- for key in state.keys():
- if key.startswith("app:"):
- deltas["app"][key.removeprefix("app:")] = state[key] # → StorageAppState table
- elif key.startswith("user:"):
- deltas["user"][key.removeprefix("user:")] = state[key] # → StorageUserState table
- elif not key.startswith("temp:"):
- deltas["session"][key] = state[key] # → StorageSession table
- # temp: keys are silently dropped — never stored
- return deltas
+    deltas = {"app": {}, "user": {}, "session": {}}
+    for key in state.keys():
+        if key.startswith("app:"):
+            deltas["app"][key.removeprefix("app:")] = state[key] # → StorageAppState table
+        elif key.startswith("user:"):
+            deltas["user"][key.removeprefix("user:")] = state[key] # → StorageUserState table
+        elif not key.startswith("temp:"):
+            deltas["session"][key] = state[key] # → StorageSession table
+        # temp: keys are silently dropped — never stored
+    return deltas
 ```
 
 This means:
@@ -270,12 +270,12 @@ On read, `_merge_state()` re-adds the prefixes and combines all three sources:
 ```python
 # From database_session_service.py:
 def _merge_state(app_state, user_state, session_state) -> dict[str, Any]:
- merged_state = copy.deepcopy(session_state)
- for key in app_state:
- merged_state["app:" + key] = app_state[key] # Re-adds prefix
- for key in user_state:
- merged_state["user:" + key] = user_state[key] # Re-adds prefix
- return merged_state
+    merged_state = copy.deepcopy(session_state)
+    for key in app_state:
+        merged_state["app:" + key] = app_state[key] # Re-adds prefix
+    for key in user_state:
+        merged_state["user:" + key] = user_state[key] # Re-adds prefix
+    return merged_state
 ```
 
 **Security implication:** The `app:` row is a single shared row per application. A write to `app:maintenance_mode` from User A's session modifies the exact same database row that User B reads from. There is no per-user isolation at the storage level for `app:` state.
@@ -414,21 +414,21 @@ tool_context.state["credit_card"] = "4111-1111-1111-1111"
 
 # ❌ WRONG: Forgetting that user: leaks across sessions
 def tool_a(tool_context: ToolContext) -> str:
- """In Session 1: user asks about medical condition."""
- tool_context.state["user:last_topic"] = "HIV test results"
- return "Here are your results..."
+    """In Session 1: user asks about medical condition."""
+    tool_context.state["user:last_topic"] = "HIV test results"
+    return "Here are your results..."
 
 # Session 2 (same user, different conversation — maybe with a colleague watching):
 def tool_b(tool_context: ToolContext) -> str:
- """Agent reads user:last_topic and mentions it in a new context."""
- topic = tool_context.state.get("user:last_topic")
- # → "I see you were recently asking about HIV test results..."
- # → Private medical information leaked into a different conversation!
+    """Agent reads user:last_topic and mentions it in a new context."""
+    topic = tool_context.state.get("user:last_topic")
+    # → "I see you were recently asking about HIV test results..."
+    # → Private medical information leaked into a different conversation!
 
 # ✅ CORRECT: Keep sensitive conversation data in session scope
 def tool_a(tool_context: ToolContext) -> str:
- tool_context.state["last_topic"] = "HIV test results" # Session-only, no prefix
- return "Here are your results..."
+    tool_context.state["last_topic"] = "HIV test results" # Session-only, no prefix
+    return "Here are your results..."
 ```
 
 ### The app: State Trap in Multi-Tenant Systems
@@ -442,15 +442,15 @@ tool_context.state["app:billing_plan"] = "enterprise"
 
 # ❌ CATASTROPHIC: Using app: for per-user data
 def save_user_preferences(prefs: dict, tool_context: ToolContext) -> str:
- tool_context.state["app:preferences"] = prefs # EVERY user sees this!
- return "Saved"
+    tool_context.state["app:preferences"] = prefs # EVERY user sees this!
+    return "Saved"
 # → User A sets preferences → User B's next request reads them
 # → Last write wins — preferences keep flip-flopping
 
 # ✅ CORRECT: user: scope for per-user data
 def save_user_preferences(prefs: dict, tool_context: ToolContext) -> str:
- tool_context.state["user:preferences"] = prefs
- return "Saved"
+    tool_context.state["user:preferences"] = prefs
+    return "Saved"
 
 # ✅ CORRECT: If you must store tenant config globally, namespace it
 tool_context.state["app:tenant_a:billing_plan"] = "enterprise"
@@ -466,30 +466,30 @@ tool_context.state["app:tenant_a:billing_plan"] = "enterprise"
 # From base_session_service.py — called for EVERY event:
 
 async def append_event(self, session: Session, event: Event) -> Event:
- if event.partial:
- return event
- # Step 1: Apply temp state to in-memory session (so other agents can read it)
- self._apply_temp_state(session, event)
- # Step 2: Strip temp keys from the event delta (so they're never persisted)
- event = self._trim_temp_delta_state(event)
- # Step 3: Apply remaining state (session/user/app) normally
- self._update_session_state(session, event)
- session.events.append(event)
- return event
+    if event.partial:
+        return event
+    # Step 1: Apply temp state to in-memory session (so other agents can read it)
+    self._apply_temp_state(session, event)
+    # Step 2: Strip temp keys from the event delta (so they're never persisted)
+    event = self._trim_temp_delta_state(event)
+    # Step 3: Apply remaining state (session/user/app) normally
+    self._update_session_state(session, event)
+    session.events.append(event)
+    return event
 
 def _apply_temp_state(self, session, event):
- """Writes temp: keys to in-memory session.state only."""
- for key, value in event.actions.state_delta.items():
- if key.startswith("temp:"):
- session.state[key] = value # In-memory only!
+    """Writes temp: keys to in-memory session.state only."""
+    for key, value in event.actions.state_delta.items():
+        if key.startswith("temp:"):
+            session.state[key] = value # In-memory only!
 
 def _trim_temp_delta_state(self, event):
- """Removes temp: keys from event before persistence."""
- event.actions.state_delta = {
- key: value for key, value in event.actions.state_delta.items()
- if not key.startswith("temp:") # Stripped!
- }
- return event
+    """Removes temp: keys from event before persistence."""
+    event.actions.state_delta = {
+        key: value for key, value in event.actions.state_delta.items()
+        if not key.startswith("temp:") # Stripped!
+    }
+    return event
 ```
 
 **This means:**
@@ -523,9 +523,9 @@ In multi-agent trees, events carry a `branch` field that controls visibility. If
 ```python
 # ❌ DANGEROUS: Manually creating events without proper branch
 event = Event(
- author="internal_agent",
- content=types.Content(parts=[types.Part(text=sensitive_data)]),
- # No branch set — visible to ALL agents in the tree!
+    author="internal_agent",
+    content=types.Content(parts=[types.Part(text=sensitive_data)]),
+    # No branch set — visible to ALL agents in the tree!
 )
 await session_service.append_event(session, event)
 
@@ -533,10 +533,10 @@ await session_service.append_event(session, event)
 # Events created by agents through run_async() automatically get the correct branch.
 # If you must create events manually, always set the branch:
 event = Event(
- author="internal_agent",
- content=types.Content(parts=[types.Part(text=sensitive_data)]),
- branch="root_agent.internal_agent", # Only visible to this agent's lineage
- invocation_id=ctx.invocation_id,
+    author="internal_agent",
+    content=types.Content(parts=[types.Part(text=sensitive_data)]),
+    branch="root_agent.internal_agent", # Only visible to this agent's lineage
+    invocation_id=ctx.invocation_id,
 )
 ```
 
@@ -546,9 +546,9 @@ event = Event(
 # ❌ DANGEROUS: Two users sharing a session
 # If two users connect to the same session_id, they see each other's messages
 session = await session_service.get_session(
- app_name="my_app",
- user_id="shared_account", # Multiple humans behind one "user"
- session_id="common_room",
+    app_name="my_app",
+    user_id="shared_account", # Multiple humans behind one "user"
+    session_id="common_room",
 )
 # → User A's medical questions visible to User B
 
@@ -586,30 +586,30 @@ What gets stored in session.events (verified from event_actions.py):
 ```python
 # ❌ DANGEROUS: Tool that returns full database records with PII
 def lookup_customer(customer_id: str) -> str:
- """Look up customer details."""
- record = db.get_customer(customer_id)
- return str(record)
- # Returns: {"name": "Alice", "ssn": "123-45-6789", "email": "..."}
- # ALL of this is now stored in the session events forever!
+    """Look up customer details."""
+    record = db.get_customer(customer_id)
+    return str(record)
+    # Returns: {"name": "Alice", "ssn": "123-45-6789", "email": "..."}
+    # ALL of this is now stored in the session events forever!
 
 # ✅ CORRECT: Return only what the agent needs
 def lookup_customer(customer_id: str) -> str:
- """Look up customer details."""
- record = db.get_customer(customer_id)
- return f"Customer: {record['name']}, Account status: {record['status']}"
- # SSN, email, and other PII never enter the event stream
+    """Look up customer details."""
+    record = db.get_customer(customer_id)
+    return f"Customer: {record['name']}, Account status: {record['status']}"
+    # SSN, email, and other PII never enter the event stream
 
 # ✅ CORRECT: Redact sensitive fields
 def lookup_customer(customer_id: str) -> str:
- """Look up customer details."""
- record = db.get_customer(customer_id)
- safe_record = {
- "name": record["name"],
- "status": record["status"],
- "account_type": record["account_type"],
- # Deliberately omit: ssn, email, phone, address
- }
- return str(safe_record)
+    """Look up customer details."""
+    record = db.get_customer(customer_id)
+    safe_record = {
+        "name": record["name"],
+        "status": record["status"],
+        "account_type": record["account_type"],
+        # Deliberately omit: ssn, email, phone, address
+    }
+    return str(safe_record)
 ```
 
 ### Tool Arguments Are Also Stored
@@ -617,17 +617,17 @@ def lookup_customer(customer_id: str) -> str:
 ```python
 # ❌ DANGEROUS: Tool that accepts sensitive data as arguments
 def process_payment(card_number: str, amount: float) -> str:
- """Process a payment."""
- # card_number is stored in the FunctionCall event!
- charge(card_number, amount)
- return "Payment processed"
+    """Process a payment."""
+    # card_number is stored in the FunctionCall event!
+    charge(card_number, amount)
+    return "Payment processed"
 
 # ✅ CORRECT: Use references, not raw credentials
 def process_payment(payment_method_id: str, amount: float) -> str:
- """Process a payment using a saved payment method."""
- # Only a reference is stored in the event
- charge_saved_method(payment_method_id, amount)
- return "Payment processed"
+    """Process a payment using a saved payment method."""
+    # Only a reference is stored in the event
+    charge_saved_method(payment_method_id, amount)
+    return "Payment processed"
 ```
 
 ---
@@ -639,9 +639,9 @@ def process_payment(payment_method_id: str, amount: float) -> str:
 ```python
 # ❌ DANGEROUS: Using InMemorySessionService in production
 runner = Runner(
- agent=agent,
- app_name="production_app",
- session_service=InMemorySessionService(), # No persistence, no encryption
+    agent=agent,
+    app_name="production_app",
+    session_service=InMemorySessionService(), # No persistence, no encryption
 )
 # Problems:
 # - Data lost on restart (not a security issue, but a reliability one)
@@ -657,8 +657,8 @@ runner = Runner(
 from google.adk.sessions import DatabaseSessionService
 
 session_service = DatabaseSessionService(
- db_url="postgresql+asyncpg://user:pass@db-host/adk_sessions",
- # Connection string should come from secrets manager, not code!
+    db_url="postgresql+asyncpg://user:pass@db-host/adk_sessions",
+    # Connection string should come from secrets manager, not code!
 )
 ```
 
@@ -696,9 +696,9 @@ SQLite does **not** support row-level locking, so concurrent writes from multipl
 ```python
 # ❌ DANGEROUS: Reassigning a session to a different user
 session = await session_service.get_session(
- app_name="my_app",
- user_id="user_a",
- session_id="session_123",
+    app_name="my_app",
+    user_id="user_a",
+    session_id="session_123",
 )
 # ... later, a different user tries to "take over" the session
 # This won't work with ADK (user_id is part of the key), but
@@ -715,28 +715,28 @@ import asyncio
 from datetime import datetime, timedelta
 
 async def cleanup_expired_sessions(
- session_service: DatabaseSessionService,
- app_name: str,
- max_age_days: int = 30,
+    session_service: DatabaseSessionService,
+    app_name: str,
+    max_age_days: int = 30,
 ):
- """Delete sessions older than max_age_days."""
- cutoff = datetime.now() - timedelta(days=max_age_days)
- cutoff_timestamp = cutoff.timestamp()
+    """Delete sessions older than max_age_days."""
+    cutoff = datetime.now() - timedelta(days=max_age_days)
+    cutoff_timestamp = cutoff.timestamp()
 
- # List all users and their sessions
- # (Implementation depends on your user registry)
- for user_id in await get_all_user_ids():
- sessions = await session_service.list_sessions(
- app_name=app_name,
- user_id=user_id,
- )
- for session_info in sessions.sessions:
- if session_info.last_update_time < cutoff_timestamp:
- await session_service.delete_session(
- app_name=app_name,
- user_id=user_id,
- session_id=session_info.id,
- )
+    # List all users and their sessions
+    # (Implementation depends on your user registry)
+    for user_id in await get_all_user_ids():
+        sessions = await session_service.list_sessions(
+            app_name=app_name,
+            user_id=user_id,
+        )
+        for session_info in sessions.sessions:
+            if session_info.last_update_time < cutoff_timestamp:
+                await session_service.delete_session(
+                    app_name=app_name,
+                    user_id=user_id,
+                    session_id=session_info.id,
+                )
 ```
 
 ### User Data Deletion (GDPR / Right to Be Forgotten)
@@ -745,22 +745,22 @@ When a user requests data deletion, you must delete all their sessions:
 
 ```python
 async def delete_all_user_data(
- session_service: BaseSessionService,
- app_name: str,
- user_id: str,
+    session_service: BaseSessionService,
+    app_name: str,
+    user_id: str,
 ):
- """Delete all sessions and data for a user (GDPR compliance)."""
- sessions = await session_service.list_sessions(
- app_name=app_name,
- user_id=user_id,
- )
- for session_info in sessions.sessions:
- await session_service.delete_session(
- app_name=app_name,
- user_id=user_id,
- session_id=session_info.id,
- )
- # Also clean up: artifacts, memory service entries, credential store
+    """Delete all sessions and data for a user (GDPR compliance)."""
+    sessions = await session_service.list_sessions(
+        app_name=app_name,
+        user_id=user_id,
+    )
+    for session_info in sessions.sessions:
+        await session_service.delete_session(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_info.id,
+        )
+    # Also clean up: artifacts, memory service entries, credential store
 ```
 
 ---
@@ -774,19 +774,19 @@ async def delete_all_user_data(
 collected_data = [] # Shared across ALL invocations!
 
 async def my_after_agent(callback_context):
- # Every user's agent output is appended to the same list
- collected_data.append(callback_context.state.get("result"))
- return None
+    # Every user's agent output is appended to the same list
+    collected_data.append(callback_context.state.get("result"))
+    return None
 
 # → User A's results leak into User B's processing
 # → Memory grows unbounded
 
 # ✅ CORRECT: Use session state for per-session data
 async def my_after_agent(callback_context):
- results = callback_context.state.get("results", [])
- results.append(callback_context.state.get("result"))
- callback_context.state["results"] = results # Session-scoped
- return None
+    results = callback_context.state.get("results", [])
+    results.append(callback_context.state.get("result"))
+    callback_context.state["results"] = results # Session-scoped
+    return None
 ```
 
 ### before_model_callback — Don't Log Full Requests
@@ -794,16 +794,16 @@ async def my_after_agent(callback_context):
 ```python
 # ❌ DANGEROUS: Logging the full LLM request (contains conversation history)
 async def my_before_model(callback_context, llm_request):
- logger.info(f"LLM request: {llm_request}") # Logs all user messages!
- return None
+    logger.info(f"LLM request: {llm_request}") # Logs all user messages!
+    return None
 
 # ✅ CORRECT: Log only metadata, not content
 async def my_before_model(callback_context, llm_request):
- logger.info(
- f"LLM call: model={callback_context.agent_name}, "
- f"messages={len(llm_request.contents)}"
- )
- return None
+    logger.info(
+    f"LLM call: model={callback_context.agent_name}, "
+    f"messages={len(llm_request.contents)}"
+    )
+    return None
 ```
 
 ---
@@ -834,8 +834,8 @@ Cons: app: state is shared across ALL tenants!
 ```python
 # ✅ If using shared-app multi-tenancy, namespace user_ids
 def get_namespaced_user_id(tenant_id: str, user_id: str) -> str:
- """Prefix user_id with tenant to prevent cross-tenant access."""
- return f"{tenant_id}:{user_id}"
+    """Prefix user_id with tenant to prevent cross-tenant access."""
+    return f"{tenant_id}:{user_id}"
 
 # ❌ DANGEROUS: Without namespacing, "user_1" in Tenant A and Tenant B
 # are the same user in ADK — they share user: scoped state!
@@ -846,15 +846,15 @@ def get_namespaced_user_id(tenant_id: str, user_id: str) -> str:
 ```python
 # ✅ Strongest isolation with shared infrastructure
 tenant_session_services: dict[str, BaseSessionService] = {
- "tenant_a": DatabaseSessionService(db_url=TENANT_A_DB_URL),
- "tenant_b": DatabaseSessionService(db_url=TENANT_B_DB_URL),
+    "tenant_a": DatabaseSessionService(db_url=TENANT_A_DB_URL),
+    "tenant_b": DatabaseSessionService(db_url=TENANT_B_DB_URL),
 }
 
 def get_session_service(tenant_id: str) -> BaseSessionService:
- service = tenant_session_services.get(tenant_id)
- if not service:
- raise ValueError(f"Unknown tenant: {tenant_id}")
- return service
+    service = tenant_session_services.get(tenant_id)
+    if not service:
+        raise ValueError(f"Unknown tenant: {tenant_id}")
+    return service
 ```
 
 ---

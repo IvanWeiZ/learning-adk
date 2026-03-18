@@ -85,9 +85,9 @@ Six building blocks:
 from google.adk import Agent
 
 root_agent = Agent(
- model="gemini-2.5-flash",
- name="greeter",
- instruction="You are a friendly assistant. Greet users warmly.",
+    model="gemini-2.5-flash",
+    name="greeter",
+    instruction="You are a friendly assistant. Greet users warmly.",
 )
 ```
 
@@ -122,29 +122,29 @@ Response: "Hello! Welcome! How can I help you today?"
 from google.adk import Agent
 
 def get_weather(city: str) -> str:
- """Get current weather for a city."""
- # Call weather API
- weather_data = {
- "Tokyo": "☀️ 22°C, clear skies",
- "London": "🌧️ 14°C, light rain",
- "New York": "⛅ 18°C, partly cloudy",
- }
- return weather_data.get(city, f"Weather data not available for {city}")
+    """Get current weather for a city."""
+    # Call weather API
+    weather_data = {
+        "Tokyo": "☀️ 22°C, clear skies",
+        "London": "🌧️ 14°C, light rain",
+        "New York": "⛅ 18°C, partly cloudy",
+    }
+    return weather_data.get(city, f"Weather data not available for {city}")
 
 def calculate(expression: str) -> str:
- """Evaluate a mathematical expression safely."""
- import ast
- try:
- result = eval(compile(ast.parse(expression, mode='eval'), '', 'eval'))
- return f"Result: {result}"
- except Exception as e:
- return f"Error: {e}"
+    """Evaluate a mathematical expression safely."""
+    import ast
+    try:
+        result = eval(compile(ast.parse(expression, mode='eval'), '', 'eval'))
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error: {e}"
 
 root_agent = Agent(
- model="gemini-2.5-flash",
- name="helpful_assistant",
- instruction="You help users with weather info and calculations.",
- tools=[get_weather, calculate],
+    model="gemini-2.5-flash",
+    name="helpful_assistant",
+    instruction="You help users with weather info and calculations.",
+    tools=[get_weather, calculate],
 )
 ```
 
@@ -192,23 +192,23 @@ User: "What's the weather in Tokyo and what's 15 * 7?"
 from google.adk.tools.tool_context import ToolContext
 
 def add_to_cart(item: str, quantity: int, tool_context: ToolContext) -> str:
- """Add an item to the shopping cart."""
- # Read current cart from session state
- cart = tool_context.state.get("cart", [])
- cart.append({"item": item, "qty": quantity})
+    """Add an item to the shopping cart."""
+    # Read current cart from session state
+    cart = tool_context.state.get("cart", [])
+    cart.append({"item": item, "qty": quantity})
 
- # Write updated cart back to session state
- tool_context.state["cart"] = cart
+    # Write updated cart back to session state
+    tool_context.state["cart"] = cart
 
- return f"Added {quantity}x {item} to cart. Cart now has {len(cart)} items."
+    return f"Added {quantity}x {item} to cart. Cart now has {len(cart)} items."
 
 def view_cart(tool_context: ToolContext) -> str:
- """View current shopping cart contents."""
- cart = tool_context.state.get("cart", [])
- if not cart:
- return "Your cart is empty."
- lines = [f"- {item['qty']}x {item['item']}" for item in cart]
- return "Your cart:\n" + "\n".join(lines)
+    """View current shopping cart contents."""
+    cart = tool_context.state.get("cart", [])
+    if not cart:
+        return "Your cart is empty."
+    lines = [f"- {item['qty']}x {item['item']}" for item in cart]
+    return "Your cart:\n" + "\n".join(lines)
 ```
 
 ```
@@ -253,30 +253,30 @@ from google.adk import Agent
 
 # Specialist agents
 flight_agent = Agent(
- model="gemini-2.5-flash",
- name="flight_agent",
- description="Handles flight searches and bookings",
- instruction="You help users find and book flights.",
- tools=[search_flights, book_flight],
+    model="gemini-2.5-flash",
+    name="flight_agent",
+    description="Handles flight searches and bookings",
+    instruction="You help users find and book flights.",
+    tools=[search_flights, book_flight],
 )
 
 hotel_agent = Agent(
- model="gemini-2.5-flash",
- name="hotel_agent",
- description="Handles hotel searches and reservations",
- instruction="You help users find and book hotels.",
- tools=[search_hotels, book_hotel],
+    model="gemini-2.5-flash",
+    name="hotel_agent",
+    description="Handles hotel searches and reservations",
+    instruction="You help users find and book hotels.",
+    tools=[search_hotels, book_hotel],
 )
 
 # Root agent dispatches to specialists
 root_agent = Agent(
- model="gemini-2.5-flash",
- name="travel_assistant",
- instruction="""You are a travel assistant. Route requests to the right agent:
- - Flight questions → flight_agent
- - Hotel questions → hotel_agent
- For general questions, answer directly.""",
- sub_agents=[flight_agent, hotel_agent],
+    model="gemini-2.5-flash",
+    name="travel_assistant",
+    instruction="""You are a travel assistant. Route requests to the right agent:
+    - Flight questions → flight_agent
+    - Hotel questions → hotel_agent
+    For general questions, answer directly.""",
+    sub_agents=[flight_agent, hotel_agent],
 )
 ```
 
@@ -316,32 +316,32 @@ from google.adk.agents.sequential_agent import SequentialAgent
 from pydantic import BaseModel
 
 class PizzaOrder(BaseModel):
- size: str
- crust: str
- toppings: list[str]
+    size: str
+    crust: str
+    toppings: list[str]
 
 # Step 1: Gather order details
 order_intake = Agent(
- model="gemini-2.5-flash",
- name="order_intake",
- instruction="Collect pizza order details. Ask about size, crust, and toppings.",
- output_schema=PizzaOrder, # Forces structured output
- output_key="current_order", # Saves to session state
+    model="gemini-2.5-flash",
+    name="order_intake",
+    instruction="Collect pizza order details. Ask about size, crust, and toppings.",
+    output_schema=PizzaOrder, # Forces structured output
+    output_key="current_order", # Saves to session state
 )
 
 # Step 2: Confirm and price
 order_confirm = Agent(
- model="gemini-2.5-flash",
- name="order_confirm",
- instruction="""Read the order from state key 'current_order'.
- Calculate the price and confirm with the user.""",
- tools=[calculate_price],
+    model="gemini-2.5-flash",
+    name="order_confirm",
+    instruction="""Read the order from state key 'current_order'.
+    Calculate the price and confirm with the user.""",
+    tools=[calculate_price],
 )
 
 # Pipeline: intake → confirm
 root_agent = SequentialAgent(
- name="pizza_ordering",
- sub_agents=[order_intake, order_confirm],
+    name="pizza_ordering",
+    sub_agents=[order_intake, order_confirm],
 )
 ```
 
@@ -377,37 +377,37 @@ from google.adk.agents.parallel_agent import ParallelAgent
 
 # These agents run at the same time
 sentiment_agent = Agent(
- model="gemini-2.5-flash",
- name="sentiment_analyzer",
- instruction="Analyze the sentiment of the user's message.",
- output_key="sentiment",
+    model="gemini-2.5-flash",
+    name="sentiment_analyzer",
+    instruction="Analyze the sentiment of the user's message.",
+    output_key="sentiment",
 )
 
 topic_agent = Agent(
- model="gemini-2.5-flash",
- name="topic_classifier",
- instruction="Classify the topic of the user's message.",
- output_key="topic",
+    model="gemini-2.5-flash",
+    name="topic_classifier",
+    instruction="Classify the topic of the user's message.",
+    output_key="topic",
 )
 
 # Both run concurrently, results stored in state
 parallel_analysis = ParallelAgent(
- name="analyzer",
- sub_agents=[sentiment_agent, topic_agent],
+    name="analyzer",
+    sub_agents=[sentiment_agent, topic_agent],
 )
 
 # Summarizer reads both results
 summarizer = Agent(
- model="gemini-2.5-flash",
- name="summarizer",
- instruction="""Read state keys 'sentiment' and 'topic'.
- Provide a combined analysis report.""",
+    model="gemini-2.5-flash",
+    name="summarizer",
+    instruction="""Read state keys 'sentiment' and 'topic'.
+    Provide a combined analysis report.""",
 )
 
 # Full pipeline: parallel analysis → summary
 root_agent = SequentialAgent(
- name="analysis_pipeline",
- sub_agents=[parallel_analysis, summarizer],
+    name="analysis_pipeline",
+    sub_agents=[parallel_analysis, summarizer],
 )
 ```
 
@@ -447,18 +447,18 @@ from google.adk import Agent
 from google.adk.agents.loop_agent import LoopAgent
 
 refiner = Agent(
- model="gemini-2.5-flash",
- name="code_refiner",
- instruction="""Review and improve the code in state['code'].
- If the code is good enough, call escalate() to stop the loop.
- Otherwise, save improved version to state['code'].""",
- tools=[run_linter, run_tests],
+    model="gemini-2.5-flash",
+    name="code_refiner",
+    instruction="""Review and improve the code in state['code'].
+    If the code is good enough, call escalate() to stop the loop.
+    Otherwise, save improved version to state['code'].""",
+    tools=[run_linter, run_tests],
 )
 
 root_agent = LoopAgent(
- name="refine_loop",
- sub_agents=[refiner],
- max_iterations=5, # Safety limit
+    name="refine_loop",
+    sub_agents=[refiner],
+    max_iterations=5, # Safety limit
 )
 ```
 
@@ -498,35 +498,35 @@ USER_ID = "user_123"
 session_service = InMemorySessionService()
 
 async def handle_message(user_message: str):
- # 1. Create or fetch session
- session = await session_service.create_session(
- app_name=APP_NAME,
- user_id=USER_ID,
- )
+    # 1. Create or fetch session
+    session = await session_service.create_session(
+        app_name=APP_NAME,
+        user_id=USER_ID,
+    )
 
- # 2. Create runner
- runner = Runner(
- agent=root_agent,
- app_name=APP_NAME,
- session_service=session_service,
- )
+    # 2. Create runner
+    runner = Runner(
+        agent=root_agent,
+        app_name=APP_NAME,
+        session_service=session_service,
+    )
 
- # 3. Build user content
- content = types.Content(
- role="user",
- parts=[types.Part(text=user_message)],
- )
+    # 3. Build user content
+    content = types.Content(
+        role="user",
+        parts=[types.Part(text=user_message)],
+    )
 
- # 4. Stream events
- async for event in runner.run_async(
- session_id=session.id,
- user_id=USER_ID,
- new_message=content,
- ):
- if event.content and event.content.parts:
- for part in event.content.parts:
- if part.text:
- print(f"[{event.author}]: {part.text}")
+    # 4. Stream events
+    async for event in runner.run_async(
+        session_id=session.id,
+        user_id=USER_ID,
+        new_message=content,
+    ):
+        if event.content and event.content.parts:
+            for part in event.content.parts:
+                if part.text:
+                    print(f"[{event.author}]: {part.text}")
 ```
 
 ```
@@ -558,17 +558,17 @@ from google.genai import types
 
 # An event looks like this internally:
 event = Event(
- invocation_id="inv_001",
- author="flight_agent", # Which agent produced this
- content=types.Content( # What the agent said
- role="model",
- parts=[types.Part(text="Found 3 flights to Tokyo")],
- ),
- actions=EventActions( # Side effects to apply
- state_delta={"last_search": "Tokyo"},
- transfer_to_agent=None, # Or "hotel_agent" to transfer
- escalate=False, # Or True to exit a loop
- ),
+    invocation_id="inv_001",
+    author="flight_agent", # Which agent produced this
+    content=types.Content( # What the agent said
+    role="model",
+    parts=[types.Part(text="Found 3 flights to Tokyo")],
+    ),
+    actions=EventActions( # Side effects to apply
+    state_delta={"last_search": "Tokyo"},
+    transfer_to_agent=None, # Or "hotel_agent" to transfer
+    escalate=False, # Or True to exit a loop
+    ),
 )
 ```
 
@@ -668,25 +668,25 @@ ADK hooks at every layer:
 import time
 
 async def rate_limit_callback(
- callback_context, # Must be named exactly "callback_context"
- llm_request, # The request about to be sent
+    callback_context, # Must be named exactly "callback_context"
+    llm_request, # The request about to be sent
 ):
- """Logs every LLM call and enforces rate limiting."""
- last_call = callback_context.state.get("temp:last_llm_call", 0)
- now = time.time()
+    """Logs every LLM call and enforces rate limiting."""
+    last_call = callback_context.state.get("temp:last_llm_call", 0)
+    now = time.time()
 
- if now - last_call < 1.0: # Min 1 second between calls
- await asyncio.sleep(1.0 - (now - last_call))
+    if now - last_call < 1.0: # Min 1 second between calls
+    await asyncio.sleep(1.0 - (now - last_call))
 
- callback_context.state["temp:last_llm_call"] = time.time()
- print(f"[LLM Call] {len(llm_request.contents)} messages in context")
- return None # Continue with original request
+    callback_context.state["temp:last_llm_call"] = time.time()
+    print(f"[LLM Call] {len(llm_request.contents)} messages in context")
+    return None # Continue with original request
 
 root_agent = Agent(
- model="gemini-2.5-flash",
- name="my_agent",
- instruction="You are helpful.",
- before_model_callback=rate_limit_callback,
+    model="gemini-2.5-flash",
+    name="my_agent",
+    instruction="You are helpful.",
+    before_model_callback=rate_limit_callback,
 )
 ```
 
@@ -707,79 +707,79 @@ from google.genai import types
 # ─── Tools ─────────────────────────────────────────────
 
 def lookup_order(order_id: str, tool_context: ToolContext) -> str:
- """Look up an order by its ID."""
- orders = {
- "ORD-001": {"status": "shipped", "item": "Laptop", "eta": "March 20"},
- "ORD-002": {"status": "processing", "item": "Keyboard", "eta": "March 25"},
- }
- order = orders.get(order_id)
- if not order:
- return f"Order {order_id} not found."
- tool_context.state["current_order"] = order
- return f"Order {order_id}: {order['item']} — Status: {order['status']}, ETA: {order['eta']}"
+    """Look up an order by its ID."""
+    orders = {
+        "ORD-001": {"status": "shipped", "item": "Laptop", "eta": "March 20"},
+        "ORD-002": {"status": "processing", "item": "Keyboard", "eta": "March 25"},
+    }
+    order = orders.get(order_id)
+    if not order:
+        return f"Order {order_id} not found."
+    tool_context.state["current_order"] = order
+    return f"Order {order_id}: {order['item']} — Status: {order['status']}, ETA: {order['eta']}"
 
 def initiate_refund(order_id: str, reason: str) -> str:
- """Initiate a refund for an order."""
- return f"Refund initiated for {order_id}. Reason: {reason}. Ref: REF-{order_id[-3:]}"
+    """Initiate a refund for an order."""
+    return f"Refund initiated for {order_id}. Reason: {reason}. Ref: REF-{order_id[-3:]}"
 
 def transfer_to_human(summary: str) -> str:
- """Transfer the conversation to a human support agent."""
- return f"Transferred to human agent. Summary: {summary}"
+    """Transfer the conversation to a human support agent."""
+    return f"Transferred to human agent. Summary: {summary}"
 
 # ─── Agents ────────────────────────────────────────────
 
 order_agent = Agent(
- model="gemini-2.5-flash",
- name="order_agent",
- description="Handles order lookups and status inquiries",
- instruction="Help users check their order status. Use lookup_order to find orders.",
- tools=[lookup_order],
+    model="gemini-2.5-flash",
+    name="order_agent",
+    description="Handles order lookups and status inquiries",
+    instruction="Help users check their order status. Use lookup_order to find orders.",
+    tools=[lookup_order],
 )
 
 refund_agent = Agent(
- model="gemini-2.5-flash",
- name="refund_agent",
- description="Handles refund requests and returns",
- instruction="Process refund requests. Always ask for the reason before initiating.",
- tools=[initiate_refund],
+    model="gemini-2.5-flash",
+    name="refund_agent",
+    description="Handles refund requests and returns",
+    instruction="Process refund requests. Always ask for the reason before initiating.",
+    tools=[initiate_refund],
 )
 
 root_agent = Agent(
- model="gemini-2.5-flash",
- name="support_bot",
- instruction="""You are a customer support assistant.
- Route order questions to order_agent and refund requests to refund_agent.
- If the issue is complex, use transfer_to_human.""",
- tools=[transfer_to_human],
- sub_agents=[order_agent, refund_agent],
+    model="gemini-2.5-flash",
+    name="support_bot",
+    instruction="""You are a customer support assistant.
+    Route order questions to order_agent and refund requests to refund_agent.
+    If the issue is complex, use transfer_to_human.""",
+    tools=[transfer_to_human],
+    sub_agents=[order_agent, refund_agent],
 )
 
 # ─── Run It ────────────────────────────────────────────
 
 async def main():
- session_service = InMemorySessionService()
- runner = Runner(
- agent=root_agent,
- app_name="support_app",
- session_service=session_service,
- )
- session = await session_service.create_session(
- app_name="support_app", user_id="user_1"
- )
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=root_agent,
+        app_name="support_app",
+        session_service=session_service,
+    )
+    session = await session_service.create_session(
+        app_name="support_app", user_id="user_1"
+    )
 
- for msg in [
- "Hi, I need to check my order ORD-001",
- "Actually, I want a refund for it",
- "The laptop arrived damaged",
- ]:
- content = types.Content(role="user", parts=[types.Part(text=msg)])
- async for event in runner.run_async(
- session_id=session.id, user_id="user_1", new_message=content
- ):
- if event.content and event.content.parts:
- for part in event.content.parts:
- if part.text:
- print(f"[{event.author}]: {part.text}")
+    for msg in [
+        "Hi, I need to check my order ORD-001",
+        "Actually, I want a refund for it",
+        "The laptop arrived damaged",
+    ]:
+        content = types.Content(role="user", parts=[types.Part(text=msg)])
+        async for event in runner.run_async(
+            session_id=session.id, user_id="user_1", new_message=content
+        ):
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        print(f"[{event.author}]: {part.text}")
 ```
 
 ```
@@ -815,40 +815,40 @@ refund_agent → initiate_refund("ORD-001", "Laptop arrived damaged")
 
 ```python
 Agent(
- # ─── Required ───────────────────────────────────────
- name="my_agent", # Valid Python identifier, NOT "user"
- model="gemini-2.5-flash", # Or inherit from parent agent
+    # ─── Required ───────────────────────────────────────
+    name="my_agent", # Valid Python identifier, NOT "user"
+    model="gemini-2.5-flash", # Or inherit from parent agent
 
- # ─── Common ─────────────────────────────────────────
- instruction="You are...", # System prompt (supports {state_key} placeholders)
- description="Does X", # Used by parent for transfer decisions
- tools=[func1, func2], # Functions, BaseTool, or BaseToolset instances
- sub_agents=[child1, child2], # Enable agent transfer
+    # ─── Common ─────────────────────────────────────────
+    instruction="You are...", # System prompt (supports {state_key} placeholders)
+    description="Does X", # Used by parent for transfer decisions
+    tools=[func1, func2], # Functions, BaseTool, or BaseToolset instances
+    sub_agents=[child1, child2], # Enable agent transfer
 
- # ─── Output Control ─────────────────────────────────
- output_schema=MyModel, # Force structured JSON output (disables tools!)
- output_key="result", # Save output to session state
+    # ─── Output Control ─────────────────────────────────
+    output_schema=MyModel, # Force structured JSON output (disables tools!)
+    output_key="result", # Save output to session state
 
- # ─── Transfer Control ────────────────────────────────
- disallow_transfer_to_parent=False, # Can this agent return to parent?
- disallow_transfer_to_peers=False, # Can this agent go to siblings?
+    # ─── Transfer Control ────────────────────────────────
+    disallow_transfer_to_parent=False, # Can this agent return to parent?
+    disallow_transfer_to_peers=False, # Can this agent go to siblings?
 
- # ─── Callbacks ───────────────────────────────────────
- before_agent_callback=my_fn, # Before agent runs
- after_agent_callback=my_fn, # After agent completes
- before_model_callback=my_fn, # Before each LLM call
- after_model_callback=my_fn, # After each LLM response
- before_tool_callback=my_fn, # Before each tool execution
- after_tool_callback=my_fn, # After each tool execution
+    # ─── Callbacks ───────────────────────────────────────
+    before_agent_callback=my_fn, # Before agent runs
+    after_agent_callback=my_fn, # After agent completes
+    before_model_callback=my_fn, # Before each LLM call
+    after_model_callback=my_fn, # After each LLM response
+    before_tool_callback=my_fn, # Before each tool execution
+    after_tool_callback=my_fn, # After each tool execution
 
- # ─── Advanced ────────────────────────────────────────
- generate_content_config=types.GenerateContentConfig(
- temperature=0.7,
- max_output_tokens=2048,
- ),
- include_contents='default', # 'default' or 'none' (skip history)
- planner=my_planner, # Planning/thinking support
- code_executor=my_executor, # Code execution sandbox
+    # ─── Advanced ────────────────────────────────────────
+    generate_content_config=types.GenerateContentConfig(
+    temperature=0.7,
+    max_output_tokens=2048,
+    ),
+    include_contents='default', # 'default' or 'none' (skip history)
+    planner=my_planner, # Planning/thinking support
+    code_executor=my_executor, # Code execution sandbox
 )
 ```
 

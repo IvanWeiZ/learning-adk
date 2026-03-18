@@ -18,12 +18,12 @@ A `Session` is one conversation thread. Stores:
 
 ```python
 class Session(BaseModel):
- id: str # unique session ID
- app_name: str # which app this session belongs to
- user_id: str # which user owns this session
- state: dict[str, Any] # arbitrary persistent state (survives turns)
- events: list[Event] # full conversation history (ordered)
- last_update_time: float # unix timestamp of last update
+    id: str # unique session ID
+    app_name: str # which app this session belongs to
+    user_id: str # which user owns this session
+    state: dict[str, Any] # arbitrary persistent state (survives turns)
+    events: list[Event] # full conversation history (ordered)
+    last_update_time: float # unix timestamp of last update
 ```
 
 Intentionally minimal. Complexity lives in the service and Event list.
@@ -58,29 +58,29 @@ Scoping is handled by the session service implementations.
 
 ```python
 class BaseSessionService(ABC):
- async def create_session(
- self, *, app_name, user_id, state=None, session_id=None
- ) -> Session
+    async def create_session(
+        self, *, app_name, user_id, state=None, session_id=None
+    ) -> Session
 
- async def get_session(
- self, *, app_name, user_id, session_id, config=None
- ) -> Optional[Session]
- # config: GetSessionConfig(num_recent_events=..., after_timestamp=...)
+    async def get_session(
+        self, *, app_name, user_id, session_id, config=None
+    ) -> Optional[Session]
+        # config: GetSessionConfig(num_recent_events=..., after_timestamp=...)
 
- async def list_sessions(
- self, *, app_name, user_id
- ) -> ListSessionsResponse
+    async def list_sessions(
+        self, *, app_name, user_id
+    ) -> ListSessionsResponse
 
- async def delete_session(
- self, *, app_name, user_id, session_id
- ) -> None
+    async def delete_session(
+        self, *, app_name, user_id, session_id
+    ) -> None
 
- async def append_event(
- self, session: Session, event: Event
- ) -> Event
- # Applies event.actions.state_delta to session.state.
- # Assigns event.id if not set.
- # Returns the persisted event.
+    async def append_event(
+        self, session: Session, event: Event
+    ) -> Event
+        # Applies event.actions.state_delta to session.state.
+        # Assigns event.id if not set.
+        # Returns the persisted event.
 ```
 
 `append_event` is called by `Runner` after every event yielded by the agent.
@@ -106,8 +106,8 @@ Load only recent events for long conversations:
 
 ```python
 config = GetSessionConfig(
- num_recent_events=50, # only last 50 events
- after_timestamp=1700000000.0, # only events after this unix time
+    num_recent_events=50, # only last 50 events
+    after_timestamp=1700000000.0, # only events after this unix time
 )
 session = await session_service.get_session(..., config=config)
 ```

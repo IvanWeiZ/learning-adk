@@ -19,24 +19,24 @@ Tools attach to an agent via `LlmAgent(tools=[...])`. They can be:
 
 ```python
 class BaseTool(ABC):
- name: str # must match exactly what the LLM will call
- description: str # shown to the LLM; affects when it chooses to use the tool
- is_long_running: bool = False
- # If True, the tool returns an operation ID first, finishes later.
- # Runner pauses the invocation until the operation completes.
+    name: str # must match exactly what the LLM will call
+    description: str # shown to the LLM; affects when it chooses to use the tool
+    is_long_running: bool = False
+    # If True, the tool returns an operation ID first, finishes later.
+    # Runner pauses the invocation until the operation completes.
 
- def _get_declaration(self) -> Optional[types.FunctionDeclaration]:
- # Returns the OpenAPI-style schema shown to the LLM.
- # Return None for built-in tools (e.g. GoogleSearch) that don't need it.
+    def _get_declaration(self) -> Optional[types.FunctionDeclaration]:
+        # Returns the OpenAPI-style schema shown to the LLM.
+        # Return None for built-in tools (e.g. GoogleSearch) that don't need it.
 
- async def run_async(self, *, args: dict, tool_context: ToolContext) -> Any:
- # Execute the tool. Return value becomes the FunctionResponse content.
- # Can be a dict, string, or any JSON-serializable value.
+    async def run_async(self, *, args: dict, tool_context: ToolContext) -> Any:
+        # Execute the tool. Return value becomes the FunctionResponse content.
+        # Can be a dict, string, or any JSON-serializable value.
 
- async def process_llm_request(self, *, tool_context, llm_request) -> None:
- # Called during preprocessing to add this tool to the LlmRequest.
- # Default: calls llm_request.append_tools([self])
- # Override for tools that need special request manipulation (e.g. grounding).
+    async def process_llm_request(self, *, tool_context, llm_request) -> None:
+        # Called during preprocessing to add this tool to the LlmRequest.
+        # Default: calls llm_request.append_tools([self])
+        # Override for tools that need special request manipulation (e.g. grounding).
 ```
 
 ---
@@ -47,8 +47,8 @@ Pass a Python function:
 
 ```python
 def get_weather(city: str) -> dict:
- """Returns the current weather for a city."""
- return {'temp': 72, 'condition': 'sunny'}
+    """Returns the current weather for a city."""
+    return {'temp': 72, 'condition': 'sunny'}
 
 agent = LlmAgent(tools=[get_weather])
 # → FunctionTool(func=get_weather) is created automatically
@@ -60,9 +60,9 @@ Parameter named `tool_context: ToolContext` is auto-injected (hidden from LLM).
 
 ```python
 def save_note(text: str, tool_context: ToolContext) -> str:
- """Saves a note to the session."""
- tool_context.state['note'] = text
- return 'Note saved.'
+    """Saves a note to the session."""
+    tool_context.state['note'] = text
+    return 'Note saved.'
 ```
 
 ---
@@ -73,14 +73,15 @@ Variable tool set determined at runtime:
 
 ```python
 class BaseToolset(ABC):
- async def get_tools(
- self, readonly_context: Optional[ReadonlyContext] = None
- ) -> list[BaseTool]:
- # Return the list of tools available in the current context.
- # Can vary based on user, session state, etc.
+    async def get_tools(
+        self, readonly_context: Optional[ReadonlyContext] = None
+    ) -> list[BaseTool]:
+        # Return the list of tools available in the current context.
+        # Can vary based on user, session state, etc.
 
- async def close(self) -> None:
- # Clean up resources (connections, etc.)
+    async def close(self) -> None:
+        # Clean up resources (connections, etc.)
+
 ```
 
 The flow calls `toolset.get_tools(ctx)` before each LLM call. MCP, OpenAPI, LangChain, and CrewAI toolsets use this for dynamic discovery.
@@ -93,21 +94,21 @@ The flow calls `toolset.get_tools(ctx)` before each LLM call. MCP, OpenAPI, Lang
 
 ```python
 class ToolContext:
- # Read/write session state:
- state: State # tool_context.state['key'] = value
+    # Read/write session state:
+    state: State # tool_context.state['key'] = value
 
- # Store files:
- async def save_artifact(filename, artifact) -> int # returns version
- async def load_artifact(filename, version=None) # returns artifact
+    # Store files:
+    async def save_artifact(filename, artifact) -> int # returns version
+    async def load_artifact(filename, version=None) # returns artifact
 
- # Request OAuth credentials:
- def request_credential(auth_config: AuthConfig) -> None
+    # Request OAuth credentials:
+    def request_credential(auth_config: AuthConfig) -> None
 
- # Interact with memory:
- async def search_memory(query: str) -> SearchMemoryResponse
+    # Interact with memory:
+    async def search_memory(query: str) -> SearchMemoryResponse
 
- # Agent transfer (from within a tool):
- actions.transfer_to_agent = 'agent_name'
+    # Agent transfer (from within a tool):
+    actions.transfer_to_agent = 'agent_name'
 ```
 
 ---
@@ -164,15 +165,15 @@ If your tool function raises an exception and no `on_tool_error_callback` is set
 ```python
 # Option 1: Handle inside the tool (recommended for simple cases)
 def get_weather(city: str) -> dict:
- try:
- return call_weather_api(city)
- except Exception as e:
- return {"error": str(e)} # LLM sees the error and can respond appropriately
+    try:
+        return call_weather_api(city)
+    except Exception as e:
+        return {"error": str(e)} # LLM sees the error and can respond appropriately
 
 # Option 2: Use on_tool_error_callback (handles all tools at once)
 agent = LlmAgent(
- tools=[get_weather],
- on_tool_error_callback=lambda tool, args, ctx, err: {"error": str(err)},
+    tools=[get_weather],
+    on_tool_error_callback=lambda tool, args, ctx, err: {"error": str(err)},
 )
 ```
 
@@ -182,9 +183,9 @@ agent = LlmAgent(
 
 ```python
 agent = LlmAgent(tools=[
- my_function, # → FunctionTool(func=my_function)
- GoogleSearchTool(), # → used as-is (BaseTool)
- my_toolset, # → BaseToolset.get_tools() called per LLM turn
+    my_function, # → FunctionTool(func=my_function)
+    GoogleSearchTool(), # → used as-is (BaseTool)
+    my_toolset, # → BaseToolset.get_tools() called per LLM turn
 ])
 ```
 
@@ -207,14 +208,14 @@ Tools can request human confirmation before executing:
 
 ```python
 class MyTool(BaseTool):
- async def run_async(self, args, tool_context):
- # Request confirmation via the clean API
- tool_context.request_confirmation(
- hint='Delete file?',
- payload={'filename': args['filename']}
- )
- # Tool execution pauses; client shows confirmation dialog
- # On next invocation, if confirmed, the tool runs for real
+    async def run_async(self, args, tool_context):
+        # Request confirmation via the clean API
+        tool_context.request_confirmation(
+            hint='Delete file?',
+            payload={'filename': args['filename']}
+        )
+        # Tool execution pauses; client shows confirmation dialog
+        # On next invocation, if confirmed, the tool runs for real
 ```
 
 `ToolConfirmation` uses `hint` and `payload` fields (not `title`/`message`).

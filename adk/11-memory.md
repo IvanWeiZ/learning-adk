@@ -40,12 +40,12 @@ Unit of storage:
 
 ```python
 class MemoryEntry(BaseModel):
- content: types.Content # the remembered information (text, structured data)
- author: Optional[str] = None # who produced this (agent name or 'user')
- timestamp: Optional[str] = None # when this was stored (ISO 8601)
- id: Optional[str] = None # unique identifier
- custom_metadata: Optional[dict] = None # arbitrary key-value metadata
- # (Vertex AI backend adds an embedding vector internally)
+    content: types.Content # the remembered information (text, structured data)
+    author: Optional[str] = None # who produced this (agent name or 'user')
+    timestamp: Optional[str] = None # when this was stored (ISO 8601)
+    id: Optional[str] = None # unique identifier
+    custom_metadata: Optional[dict] = None # arbitrary key-value metadata
+    # (Vertex AI backend adds an embedding vector internally)
 ```
 
 ### SearchMemoryResponse
@@ -54,7 +54,7 @@ What comes back from a query:
 
 ```python
 class SearchMemoryResponse(BaseModel):
- memories: list[MemoryEntry]
+    memories: list[MemoryEntry]
 ```
 
 ---
@@ -64,24 +64,24 @@ class SearchMemoryResponse(BaseModel):
 ```python
 class BaseMemoryService(ABC):
 
- async def add_session_to_memory(self, session: Session) -> None:
- """
- Distills a completed session into memory entries.
- Called by the app/runner after a session ends.
- The implementation decides what to extract and how to store it.
- """
+    async def add_session_to_memory(self, session: Session) -> None:
+        """
+        Distills a completed session into memory entries.
+        Called by the app/runner after a session ends.
+        The implementation decides what to extract and how to store it.
+        """
 
- async def search_memory(
- self,
- *,
- app_name: str,
- user_id: str,
- query: str,
- ) -> SearchMemoryResponse:
- """
- Semantic search over past sessions for this user.
- Returns ranked MemoryEntry list.
- """
+    async def search_memory(
+        self,
+        *,
+        app_name: str,
+        user_id: str,
+        query: str,
+    ) -> SearchMemoryResponse:
+        """
+        Semantic search over past sessions for this user.
+        Returns ranked MemoryEntry list.
+        """
 ```
 
 Two methods. Complexity lives in implementations.
@@ -114,9 +114,9 @@ Sends sessions to Vertex AI Memory Bank:
 from google.adk.memory import VertexAiMemoryBankService
 
 memory_service = VertexAiMemoryBankService(
- project="my-gcp-project",
- location="us-central1",
- agent_engine_id="projects/.../agentEngines/...",
+    project="my-gcp-project",
+    location="us-central1",
+    agent_engine_id="projects/.../agentEngines/...",
 )
 ```
 
@@ -169,10 +169,10 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.memory import InMemoryMemoryService
 
 runner = Runner(
- agent=root_agent,
- app_name="my_app",
- session_service=InMemorySessionService(),
- memory_service=InMemoryMemoryService(), # ← plug in here
+    agent=root_agent,
+    app_name="my_app",
+    session_service=InMemorySessionService(),
+    memory_service=InMemoryMemoryService(), # ← plug in here
 )
 ```
 
@@ -182,7 +182,7 @@ After a session completes, call `add_session_to_memory`:
 
 ```python
 session = await session_service.get_session(
- app_name="my_app", user_id="alice", session_id="sess_123"
+    app_name="my_app", user_id="alice", session_id="sess_123"
 )
 await memory_service.add_session_to_memory(session)
 ```
@@ -197,12 +197,12 @@ Inside a tool, use `tool_context` to access the memory service:
 from google.adk.tools import ToolContext
 
 async def recall_past_preferences(query: str, tool_context: ToolContext) -> str:
- """Search the user's memory for relevant past information."""
- response = await tool_context.search_memory(query)
- if not response.memories:
- return "No relevant past information found."
- top = response.memories[0]
- return f"From a past session: {top.content.parts[0].text}"
+    """Search the user's memory for relevant past information."""
+    response = await tool_context.search_memory(query)
+    if not response.memories:
+        return "No relevant past information found."
+    top = response.memories[0]
+    return f"From a past session: {top.content.parts[0].text}"
 ```
 
 ADK automatically injects `tool_context` when the function parameter is named `tool_context`.
@@ -235,12 +235,12 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
 
 async def after_agent(callback_context) -> None:
- await callback_context.add_session_to_memory()
+    await callback_context.add_session_to_memory()
 
 agent = LlmAgent(
- name="my_agent",
- model="gemini-2.5-flash",
- after_agent_callback=after_agent,
+    name="my_agent",
+    model="gemini-2.5-flash",
+    after_agent_callback=after_agent,
 )
 ```
 
@@ -250,13 +250,13 @@ Inject memories into the system prompt via `before_model_callback`:
 
 ```python
 async def inject_memories(callback_context, llm_request) -> None:
- query = llm_request.contents[-1].parts[0].text # last user message
- results = await callback_context.search_memory(query)
- if results.memories:
- snippets = "\n".join(
- f"- {m.content.parts[0].text}" for m in results.memories[:3]
- )
- llm_request.config.system_instruction += f"\n\nRelevant past context:\n{snippets}"
+    query = llm_request.contents[-1].parts[0].text # last user message
+    results = await callback_context.search_memory(query)
+    if results.memories:
+        snippets = "\n".join(
+            f"- {m.content.parts[0].text}" for m in results.memories[:3]
+        )
+        llm_request.config.system_instruction += f"\n\nRelevant past context:\n{snippets}"
 ```
 
 ### Pattern 3: Explicit Memory Tool
@@ -265,19 +265,19 @@ Agent-controlled memory recall:
 
 ```python
 async def search_my_memory(topic: str, tool_context: ToolContext) -> str:
- """Search your memory for information about a topic from past conversations."""
- results = await tool_context.search_memory(topic)
- if not results.memories:
- return "Nothing relevant found."
- return "\n".join(
- f"{m.content.parts[0].text}"
- for m in results.memories[:5]
- )
+    """Search your memory for information about a topic from past conversations."""
+    results = await tool_context.search_memory(topic)
+    if not results.memories:
+        return "Nothing relevant found."
+    return "\n".join(
+        f"{m.content.parts[0].text}"
+        for m in results.memories[:5]
+    )
 
 agent = LlmAgent(
- name="memory_agent",
- model="gemini-2.5-flash",
- tools=[search_my_memory],
+    name="memory_agent",
+    model="gemini-2.5-flash",
+    tools=[search_my_memory],
 )
 ```
 

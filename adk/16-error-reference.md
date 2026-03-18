@@ -39,20 +39,20 @@ from google.adk.errors.session_not_found_error import SessionNotFoundError
 
 # Tier 1: Recoverable — use callbacks
 agent = LlmAgent(
- on_model_error_callback=lambda ctx, req, err: LlmResponse(
- content=Content(parts=[Part(text="Sorry, the AI service is temporarily unavailable.")])
- ) if isinstance(err, ClientError) else None,
+    on_model_error_callback=lambda ctx, req, err: LlmResponse(
+        content=Content(parts=[Part(text="Sorry, the AI service is temporarily unavailable.")])
+    ) if isinstance(err, ClientError) else None,
 )
 
 # Tier 2: Fatal — wrap run_async
 try:
- async for event in runner.run_async(...):
- if event.is_final_response():
- print(event.content.parts[0].text)
+    async for event in runner.run_async(...):
+        if event.is_final_response():
+            print(event.content.parts[0].text)
 except LlmCallsLimitExceededError:
- print("Too many LLM calls — simplify the task")
+    print("Too many LLM calls — simplify the task")
 except SessionNotFoundError:
- print("Session not found — create one first")
+    print("Session not found — create one first")
 
 # Tier 3: Silent — use DatabaseSessionService in production
 # InMemorySessionService can silently drop events (see docs)
@@ -192,33 +192,33 @@ from google.adk.runners import Runner
 
 # Catch fatal errors that bypass callbacks
 try:
- async for event in runner.run_async(
- user_id=user_id,
- session_id=session_id,
- new_message=content,
- ):
- process(event)
+    async for event in runner.run_async(
+        user_id=user_id,
+        session_id=session_id,
+        new_message=content,
+    ):
+        process(event)
 except LlmCallsLimitExceededError:
- # max_llm_calls exceeded — on_model_error_callback does NOT fire for this
- log.error("Agent exceeded LLM call limit")
+    # max_llm_calls exceeded — on_model_error_callback does NOT fire for this
+    log.error("Agent exceeded LLM call limit")
 except SessionNotFoundError:
- # session not found and auto_create_session=False
- log.error("Session does not exist")
+    # session not found and auto_create_session=False
+    log.error("Session does not exist")
 
 # Use callbacks for recoverable errors
 async def handle_model_error(
- callback_context, llm_request, error
+    callback_context, llm_request, error
 ):
- if isinstance(error, _ResourceExhaustedError):
- await asyncio.sleep(5)
- return None # returning None re-raises; return LlmResponse to recover
- return None
+    if isinstance(error, _ResourceExhaustedError):
+        await asyncio.sleep(5)
+        return None # returning None re-raises; return LlmResponse to recover
+    return None
 
 agent = LlmAgent(
- name="my_agent",
- model="gemini-2.5-flash",
- on_model_error_callback=handle_model_error,
- on_tool_error_callback=my_tool_error_handler,
+    name="my_agent",
+    model="gemini-2.5-flash",
+    on_model_error_callback=handle_model_error,
+    on_tool_error_callback=my_tool_error_handler,
 )
 ```
 

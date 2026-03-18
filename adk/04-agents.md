@@ -30,11 +30,11 @@ Every agent must implement one method:
 
 ```python
 async def _run_async_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
- ...
+    ...
 
 # Optionally also:
 async def _run_live_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
- ... # for video/audio (Live API) mode
+    ... # for video/audio (Live API) mode
 ```
 
 `BaseAgent` provides the **final** public entry points that wrap `_run_async_impl`:
@@ -42,11 +42,11 @@ async def _run_live_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
 ```python
 @final
 async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, None]:
- # 1. Creates a child InvocationContext for this agent
- # 2. Runs before_agent_callback (can short-circuit the run)
- # 3. Delegates to _run_async_impl
- # 4. Runs after_agent_callback
- # 5. Yields all resulting Events
+    # 1. Creates a child InvocationContext for this agent
+    # 2. Runs before_agent_callback (can short-circuit the run)
+    # 3. Delegates to _run_async_impl
+    # 4. Runs after_agent_callback
+    # 5. Yields all resulting Events
 ```
 
 `@final` means subclasses must **not** override `run_async` — only `_run_async_impl`.
@@ -72,9 +72,9 @@ after_agent_callback: ... # runs after _run_async_impl; can append events
 
 ```python
 async def _run_async_impl(ctx):
- async for event in self._llm_flow.run_async(ctx):
- self.__maybe_save_output_to_state(event) # output_key → state_delta
- yield event
+    async for event in self._llm_flow.run_async(ctx):
+        self.__maybe_save_output_to_state(event) # output_key → state_delta
+        yield event
 ```
 
 ### Which flow does it use?
@@ -85,9 +85,9 @@ ADK auto-selects AutoFlow (agent routing) when sub-agents exist, SingleFlow othe
 
 ```python
 model: Union[str, BaseLlm] # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
- # Default: '' (empty string). Resolution walks up parent agents;
- # falls back to class variable DEFAULT_MODEL ('gemini-2.5-flash')
- # only if no ancestor sets a model.
+    # Default: '' (empty string). Resolution walks up parent agents;
+    # falls back to class variable DEFAULT_MODEL ('gemini-2.5-flash')
+    # only if no ancestor sets a model.
 
 instruction: Union[str, InstructionProvider]
 # System prompt. Supports {variable} placeholders resolved from session state.
@@ -145,16 +145,16 @@ LlmAgent adds finer-grained hooks compared to BaseAgent:
 
 ```python
 def on_model_error_callback(
- callback_context: CallbackContext,
- llm_request: LlmRequest,
- error: Exception,
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
+    error: Exception,
 ) -> Optional[LlmResponse]: ...
 
 def on_tool_error_callback(
- tool: BaseTool,
- args: dict[str, Any],
- tool_context: ToolContext,
- error: Exception,
+    tool: BaseTool,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+    error: Exception,
 ) -> Optional[dict]: ...
 ```
 
@@ -182,18 +182,18 @@ Created by `Runner`, flows through every layer:
 
 ```python
 class InvocationContext:
- agent: BaseAgent # current agent being run
- session: Session # the full conversation history + state
- invocation_id: str # unique ID for this run_async() call
- branch: str # routing path (e.g. 'root.sub.leaf')
- end_invocation: bool # set to True to stop the entire invocation
+    agent: BaseAgent # current agent being run
+    session: Session # the full conversation history + state
+    invocation_id: str # unique ID for this run_async() call
+    branch: str # routing path (e.g. 'root.sub.leaf')
+    end_invocation: bool # set to True to stop the entire invocation
 
- # Services injected by Runner:
- session_service: BaseSessionService
- artifact_service: BaseArtifactService
- memory_service: BaseMemoryService
- credential_service: BaseCredentialService
- plugin_manager: PluginManager
+    # Services injected by Runner:
+    session_service: BaseSessionService
+    artifact_service: BaseArtifactService
+    memory_service: BaseMemoryService
+    credential_service: BaseCredentialService
+    plugin_manager: PluginManager
 ```
 
 Sub-agent calls create a child context via `model_copy()`. Branch and session are shared.
@@ -253,14 +253,14 @@ Event stream with branches:
 
 ```python
 travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",
- instruction="You book flights.", tools=[search_flights])
+    instruction="You book flights.", tools=[search_flights])
 
 weather_agent = LlmAgent(name="weather_agent", model="gemini-2.5-flash",
- instruction="You report weather.", tools=[get_weather])
+    instruction="You report weather.", tools=[get_weather])
 
 router = LlmAgent(name="router", model="gemini-2.5-flash",
- instruction="Route to the right specialist.",
- sub_agents=[travel_agent, weather_agent])
+    instruction="Route to the right specialist.",
+    sub_agents=[travel_agent, weather_agent])
 # AutoFlow is selected automatically because sub_agents is non-empty
 ```
 

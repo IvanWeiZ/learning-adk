@@ -25,29 +25,29 @@ BaseLlm (base_llm.py) — abstract interface
 
 ```python
 class BaseLlm(BaseModel):
- model: str # e.g. 'gemini-2.5-flash', 'claude-opus-4-5'
+    model: str # e.g. 'gemini-2.5-flash', 'claude-opus-4-5'
 
- @classmethod
- def supported_models(cls) -> list[str]:
- # Returns regex patterns that match model names for this adapter.
- # Used by LLMRegistry to auto-select the right class.
- ...
+    @classmethod
+    def supported_models(cls) -> list[str]:
+        # Returns regex patterns that match model names for this adapter.
+        # Used by LLMRegistry to auto-select the right class.
+        ...
 
- @abstractmethod
- async def generate_content_async(
- self,
- llm_request: LlmRequest,
- stream: bool = False,
- ) -> AsyncGenerator[LlmResponse, None]:
- # Unidirectional text/chat generation.
- # Non-streaming: yields exactly one LlmResponse (partial=False).
- # Streaming: yields N partial=True chunks, then one partial=False final.
- ...
+    @abstractmethod
+    async def generate_content_async(
+        self,
+        llm_request: LlmRequest,
+        stream: bool = False,
+    ) -> AsyncGenerator[LlmResponse, None]:
+        # Unidirectional text/chat generation.
+        # Non-streaming: yields exactly one LlmResponse (partial=False).
+        # Streaming: yields N partial=True chunks, then one partial=False final.
+        ...
 
- def connect(self, llm_request: LlmRequest) -> BaseLlmConnection:
- # Bidirectional streaming for Live API (audio/video).
- # Not all adapters support this.
- ...
+    def connect(self, llm_request: LlmRequest) -> BaseLlmConnection:
+        # Bidirectional streaming for Live API (audio/video).
+        # Not all adapters support this.
+        ...
 ```
 
 ---
@@ -141,21 +141,21 @@ The request object assembled by the flow before calling the model:
 
 ```python
 class LlmRequest:
- model: str # model name to use
- contents: list[types.Content] # conversation history
- config: types.GenerateContentConfig # system_instruction, tools, temperature, safety, etc.
- tools_dict: dict[str, BaseTool] # name → BaseTool (internal routing map)
- cache_config: Optional[...] # context cache configuration
- cache_metadata: Optional[...] # context cache metadata
- cacheable_contents_token_count: int # token count for cacheable contents
- live_connect_config: Optional[...] # Live API connection config
- previous_interaction_id: Optional[str] # for resumable invocations
+    model: str # model name to use
+    contents: list[types.Content] # conversation history
+    config: types.GenerateContentConfig # system_instruction, tools, temperature, safety, etc.
+    tools_dict: dict[str, BaseTool] # name → BaseTool (internal routing map)
+    cache_config: Optional[...] # context cache configuration
+    cache_metadata: Optional[...] # context cache metadata
+    cacheable_contents_token_count: int # token count for cacheable contents
+    live_connect_config: Optional[...] # Live API connection config
+    previous_interaction_id: Optional[str] # for resumable invocations
 
- # Note: system_instruction and tools live inside config (GenerateContentConfig),
- # not as top-level fields on LlmRequest.
+    # Note: system_instruction and tools live inside config (GenerateContentConfig),
+    # not as top-level fields on LlmRequest.
 
- def append_tools(self, tools: list[BaseTool]) -> None:
- # Adds FunctionDeclarations to config.tools and populates tools_dict.
+    def append_tools(self, tools: list[BaseTool]) -> None:
+        # Adds FunctionDeclarations to config.tools and populates tools_dict.
 ```
 
 ---
@@ -166,14 +166,14 @@ The response object returned by the model:
 
 ```python
 class LlmResponse:
- content: Optional[types.Content] # text, function calls, thoughts, blobs
- partial: Optional[bool] # True = streaming chunk, False = final
- usage_metadata: ... # token counts
- grounding_metadata: ... # search grounding info
- input_transcription: ... # Live API: what user said
- output_transcription: ... # Live API: what model said
- error_code: ...
- error_message: ...
+    content: Optional[types.Content] # text, function calls, thoughts, blobs
+    partial: Optional[bool] # True = streaming chunk, False = final
+    usage_metadata: ... # token counts
+    grounding_metadata: ... # search grounding info
+    input_transcription: ... # Live API: what user said
+    output_transcription: ... # Live API: what model said
+    error_code: ...
+    error_message: ...
 ```
 
 `Event` extends `LlmResponse`, so events carry all response fields plus `author`, `invocation_id`, `actions`, and `branch`.
@@ -203,13 +203,13 @@ from google.adk.models.base_llm import BaseLlm
 from google.adk.models.registry import LLMRegistry
 
 class MyLlm(BaseLlm):
- @classmethod
- def supported_models(cls):
- return [r'my-model-.*']
+    @classmethod
+    def supported_models(cls):
+        return [r'my-model-.*']
 
- async def generate_content_async(self, llm_request, stream=False):
- # Call your API here
- yield LlmResponse(content=..., partial=False)
+    async def generate_content_async(self, llm_request, stream=False):
+        # Call your API here
+        yield LlmResponse(content=..., partial=False)
 
 LLMRegistry.register(MyLlm)
 # Now 'my-model-v1' will route to MyLlm

@@ -91,25 +91,25 @@ pydantic.BaseModel
 
 ```python
 class Event(LlmResponse):
- invocation_id: str # which Runner.run_async() call produced this
- author: str # 'user' or the agent's name
- actions: EventActions # side-effects: state changes, transfers, auth, etc.
- branch: Optional[str] # 'agent_1.agent_2.agent_3' — routing for multi-agent trees
- id: str # auto-generated UUID
- timestamp: float # unix timestamp, auto-set
+    invocation_id: str # which Runner.run_async() call produced this
+    author: str # 'user' or the agent's name
+    actions: EventActions # side-effects: state changes, transfers, auth, etc.
+    branch: Optional[str] # 'agent_1.agent_2.agent_3' — routing for multi-agent trees
+    id: str # auto-generated UUID
+    timestamp: float # unix timestamp, auto-set
 
- # Inherited from LlmResponse / Content:
- content: Optional[types.Content] # the actual payload (text, function calls, etc.)
- partial: Optional[bool] # True for streaming chunks, False for final
+    # Inherited from LlmResponse / Content:
+    content: Optional[types.Content] # the actual payload (text, function calls, etc.)
+    partial: Optional[bool] # True for streaming chunks, False for final
 
- # Inherited from LlmResponse (often populated on the final event):
- long_running_tool_ids: Optional[set[str]] # set of function call IDs for long-running tools;
- # when present, is_final_response() returns True
- # so the runner pauses and yields control to the caller
- finish_reason: Optional[types.FinishReason] # why generation stopped (STOP, MAX_TOKENS, SAFETY, etc.)
- usage_metadata: Optional[types.GenerateContentResponseUsageMetadata] # token counts (prompt, candidates, total)
- grounding_metadata: Optional[types.GroundingMetadata] # search grounding metadata from Google Search
- custom_metadata: Optional[dict[str, Any]] # arbitrary metadata; Runner merges RunConfig.custom_metadata here
+    # Inherited from LlmResponse (often populated on the final event):
+    long_running_tool_ids: Optional[set[str]] # set of function call IDs for long-running tools;
+    # when present, is_final_response() returns True
+    # so the runner pauses and yields control to the caller
+    finish_reason: Optional[types.FinishReason] # why generation stopped (STOP, MAX_TOKENS, SAFETY, etc.)
+    usage_metadata: Optional[types.GenerateContentResponseUsageMetadata] # token counts (prompt, candidates, total)
+    grounding_metadata: Optional[types.GroundingMetadata] # search grounding metadata from Google Search
+    custom_metadata: Optional[dict[str, Any]] # arbitrary metadata; Runner merges RunConfig.custom_metadata here
 ```
 
 ---
@@ -121,19 +121,19 @@ Side-effects stored on `event.actions`:
 
 ```python
 class EventActions(BaseModel):
- state_delta: dict[str, object] # key-value updates to session state
- artifact_delta: dict[str, int] # filename → new version (file uploads)
- transfer_to_agent: Optional[str] # route control to this named agent
- escalate: Optional[bool] # signal parent agent to take over
- skip_summarization: Optional[bool] # don't summarize this tool response
- requested_auth_configs: dict[str, AuthConfig] # tool is asking for OAuth credentials
- compaction: Optional[EventCompaction] # summary of compacted old events
- end_of_agent: Optional[bool] # agent finished its current run
- agent_state: Optional[dict] # checkpoint for resumable invocations
- requested_tool_confirmations: dict[str, ToolConfirmation] # human-in-the-loop confirmation
- # requests, keyed by function call ID
- rewind_before_invocation_id: Optional[str] # signals session rewind to before this invocation ID
- render_ui_widgets: Optional[list[UiWidget]] # UI widgets for frontend rendering
+    state_delta: dict[str, object] # key-value updates to session state
+    artifact_delta: dict[str, int] # filename → new version (file uploads)
+    transfer_to_agent: Optional[str] # route control to this named agent
+    escalate: Optional[bool] # signal parent agent to take over
+    skip_summarization: Optional[bool] # don't summarize this tool response
+    requested_auth_configs: dict[str, AuthConfig] # tool is asking for OAuth credentials
+    compaction: Optional[EventCompaction] # summary of compacted old events
+    end_of_agent: Optional[bool] # agent finished its current run
+    agent_state: Optional[dict] # checkpoint for resumable invocations
+    requested_tool_confirmations: dict[str, ToolConfirmation] # human-in-the-loop confirmation
+    # requests, keyed by function call ID
+    rewind_before_invocation_id: Optional[str] # signals session rewind to before this invocation ID
+    render_ui_widgets: Optional[list[UiWidget]] # UI widgets for frontend rendering
 ```
 
 `state_delta` is how agents write to persistent session state.

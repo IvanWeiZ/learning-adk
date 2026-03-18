@@ -33,11 +33,11 @@ from google.adk.agents.llm_agent import Agent
 from tests.unittests.testing_utils import InMemoryRunner, MockModel, simplify_events
 
 def test_hello():
- mock = MockModel.create(responses=["Hello back!"])
- agent = Agent(name="greeter", model=mock)
- runner = InMemoryRunner(agent)
- events = runner.run("Hello")
- assert simplify_events(events) == [("greeter", "Hello back!")]
+    mock = MockModel.create(responses=["Hello back!"])
+    agent = Agent(name="greeter", model=mock)
+    runner = InMemoryRunner(agent)
+    events = runner.run("Hello")
+    assert simplify_events(events) == [("greeter", "Hello back!")]
 ```
 
 ---
@@ -56,11 +56,11 @@ ADK's test utilities enable deterministic agent tests without real LLM calls. Re
 
 ```python
 class MockModel(BaseLlm):
- model: str = 'mock'
- requests: list[LlmRequest] = [] # every request received (for assertions)
- responses: list[LlmResponse] # pre-loaded responses to yield
- error: Exception | None = None # if set, raised instead of yielding
- response_index: int = -1 # auto-incremented on each call
+    model: str = 'mock'
+    requests: list[LlmRequest] = [] # every request received (for assertions)
+    responses: list[LlmResponse] # pre-loaded responses to yield
+    error: Exception | None = None # if set, raised instead of yielding
+    response_index: int = -1 # auto-incremented on each call
 ```
 
 ### Creating a MockModel
@@ -76,13 +76,13 @@ mock = MockModel.create(responses=['Hello!', 'Goodbye!'])
 # From types.Part objects — useful for function calls
 from google.genai import types
 mock = MockModel.create(responses=[
- types.Part.from_function_call(name='get_weather', args={'city': 'London'}),
- 'The weather in London is sunny.',
+    types.Part.from_function_call(name='get_weather', args={'city': 'London'}),
+    'The weather in London is sunny.',
 ])
 
 # From list[list[Part]] — multi-part responses
 mock = MockModel.create(responses=[
- [types.Part.from_text(text='part1'), types.Part.from_text(text='part2')],
+    [types.Part.from_text(text='part1'), types.Part.from_text(text='part2')],
 ])
 
 # From pre-built LlmResponse objects — full control
@@ -163,7 +163,7 @@ from tests.unittests.testing_utils import simplify_events
 
 events = runner.run('test')
 assert simplify_events(events) == [
- ('root_agent', 'Hello from the agent!'),
+    ('root_agent', 'Hello from the agent!'),
 ]
 ```
 
@@ -183,9 +183,9 @@ This means you can assert against plain strings for text responses and against `
 from google.genai.types import Part
 
 assert simplify_events(events) == [
- ('root_agent', Part.from_function_call(name='get_weather', args={'city': 'London'})),
- ('root_agent', Part.from_function_response(name='get_weather', response={'temp': 20})),
- ('root_agent', 'The weather in London is 20 degrees.'),
+    ('root_agent', Part.from_function_call(name='get_weather', args={'city': 'London'})),
+    ('root_agent', Part.from_function_response(name='get_weather', response={'temp': 20})),
+    ('root_agent', 'The weather in London is 20 degrees.'),
 ]
 ```
 
@@ -206,20 +206,20 @@ from google.adk.agents.llm_agent import Agent
 from google.genai import types
 
 def my_before_model(callback_context: CallbackContext, llm_request: LlmRequest) -> LlmResponse:
- return LlmResponse(
- content=ModelContent([types.Part.from_text(text='intercepted')])
- )
+    return LlmResponse(
+        content=ModelContent([types.Part.from_text(text='intercepted')])
+    )
 
 mock_model = MockModel.create(responses=['should not appear'])
 agent = Agent(
- name='root_agent',
- model=mock_model,
- before_model_callback=my_before_model,
+    name='root_agent',
+    model=mock_model,
+    before_model_callback=my_before_model,
 )
 
 runner = InMemoryRunner(agent)
 assert simplify_events(runner.run('test')) == [
- ('root_agent', 'intercepted'),
+    ('root_agent', 'intercepted'),
 ]
 ```
 
@@ -231,19 +231,19 @@ Return `LlmResponse` to replace the model's response:
 
 ```python
 def my_after_model(callback_context: CallbackContext, llm_response: LlmResponse) -> LlmResponse:
- return LlmResponse(
- content=ModelContent([types.Part.from_text(text='replaced')])
- )
+    return LlmResponse(
+        content=ModelContent([types.Part.from_text(text='replaced')])
+    )
 
 agent = Agent(
- name='root_agent',
- model=mock_model,
- after_model_callback=my_after_model,
+    name='root_agent',
+    model=mock_model,
+    after_model_callback=my_after_model,
 )
 
 runner = InMemoryRunner(agent)
 assert simplify_events(runner.run('test')) == [
- ('root_agent', 'replaced'),
+    ('root_agent', 'replaced'),
 ]
 ```
 
@@ -258,14 +258,14 @@ mock_model = MockModel.create(responses=[], error=SystemError('API down'))
 
 # Error callback that provides a fallback response
 def handle_error(callback_context, llm_request, error) -> LlmResponse:
- return LlmResponse(
- content=ModelContent([types.Part.from_text(text='fallback response')])
- )
+    return LlmResponse(
+        content=ModelContent([types.Part.from_text(text='fallback response')])
+    )
 
 agent = Agent(
- name='root_agent',
- model=mock_model,
- on_model_error_callback=handle_error,
+    name='root_agent',
+    model=mock_model,
+    on_model_error_callback=handle_error,
 )
 
 runner = TestInMemoryRunner(agent)
@@ -281,7 +281,7 @@ agent = Agent(name='root_agent', model=mock_model, on_model_error_callback=lambd
 
 runner = TestInMemoryRunner(agent)
 with pytest.raises(SystemError):
- await runner.run_async_with_new_session('test')
+    await runner.run_async_with_new_session('test')
 ```
 
 ---
@@ -300,28 +300,28 @@ from google.adk.tools.tool_context import ToolContext
 from google.genai.types import Part
 
 def simple_function(input_str: str) -> str:
- return {'result': input_str}
+    return {'result': input_str}
 
 def my_before_tool(tool: BaseTool, args: dict, tool_context: ToolContext):
- return {'intercepted': True} # tool never runs
+    return {'intercepted': True} # tool never runs
 
 responses = [
- types.Part.from_function_call(name='simple_function', args={}),
- 'done',
+    types.Part.from_function_call(name='simple_function', args={}),
+    'done',
 ]
 mock_model = MockModel.create(responses=responses)
 agent = Agent(
- name='root_agent',
- model=mock_model,
- before_tool_callback=my_before_tool,
- tools=[simple_function],
+    name='root_agent',
+    model=mock_model,
+    before_tool_callback=my_before_tool,
+    tools=[simple_function],
 )
 
 runner = InMemoryRunner(agent)
 assert simplify_events(runner.run('test')) == [
- ('root_agent', Part.from_function_call(name='simple_function', args={})),
- ('root_agent', Part.from_function_response(name='simple_function', response={'intercepted': True})),
- ('root_agent', 'done'),
+    ('root_agent', Part.from_function_call(name='simple_function', args={})),
+    ('root_agent', Part.from_function_response(name='simple_function', response={'intercepted': True})),
+    ('root_agent', 'done'),
 ]
 ```
 
@@ -329,28 +329,28 @@ Modify `args` in-place, return `None` — tool runs with modified args:
 
 ```python
 def mutate_args(tool: BaseTool, args: dict, tool_context: ToolContext):
- args['input_str'] = 'modified_input'
- return None # tool runs with mutated args
+    args['input_str'] = 'modified_input'
+    return None # tool runs with mutated args
 
 responses = [
- types.Part.from_function_call(name='simple_function', args={}),
- 'done',
+    types.Part.from_function_call(name='simple_function', args={}),
+    'done',
 ]
 mock_model = MockModel.create(responses=responses)
 agent = Agent(
- name='root_agent',
- model=mock_model,
- before_tool_callback=mutate_args,
- tools=[simple_function],
+    name='root_agent',
+    model=mock_model,
+    before_tool_callback=mutate_args,
+    tools=[simple_function],
 )
 
 runner = InMemoryRunner(agent)
 assert simplify_events(runner.run('test')) == [
- ('root_agent', Part.from_function_call(name='simple_function', args={})),
- ('root_agent', Part.from_function_response(
- name='simple_function', response={'result': 'modified_input'}
- )),
- ('root_agent', 'done'),
+    ('root_agent', Part.from_function_call(name='simple_function', args={})),
+    ('root_agent', Part.from_function_response(
+        name='simple_function', response={'result': 'modified_input'}
+    )),
+    ('root_agent', 'done'),
 ]
 ```
 
@@ -360,14 +360,14 @@ Return dict to replace response, `None` to keep original:
 
 ```python
 def my_after_tool(tool, args, tool_context, tool_response=None):
- tool_response['result'] = 'modified_output'
- return tool_response
+    tool_response['result'] = 'modified_output'
+    return tool_response
 
 agent = Agent(
- name='root_agent',
- model=mock_model,
- after_tool_callback=my_after_tool,
- tools=[simple_function],
+    name='root_agent',
+    model=mock_model,
+    after_tool_callback=my_after_tool,
+    tools=[simple_function],
 )
 ```
 
@@ -377,30 +377,30 @@ Test error recovery:
 
 ```python
 def simple_function_with_error() -> str:
- raise SystemError('tool broke')
+    raise SystemError('tool broke')
 
 async def recover_from_error(tool, args, tool_context, error):
- return {'result': 'recovered'}
+    return {'result': 'recovered'}
 
 responses = [
- types.Part.from_function_call(name='simple_function_with_error', args={}),
- 'done',
+    types.Part.from_function_call(name='simple_function_with_error', args={}),
+    'done',
 ]
 mock_model = MockModel.create(responses=responses)
 agent = Agent(
- name='root_agent',
- model=mock_model,
- on_tool_error_callback=recover_from_error,
- tools=[simple_function_with_error],
+    name='root_agent',
+    model=mock_model,
+    on_tool_error_callback=recover_from_error,
+    tools=[simple_function_with_error],
 )
 
 runner = InMemoryRunner(agent)
 assert simplify_events(runner.run('test')) == [
- ('root_agent', Part.from_function_call(name='simple_function_with_error', args={})),
- ('root_agent', Part.from_function_response(
- name='simple_function_with_error', response={'result': 'recovered'}
- )),
- ('root_agent', 'done'),
+    ('root_agent', Part.from_function_call(name='simple_function_with_error', args={})),
+    ('root_agent', Part.from_function_response(
+        name='simple_function_with_error', response={'result': 'recovered'}
+    )),
+    ('root_agent', 'done'),
 ]
 ```
 
@@ -418,24 +418,24 @@ from google.adk.agents.llm_agent import LlmAgent
 
 class TestMyPlugin(IsolatedAsyncioTestCase):
 
- async def test_plugin_intercepts_error(self):
- plugin = ReflectAndRetryToolPlugin(max_retries=3)
+    async def test_plugin_intercepts_error(self):
+        plugin = ReflectAndRetryToolPlugin(max_retries=3)
 
- def increase(x: int) -> int:
- return x + 1
+        def increase(x: int) -> int:
+            return x + 1
 
- wrong_call = types.Part.from_function_call(name='wrong_name', args={'x': 1})
- correct_call = types.Part.from_function_call(name='increase', args={'x': 1})
- mock_model = MockModel.create(responses=[wrong_call, correct_call, 'done'])
+        wrong_call = types.Part.from_function_call(name='wrong_name', args={'x': 1})
+        correct_call = types.Part.from_function_call(name='increase', args={'x': 1})
+        mock_model = MockModel.create(responses=[wrong_call, correct_call, 'done'])
 
- agent = LlmAgent(name='root_agent', model=mock_model, tools=[increase])
- runner = TestInMemoryRunner(agent=agent, plugins=[plugin])
+        agent = LlmAgent(name='root_agent', model=mock_model, tools=[increase])
+        runner = TestInMemoryRunner(agent=agent, plugins=[plugin])
 
- events = await runner.run_async_with_new_session('test')
- # First call uses wrong name -> plugin catches error -> retry -> succeeds
- assert events[0].content.parts[0].function_call.name == 'wrong_name'
- assert events[1].content.parts[0].function_response.response['error_type'] == 'ValueError'
- assert events[2].content.parts[0].function_call.name == 'increase'
+        events = await runner.run_async_with_new_session('test')
+        # First call uses wrong name -> plugin catches error -> retry -> succeeds
+        assert events[0].content.parts[0].function_call.name == 'wrong_name'
+        assert events[1].content.parts[0].function_response.response['error_type'] == 'ValueError'
+        assert events[2].content.parts[0].function_call.name == 'increase'
 ```
 
 ---
@@ -451,28 +451,28 @@ from google.adk.agents.llm_agent import Agent
 
 @pytest.mark.asyncio
 async def test_async_agent_behavior():
- mock_model = MockModel.create(responses=['async response'])
- agent = Agent(name='root_agent', model=mock_model)
+    mock_model = MockModel.create(responses=['async response'])
+    agent = Agent(name='root_agent', model=mock_model)
 
- runner = TestInMemoryRunner(agent)
- events = await runner.run_async_with_new_session('hello')
+    runner = TestInMemoryRunner(agent)
+    events = await runner.run_async_with_new_session('hello')
 
- assert simplify_events(events) == [
- ('root_agent', 'async response'),
- ]
+    assert simplify_events(events) == [
+        ('root_agent', 'async response'),
+    ]
 ```
 
 Sync alternative with `InMemoryRunner`:
 
 ```python
 def test_sync_agent_behavior():
- mock_model = MockModel.create(responses=['sync response'])
- agent = Agent(name='root_agent', model=mock_model)
+    mock_model = MockModel.create(responses=['sync response'])
+    agent = Agent(name='root_agent', model=mock_model)
 
- runner = InMemoryRunner(agent)
- assert simplify_events(runner.run('hello')) == [
- ('root_agent', 'sync response'),
- ]
+    runner = InMemoryRunner(agent)
+    assert simplify_events(runner.run('hello')) == [
+        ('root_agent', 'sync response'),
+    ]
 ```
 
 ---
@@ -495,167 +495,167 @@ from google.genai import types
 from google.genai.types import Part
 
 from tests.unittests.testing_utils import (
- InMemoryRunner,
- MockModel,
- ModelContent,
- TestInMemoryRunner,
- simplify_events,
+    InMemoryRunner,
+    MockModel,
+    ModelContent,
+    TestInMemoryRunner,
+    simplify_events,
 )
 
 # ---- Tool definitions ----
 
 def get_weather(city: str) -> dict:
- """Get current weather for a city."""
- # In tests this is driven by MockModel, but the function still
- # needs to return something for when the tool actually executes.
- return {'city': city, 'temp_c': 20, 'condition': 'sunny'}
+    """Get current weather for a city."""
+    # In tests this is driven by MockModel, but the function still
+    # needs to return something for when the tool actually executes.
+    return {'city': city, 'temp_c': 20, 'condition': 'sunny'}
 
 def set_reminder(message: str) -> dict:
- """Set a reminder."""
- return {'status': 'ok', 'message': message}
+    """Set a reminder."""
+    return {'status': 'ok', 'message': message}
 
 # ---- Tests ----
 
 def test_single_tool_call():
- """Agent calls get_weather, receives the result, then responds."""
- mock_model = MockModel.create(responses=[
- Part.from_function_call(name='get_weather', args={'city': 'London'}),
- 'The weather in London is 20C and sunny.',
- ])
- agent = Agent(
- name='weather_agent',
- model=mock_model,
- tools=[get_weather],
- )
+    """Agent calls get_weather, receives the result, then responds."""
+    mock_model = MockModel.create(responses=[
+        Part.from_function_call(name='get_weather', args={'city': 'London'}),
+        'The weather in London is 20C and sunny.',
+    ])
+    agent = Agent(
+        name='weather_agent',
+        model=mock_model,
+        tools=[get_weather],
+    )
 
- runner = InMemoryRunner(agent)
- events = runner.run('What is the weather in London?')
+    runner = InMemoryRunner(agent)
+    events = runner.run('What is the weather in London?')
 
- assert simplify_events(events) == [
- ('weather_agent', Part.from_function_call(name='get_weather', args={'city': 'London'})),
- ('weather_agent', Part.from_function_response(
- name='get_weather',
- response={'city': 'London', 'temp_c': 20, 'condition': 'sunny'},
- )),
- ('weather_agent', 'The weather in London is 20C and sunny.'),
- ]
+    assert simplify_events(events) == [
+        ('weather_agent', Part.from_function_call(name='get_weather', args={'city': 'London'})),
+        ('weather_agent', Part.from_function_response(
+            name='get_weather',
+            response={'city': 'London', 'temp_c': 20, 'condition': 'sunny'},
+        )),
+        ('weather_agent', 'The weather in London is 20C and sunny.'),
+    ]
 
 def test_multiple_tool_calls():
- """Agent calls two tools in sequence."""
- mock_model = MockModel.create(responses=[
- Part.from_function_call(name='get_weather', args={'city': 'Paris'}),
- Part.from_function_call(name='set_reminder', args={'message': 'Bring umbrella'}),
- 'Done! Weather checked and reminder set.',
- ])
- agent = Agent(
- name='weather_agent',
- model=mock_model,
- tools=[get_weather, set_reminder],
- )
+    """Agent calls two tools in sequence."""
+    mock_model = MockModel.create(responses=[
+        Part.from_function_call(name='get_weather', args={'city': 'Paris'}),
+        Part.from_function_call(name='set_reminder', args={'message': 'Bring umbrella'}),
+        'Done! Weather checked and reminder set.',
+    ])
+    agent = Agent(
+        name='weather_agent',
+        model=mock_model,
+        tools=[get_weather, set_reminder],
+    )
 
- runner = InMemoryRunner(agent)
- events = runner.run('Check Paris weather and remind me about umbrella')
+    runner = InMemoryRunner(agent)
+    events = runner.run('Check Paris weather and remind me about umbrella')
 
- simplified = simplify_events(events)
- assert simplified[0] == ('weather_agent', Part.from_function_call(
- name='get_weather', args={'city': 'Paris'}
- ))
- assert simplified[-1] == ('weather_agent', 'Done! Weather checked and reminder set.')
+    simplified = simplify_events(events)
+    assert simplified[0] == ('weather_agent', Part.from_function_call(
+        name='get_weather', args={'city': 'Paris'}
+    ))
+    assert simplified[-1] == ('weather_agent', 'Done! Weather checked and reminder set.')
 
 def test_before_model_callback_adds_context():
- """before_model_callback that returns None lets the model run normally."""
- captured_requests = []
+    """before_model_callback that returns None lets the model run normally."""
+    captured_requests = []
 
- def capture_request(callback_context: CallbackContext, llm_request: LlmRequest):
- captured_requests.append(llm_request)
- return None # pass through to model
+    def capture_request(callback_context: CallbackContext, llm_request: LlmRequest):
+        captured_requests.append(llm_request)
+        return None # pass through to model
 
- mock_model = MockModel.create(responses=['response'])
- agent = Agent(
- name='weather_agent',
- model=mock_model,
- before_model_callback=capture_request,
- )
+    mock_model = MockModel.create(responses=['response'])
+    agent = Agent(
+        name='weather_agent',
+        model=mock_model,
+        before_model_callback=capture_request,
+    )
 
- runner = InMemoryRunner(agent)
- events = runner.run('hello')
+    runner = InMemoryRunner(agent)
+    events = runner.run('hello')
 
- assert simplify_events(events) == [('weather_agent', 'response')]
- assert len(captured_requests) == 1
+    assert simplify_events(events) == [('weather_agent', 'response')]
+    assert len(captured_requests) == 1
 
 def test_before_tool_callback_validates_args():
- """before_tool_callback rejects calls with missing required args."""
- def validate_args(tool: BaseTool, args: dict, tool_context: ToolContext):
- if 'city' not in args or not args['city']:
- return {'error': 'city is required'}
- return None # let tool run
+    """before_tool_callback rejects calls with missing required args."""
+    def validate_args(tool: BaseTool, args: dict, tool_context: ToolContext):
+        if 'city' not in args or not args['city']:
+            return {'error': 'city is required'}
+        return None # let tool run
 
- mock_model = MockModel.create(responses=[
- Part.from_function_call(name='get_weather', args={}),
- 'I need a city name to check the weather.',
- ])
- agent = Agent(
- name='weather_agent',
- model=mock_model,
- before_tool_callback=validate_args,
- tools=[get_weather],
- )
+    mock_model = MockModel.create(responses=[
+        Part.from_function_call(name='get_weather', args={}),
+        'I need a city name to check the weather.',
+    ])
+    agent = Agent(
+        name='weather_agent',
+        model=mock_model,
+        before_tool_callback=validate_args,
+        tools=[get_weather],
+    )
 
- runner = InMemoryRunner(agent)
- events = runner.run('weather?')
+    runner = InMemoryRunner(agent)
+    events = runner.run('weather?')
 
- simplified = simplify_events(events)
- # The tool was short-circuited with an error response
- assert simplified[1] == ('weather_agent', Part.from_function_response(
- name='get_weather', response={'error': 'city is required'}
- ))
+    simplified = simplify_events(events)
+    # The tool was short-circuited with an error response
+    assert simplified[1] == ('weather_agent', Part.from_function_response(
+        name='get_weather', response={'error': 'city is required'}
+    ))
 
 @pytest.mark.asyncio
 async def test_model_error_with_fallback():
- """on_model_error_callback provides a fallback when the model fails."""
- mock_model = MockModel.create(responses=[], error=ConnectionError('timeout'))
+    """on_model_error_callback provides a fallback when the model fails."""
+    mock_model = MockModel.create(responses=[], error=ConnectionError('timeout'))
 
- def fallback(callback_context, llm_request, error):
- return LlmResponse(
- content=ModelContent([
- types.Part.from_text(text='Service temporarily unavailable.')
- ])
- )
+    def fallback(callback_context, llm_request, error):
+        return LlmResponse(
+            content=ModelContent([
+                types.Part.from_text(text='Service temporarily unavailable.')
+            ])
+        )
 
- agent = Agent(
- name='weather_agent',
- model=mock_model,
- on_model_error_callback=fallback,
- )
+    agent = Agent(
+        name='weather_agent',
+        model=mock_model,
+        on_model_error_callback=fallback,
+    )
 
- runner = TestInMemoryRunner(agent)
- events = await runner.run_async_with_new_session('weather in Tokyo?')
+    runner = TestInMemoryRunner(agent)
+    events = await runner.run_async_with_new_session('weather in Tokyo?')
 
- assert simplify_events(events) == [
- ('weather_agent', 'Service temporarily unavailable.'),
- ]
+    assert simplify_events(events) == [
+        ('weather_agent', 'Service temporarily unavailable.'),
+    ]
 
 def test_inspect_model_requests():
- """MockModel records requests so you can assert on what was sent."""
- mock_model = MockModel.create(responses=['response'])
- agent = Agent(
- name='weather_agent',
- model=mock_model,
- instruction='You are a helpful weather assistant.',
- )
+    """MockModel records requests so you can assert on what was sent."""
+    mock_model = MockModel.create(responses=['response'])
+    agent = Agent(
+        name='weather_agent',
+        model=mock_model,
+        instruction='You are a helpful weather assistant.',
+    )
 
- runner = InMemoryRunner(agent)
- runner.run('What is the weather?')
+    runner = InMemoryRunner(agent)
+    runner.run('What is the weather?')
 
- # MockModel captured the LlmRequest
- assert len(mock_model.requests) == 1
- request = mock_model.requests[0]
- # The request contains the conversation contents
- assert any(
- part.text and 'weather' in part.text.lower()
- for content in request.contents
- for part in content.parts
- )
+    # MockModel captured the LlmRequest
+    assert len(mock_model.requests) == 1
+    request = mock_model.requests[0]
+    # The request contains the conversation contents
+    assert any(
+        part.text and 'weather' in part.text.lower()
+        for content in request.contents
+        for part in content.parts
+    )
 ```
 
 ---

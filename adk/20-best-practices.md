@@ -42,21 +42,21 @@ agent = Agent(name="MyAgent", ...)
 ```python
 # ❌ WRONG: Both children named "helper" — transfer_to_agent will be ambiguous
 root = Agent(
- name="root",
- sub_agents=[
- Agent(name="helper", instruction="Help with math"),
- Agent(name="helper", instruction="Help with code"), # Duplicate!
- ],
+    name="root",
+    sub_agents=[
+        Agent(name="helper", instruction="Help with math"),
+        Agent(name="helper", instruction="Help with code"), # Duplicate!
+    ],
 )
 # ADK only logs a warning, but agent transfer becomes unpredictable.
 
 # ✅ CORRECT: Unique names
 root = Agent(
- name="root",
- sub_agents=[
- Agent(name="math_helper", instruction="Help with math"),
- Agent(name="code_helper", instruction="Help with code"),
- ],
+    name="root",
+    sub_agents=[
+        Agent(name="math_helper", instruction="Help with math"),
+        Agent(name="code_helper", instruction="Help with code"),
+    ],
 )
 ```
 
@@ -78,24 +78,24 @@ Tool return value:
 ```python
 # ❌ WRONG: Raising exceptions
 def search_database(query: str) -> str:
- """Search the database."""
- results = db.search(query)
- if not results:
- raise ValueError("No results found") # LLM sees raw stack trace!
- return str(results)
+    """Search the database."""
+    results = db.search(query)
+    if not results:
+        raise ValueError("No results found") # LLM sees raw stack trace!
+    return str(results)
 
 # ✅ CORRECT: Return error dict
 def search_database(query: str) -> str:
- """Search the database."""
- try:
- results = db.search(query)
- if not results:
- return "No results found for your query. Try different search terms."
- return str(results)
- except ConnectionError:
- return "Database is temporarily unavailable. Please try again."
- except Exception as e:
- return f"Search failed: {e}"
+    """Search the database."""
+    try:
+        results = db.search(query)
+        if not results:
+            return "No results found for your query. Try different search terms."
+        return str(results)
+    except ConnectionError:
+        return "Database is temporarily unavailable. Please try again."
+    except Exception as e:
+        return f"Search failed: {e}"
 ```
 
 ### Why This Matters
@@ -133,32 +133,32 @@ The LLM chooses tools by function name and docstring. Poor docstrings = wrong to
 ```python
 # ❌ WRONG: No docstring — LLM has no idea what this does
 def process(data: str) -> str:
- return api.call(data)
+    return api.call(data)
 
 # ❌ WRONG: Too vague
 def search(query: str) -> str:
- """Search for stuff."""
- return api.search(query)
+    """Search for stuff."""
+    return api.search(query)
 
 # ❌ WRONG: Implementation details the LLM doesn't need
 def search_products(query: str) -> str:
- """Uses Elasticsearch with BM25 scoring to query the products index.
- Connects to cluster at es.internal:9200 with retry logic."""
- return es.search(query)
+    """Uses Elasticsearch with BM25 scoring to query the products index.
+    Connects to cluster at es.internal:9200 with retry logic."""
+    return es.search(query)
 
 # ✅ CORRECT: Clear, action-oriented, describes inputs and outputs
 def search_products(query: str, category: str = "all") -> str:
- """Search for products by name or description.
+    """Search for products by name or description.
 
- Args:
- query: What to search for (e.g., "wireless headphones")
- category: Product category to filter by. Options: "electronics",
- "clothing", "books", "all"
+    Args:
+        query: What to search for (e.g., "wireless headphones")
+        category: Product category to filter by. Options: "electronics",
+            "clothing", "books", "all"
 
- Returns:
- A list of matching products with name, price, and rating.
- """
- return catalog.search(query, category)
+    Returns:
+        A list of matching products with name, price, and rating.
+    """
+    return catalog.search(query, category)
 ```
 
 ### Naming Matters Too
@@ -179,33 +179,33 @@ tools=[search_products, get_order_status, check_inventory]
 from pydantic import BaseModel
 
 class Analysis(BaseModel):
- sentiment: str
- confidence: float
- topics: list[str]
+    sentiment: str
+    confidence: float
+    topics: list[str]
 
 # ❌ WRONG: output_schema + tools — tools are silently ignored!
 agent = Agent(
- name="analyzer",
- model="gemini-2.5-flash",
- instruction="Analyze user messages using the search tool.",
- output_schema=Analysis, # ← Forces structured output
- tools=[search_knowledge], # ← These are IGNORED!
+    name="analyzer",
+    model="gemini-2.5-flash",
+    instruction="Analyze user messages using the search tool.",
+    output_schema=Analysis, # ← Forces structured output
+    tools=[search_knowledge], # ← These are IGNORED!
 )
 
 # ✅ CORRECT: Use output_schema WITHOUT tools (for pure analysis)
 analyzer = Agent(
- name="analyzer",
- output_schema=Analysis,
- instruction="Analyze the sentiment, confidence, and topics of the message.",
- # No tools — this agent only produces structured output
+    name="analyzer",
+    output_schema=Analysis,
+    instruction="Analyze the sentiment, confidence, and topics of the message.",
+    # No tools — this agent only produces structured output
 )
 
 # ✅ CORRECT: Or use tools WITHOUT output_schema
 researcher = Agent(
- name="researcher",
- tools=[search_knowledge],
- instruction="Search knowledge base and provide analysis.",
- # No output_schema — agent uses tools freely and responds in text
+    name="researcher",
+    tools=[search_knowledge],
+    instruction="Search knowledge base and provide analysis.",
+    # No output_schema — agent uses tools freely and responds in text
 )
 ```
 
@@ -231,37 +231,37 @@ Each agent instance belongs to one parent (enforced at runtime):
 shared_helper = Agent(name="helper", instruction="Help with tasks")
 
 parent_a = Agent(
- name="parent_a",
- sub_agents=[shared_helper], # Sets shared_helper.parent_agent = parent_a
+    name="parent_a",
+    sub_agents=[shared_helper], # Sets shared_helper.parent_agent = parent_a
 )
 
 parent_b = Agent(
- name="parent_b",
- sub_agents=[shared_helper], # CRASHES: "Agent 'helper' already has a parent"
+    name="parent_b",
+    sub_agents=[shared_helper], # CRASHES: "Agent 'helper' already has a parent"
 )
 
 # ✅ CORRECT: Create separate instances
 parent_a = Agent(
- name="parent_a",
- sub_agents=[Agent(name="helper_a", instruction="Help with tasks")],
+    name="parent_a",
+    sub_agents=[Agent(name="helper_a", instruction="Help with tasks")],
 )
 
 parent_b = Agent(
- name="parent_b",
- sub_agents=[Agent(name="helper_b", instruction="Help with tasks")],
+    name="parent_b",
+    sub_agents=[Agent(name="helper_b", instruction="Help with tasks")],
 )
 
 # ✅ ALSO CORRECT: Use clone()
 template = Agent(name="helper", instruction="Help with tasks")
 
 parent_a = Agent(
- name="parent_a",
- sub_agents=[template.clone(update={"name": "helper_a"})],
+    name="parent_a",
+    sub_agents=[template.clone(update={"name": "helper_a"})],
 )
 
 parent_b = Agent(
- name="parent_b",
- sub_agents=[template.clone(update={"name": "helper_b"})],
+    name="parent_b",
+    sub_agents=[template.clone(update={"name": "helper_b"})],
 )
 ```
 
@@ -274,30 +274,30 @@ ADK injects by parameter name. Wrong names = broken callbacks.
 ```python
 # ❌ WRONG: Parameter named "ctx" instead of "callback_context"
 async def my_before_agent(ctx):
- print("Before agent")
- return None
+    print("Before agent")
+    return None
 
 # ❌ WRONG: Parameter named "request" instead of "llm_request"
 async def my_before_model(callback_context, request):
- print("Before model")
- return None
+    print("Before model")
+    return None
 
 # ✅ CORRECT: Exact parameter names
 async def my_before_agent(callback_context):
- print(f"Agent: {callback_context.agent_name}")
- return None
+    print(f"Agent: {callback_context.agent_name}")
+    return None
 
 async def my_before_model(callback_context, llm_request):
- print(f"Sending {len(llm_request.contents)} messages")
- return None
+    print(f"Sending {len(llm_request.contents)} messages")
+    return None
 
 async def my_before_tool(tool, args, tool_context):
- print(f"Calling tool: {tool.name} with {args}")
- return None
+    print(f"Calling tool: {tool.name} with {args}")
+    return None
 
 async def my_after_tool(tool, args, tool_context, tool_response):
- print(f"Tool {tool.name} returned: {tool_response}")
- return None
+    print(f"Tool {tool.name} returned: {tool_response}")
+    return None
 ```
 
 **Parameter name cheat sheet:**
@@ -326,41 +326,41 @@ from google.genai import types
 
 # ❌ WRONG: tools in both places
 agent = Agent(
- name="my_agent",
- tools=[search],
- generate_content_config=types.GenerateContentConfig(
- tools=[search], # CRASHES: "All tools must be set via LlmAgent.tools"
- ),
+    name="my_agent",
+    tools=[search],
+    generate_content_config=types.GenerateContentConfig(
+        tools=[search], # CRASHES: "All tools must be set via LlmAgent.tools"
+    ),
 )
 
 # ❌ WRONG: system_instruction in both places
 agent = Agent(
- name="my_agent",
- instruction="Be helpful",
- generate_content_config=types.GenerateContentConfig(
- system_instruction="Be helpful", # CRASHES: "must be set via LlmAgent.instruction"
- ),
+    name="my_agent",
+    instruction="Be helpful",
+    generate_content_config=types.GenerateContentConfig(
+        system_instruction="Be helpful", # CRASHES: "must be set via LlmAgent.instruction"
+    ),
 )
 
 # ❌ WRONG: response_schema in both places
 agent = Agent(
- name="my_agent",
- output_schema=MyModel,
- generate_content_config=types.GenerateContentConfig(
- response_schema=MyModel, # CRASHES: "must be set via LlmAgent.output_schema"
- ),
+    name="my_agent",
+    output_schema=MyModel,
+    generate_content_config=types.GenerateContentConfig(
+        response_schema=MyModel, # CRASHES: "must be set via LlmAgent.output_schema"
+    ),
 )
 
 # ✅ CORRECT: Only use generate_content_config for LLM-specific settings
 agent = Agent(
- name="my_agent",
- instruction="Be helpful",
- tools=[search],
- generate_content_config=types.GenerateContentConfig(
- temperature=0.7, # ← These are fine here
- max_output_tokens=2048, # ← These are fine here
- top_p=0.9, # ← These are fine here
- ),
+    name="my_agent",
+    instruction="Be helpful",
+    tools=[search],
+    generate_content_config=types.GenerateContentConfig(
+        temperature=0.7, # ← These are fine here
+        max_output_tokens=2048, # ← These are fine here
+        top_p=0.9, # ← These are fine here
+    ),
 )
 ```
 
@@ -413,8 +413,8 @@ agent_a = Agent(name="a", output_key="result") # Writes state["result"]
 agent_b = Agent(name="b", output_key="result") # Also writes state["result"]!
 
 parallel = ParallelAgent(
- name="parallel",
- sub_agents=[agent_a, agent_b], # Race condition: who wins?
+    name="parallel",
+    sub_agents=[agent_a, agent_b], # Race condition: who wins?
 )
 
 # ✅ CORRECT: Different keys for each parallel agent
@@ -439,20 +439,20 @@ Model resolution order:
 ```python
 # ❌ WASTEFUL: Setting the same model on every agent
 root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
- Agent(name="child_a", model="gemini-2.5-flash", ...), # Redundant
- Agent(name="child_b", model="gemini-2.5-flash", ...), # Redundant
+    Agent(name="child_a", model="gemini-2.5-flash", ...), # Redundant
+    Agent(name="child_b", model="gemini-2.5-flash", ...), # Redundant
 ])
 
 # ✅ CORRECT: Set once on root, children inherit
 root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
- Agent(name="child_a", ...), # Inherits gemini-2.5-flash
- Agent(name="child_b", ...), # Inherits gemini-2.5-flash
+    Agent(name="child_a", ...), # Inherits gemini-2.5-flash
+    Agent(name="child_b", ...), # Inherits gemini-2.5-flash
 ])
 
 # ✅ CORRECT: Override only when different
 root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
- Agent(name="fast_child", ...), # Inherits flash
- Agent(name="smart_child", model="gemini-2.5-pro", ...), # Override to pro
+    Agent(name="fast_child", ...), # Inherits flash
+    Agent(name="smart_child", model="gemini-2.5-pro", ...), # Override to pro
 ])
 ```
 
@@ -465,10 +465,10 @@ root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
 ```python
 # ✅ ADK supports {state_key} placeholders in instructions
 agent = Agent(
- name="support",
- instruction="""You are a support agent for {user:company_name}.
- The customer's plan is: {user:plan_type}.
- Previous issue count: {user:issue_count}.""",
+    name="support",
+    instruction="""You are a support agent for {user:company_name}.
+    The customer's plan is: {user:plan_type}.
+    Previous issue count: {user:issue_count}.""",
 )
 # At runtime, ADK replaces {user:company_name} with state["user:company_name"]
 ```
@@ -478,14 +478,14 @@ agent = Agent(
 ```python
 # ✅ For complex logic, use a callable
 async def build_instruction(ctx) -> str:
- """Build instruction based on runtime context."""
- if ctx.state.get("user:is_premium"):
- return "You are a premium support agent. Prioritize this customer."
- return "You are a standard support agent."
+    """Build instruction based on runtime context."""
+    if ctx.state.get("user:is_premium"):
+        return "You are a premium support agent. Prioritize this customer."
+    return "You are a standard support agent."
 
 agent = Agent(
- name="support",
- instruction=build_instruction, # Called at each invocation
+    name="support",
+    instruction=build_instruction, # Called at each invocation
 )
 ```
 
@@ -494,25 +494,25 @@ agent = Agent(
 ```python
 # ❌ WRONG: Telling the agent about tools it doesn't have
 agent = Agent(
- name="helper",
- instruction="Use the search_web tool to find information.",
- tools=[], # No tools! LLM will hallucinate tool calls.
+    name="helper",
+    instruction="Use the search_web tool to find information.",
+    tools=[], # No tools! LLM will hallucinate tool calls.
 )
 
 # ❌ WRONG: Contradicting transfer configuration
 agent = Agent(
- name="helper",
- instruction="Transfer complex issues to the escalation_agent.",
- disallow_transfer_to_parent=True,
- disallow_transfer_to_peers=True,
- sub_agents=[], # No sub-agents + both transfers blocked = can't transfer anywhere!
+    name="helper",
+    instruction="Transfer complex issues to the escalation_agent.",
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
+    sub_agents=[], # No sub-agents + both transfers blocked = can't transfer anywhere!
 )
 
 # ✅ CORRECT: Instruction matches actual capabilities
 agent = Agent(
- name="helper",
- instruction="You help with simple questions. For complex issues, transfer to escalation_agent.",
- sub_agents=[escalation_agent],
+    name="helper",
+    instruction="You help with simple questions. For complex issues, transfer to escalation_agent.",
+    sub_agents=[escalation_agent],
 )
 ```
 
@@ -560,35 +560,35 @@ from google.adk.runners import InMemoryRunner
 # ✅ CORRECT: Test with real ADK components, mock only external services
 @pytest.mark.asyncio
 async def test_weather_agent():
- def mock_weather(city: str) -> str:
- """Get weather for a city."""
- return f"Sunny, 25°C in {city}"
+    def mock_weather(city: str) -> str:
+        """Get weather for a city."""
+        return f"Sunny, 25°C in {city}"
 
- agent = Agent(
- model="gemini-2.5-flash",
- name="weather_bot",
- instruction="Help users check weather.",
- tools=[mock_weather], # Real FunctionTool with mock implementation
- )
+    agent = Agent(
+        model="gemini-2.5-flash",
+        name="weather_bot",
+        instruction="Help users check weather.",
+        tools=[mock_weather], # Real FunctionTool with mock implementation
+    )
 
- runner = InMemoryRunner(agent=agent)
- events = []
- async for event in runner.run_async_with_new_session_agen(
- types.Content(role="user", parts=[types.Part(text="Weather in Tokyo?")])
- ):
- events.append(event)
+    runner = InMemoryRunner(agent=agent)
+    events = []
+    async for event in runner.run_async_with_new_session_agen(
+        types.Content(role="user", parts=[types.Part(text="Weather in Tokyo?")])
+    ):
+        events.append(event)
 
- # Verify agent called the tool and responded
- assert any(
- event.content and "Tokyo" in str(event.content)
- for event in events
- )
+    # Verify agent called the tool and responded
+    assert any(
+        event.content and "Tokyo" in str(event.content)
+        for event in events
+    )
 
 # ❌ WRONG: Mocking ADK internals — brittle and misses real bugs
 @pytest.mark.asyncio
 async def test_weather_agent_bad():
- with mock.patch("google.adk.flows.BaseLlmFlow.run_async"):
- pass # Don't do this — you're testing your mocks, not your agent
+    with mock.patch("google.adk.flows.BaseLlmFlow.run_async"):
+        pass # Don't do this — you're testing your mocks, not your agent
 ```
 
 ---
@@ -602,27 +602,27 @@ async def test_weather_agent_bad():
 import requests
 
 def fetch_data(url: str) -> str:
- """Fetch data from URL."""
- response = requests.get(url) # BLOCKS the entire event loop!
- return response.text
+    """Fetch data from URL."""
+    response = requests.get(url) # BLOCKS the entire event loop!
+    return response.text
 
 # ✅ CORRECT: Use async HTTP
 import aiohttp
 
 async def fetch_data(url: str) -> str:
- """Fetch data from URL."""
- async with aiohttp.ClientSession() as session:
- async with session.get(url) as response:
- return await response.text()
+    """Fetch data from URL."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.text()
 
 # ✅ ALSO OK: Wrap blocking code with asyncio.to_thread
 import asyncio
 import requests
 
 async def fetch_data(url: str) -> str:
- """Fetch data from URL."""
- response = await asyncio.to_thread(requests.get, url)
- return response.text
+    """Fetch data from URL."""
+    response = await asyncio.to_thread(requests.get, url)
+    return response.text
 ```
 
 ### Sync Tools Are Fine — ADK Handles Them
@@ -630,15 +630,15 @@ async def fetch_data(url: str) -> str:
 ```python
 # ✅ ADK auto-detects sync vs async and handles both correctly
 def sync_tool(query: str) -> str:
- """A sync tool — ADK wraps this correctly."""
- return compute(query)
+    """A sync tool — ADK wraps this correctly."""
+    return compute(query)
 
 async def async_tool(query: str) -> str:
- """An async tool — ADK awaits this."""
- return await async_compute(query)
+    """An async tool — ADK awaits this."""
+    return await async_compute(query)
 
 agent = Agent(
- tools=[sync_tool, async_tool], # Both work fine
+    tools=[sync_tool, async_tool], # Both work fine
 )
 ```
 
@@ -651,28 +651,28 @@ The LLM uses `description` to pick transfer targets. Bad descriptions = wrong ro
 ```python
 # ❌ WRONG: Vague descriptions
 sub_agents=[
- Agent(name="agent_a", description="Handles stuff"),
- Agent(name="agent_b", description="Does things"),
+    Agent(name="agent_a", description="Handles stuff"),
+    Agent(name="agent_b", description="Does things"),
 ]
 
 # ❌ WRONG: No descriptions at all
 sub_agents=[
- Agent(name="billing_agent"), # LLM only sees the name
- Agent(name="support_agent"), # Will guess based on name alone
+    Agent(name="billing_agent"), # LLM only sees the name
+    Agent(name="support_agent"), # Will guess based on name alone
 ]
 
 # ✅ CORRECT: Specific, action-oriented descriptions
 sub_agents=[
- Agent(
- name="billing_agent",
- description="Handles billing inquiries: invoices, payment methods, "
- "subscription changes, refunds, and pricing questions",
- ),
- Agent(
- name="technical_support",
- description="Handles technical issues: bugs, errors, configuration "
- "problems, API questions, and integration help",
- ),
+    Agent(
+        name="billing_agent",
+        description="Handles billing inquiries: invoices, payment methods, "
+            "subscription changes, refunds, and pricing questions",
+    ),
+    Agent(
+        name="technical_support",
+        description="Handles technical issues: bugs, errors, configuration "
+            "problems, API questions, and integration help",
+    ),
 ]
 ```
 
@@ -763,19 +763,19 @@ root → specialist_a
 global_data = {}
 
 def tool_a(query: str) -> str:
- global_data["result"] = compute(query) # Side channel!
- return "Done"
+    global_data["result"] = compute(query) # Side channel!
+    return "Done"
 
 def tool_b() -> str:
- return global_data.get("result", "No data") # Reads from side channel!
+    return global_data.get("result", "No data") # Reads from side channel!
 
 # ✅ CORRECT: Use session state — it's designed for this
 def tool_a(query: str, tool_context: ToolContext) -> str:
- tool_context.state["result"] = compute(query)
- return "Done"
+    tool_context.state["result"] = compute(query)
+    return "Done"
 
 def tool_b(tool_context: ToolContext) -> str:
- return tool_context.state.get("result", "No data")
+    return tool_context.state.get("result", "No data")
 ```
 
 ---

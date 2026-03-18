@@ -21,12 +21,12 @@ Without `App`, pass `agent=` and `app_name=` to `Runner`. With `App`, pass `app=
 
 ```python
 class App(BaseModel):
- name: str # app identifier (valid Python identifier)
- root_agent: BaseAgent # the root agent
- plugins: list[BasePlugin] = [] # app-level hooks
- events_compaction_config: Optional[EventsCompactionConfig] = None
- context_cache_config: Optional[ContextCacheConfig] = None
- resumability_config: Optional[ResumabilityConfig] = None
+    name: str # app identifier (valid Python identifier)
+    root_agent: BaseAgent # the root agent
+    plugins: list[BasePlugin] = [] # app-level hooks
+    events_compaction_config: Optional[EventsCompactionConfig] = None
+    context_cache_config: Optional[ContextCacheConfig] = None
+    resumability_config: Optional[ResumabilityConfig] = None
 ```
 
 ---
@@ -54,11 +54,11 @@ App-wide hooks around every agent call:
 
 ```python
 class BasePlugin:
- async def before_agent_callback(self, *, agent, callback_context) -> Optional[Content]:
- ... # return Content to short-circuit the agent
+    async def before_agent_callback(self, *, agent, callback_context) -> Optional[Content]:
+        ... # return Content to short-circuit the agent
 
- async def after_agent_callback(self, *, agent, callback_context) -> Optional[Content]:
- ... # return Content to append an extra event
+    async def after_agent_callback(self, *, agent, callback_context) -> Optional[Content]:
+        ... # return Content to append an extra event
 ```
 
 Use cases:
@@ -69,12 +69,12 @@ Use cases:
 
 ```python
 class MyLoggingPlugin(BasePlugin):
- def __init__(self):
- super().__init__(name="my_logging_plugin")
+    def __init__(self):
+        super().__init__(name="my_logging_plugin")
 
- async def before_agent_callback(self, *, agent, callback_context):
- print(f'Agent {agent.name} starting...')
- return None # don't short-circuit
+    async def before_agent_callback(self, *, agent, callback_context):
+        print(f'Agent {agent.name} starting...')
+        return None # don't short-circuit
 
 app = App(name='my_app', root_agent=agent, plugins=[MyLoggingPlugin()])
 ```
@@ -89,13 +89,13 @@ Compaction summarizes old events into a single compact event, keeping the list b
 from google.adk.apps.app import EventsCompactionConfig
 
 app = App(
- name='my_app',
- root_agent=agent,
- events_compaction_config=EventsCompactionConfig(
- compaction_interval=10, # compact after every 10 new user turns
- overlap_size=2, # keep 2 most recent turns verbatim (for context)
- summarizer=None, # use default LLM-based summarizer
- ),
+    name='my_app',
+    root_agent=agent,
+    events_compaction_config=EventsCompactionConfig(
+        compaction_interval=10, # compact after every 10 new user turns
+        overlap_size=2, # keep 2 most recent turns verbatim (for context)
+        summarizer=None, # use default LLM-based summarizer
+    ),
 )
 ```
 
@@ -131,13 +131,13 @@ Reduces latency and cost for agents with long `static_instruction`:
 from google.adk.agents.context_cache_config import ContextCacheConfig
 
 app = App(
- name='my_app',
- root_agent=agent,
- context_cache_config=ContextCacheConfig(
- cache_intervals=10, # refresh cache every 10 invocations (range: 1–100)
- ttl_seconds=1800, # cache TTL in seconds (default: 30 min)
- min_tokens=0, # minimum token count before caching activates
- ),
+    name='my_app',
+    root_agent=agent,
+    context_cache_config=ContextCacheConfig(
+        cache_intervals=10, # refresh cache every 10 invocations (range: 1–100)
+        ttl_seconds=1800, # cache TTL in seconds (default: 30 min)
+        min_tokens=0, # minimum token count before caching activates
+    ),
 )
 ```
 
@@ -153,9 +153,9 @@ Pause on long-running tools, resume later:
 from google.adk.apps.app import ResumabilityConfig
 
 app = App(
- name='my_app',
- root_agent=agent,
- resumability_config=ResumabilityConfig(is_resumable=True),
+    name='my_app',
+    root_agent=agent,
+    resumability_config=ResumabilityConfig(is_resumable=True),
 )
 ```
 

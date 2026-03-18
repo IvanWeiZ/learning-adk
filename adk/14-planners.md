@@ -60,29 +60,29 @@ Every planner implements two abstract methods:
 
 ```python
 class BasePlanner(ABC):
- """Abstract base class for all planners."""
+    """Abstract base class for all planners."""
 
- @abc.abstractmethod
- def build_planning_instruction(
- self,
- readonly_context: ReadonlyContext,
- llm_request: LlmRequest,
- ) -> str | None:
- """Builds a system instruction appended to the LLM request for planning.
+    @abc.abstractmethod
+    def build_planning_instruction(
+        self,
+        readonly_context: ReadonlyContext,
+        llm_request: LlmRequest,
+    ) -> str | None:
+        """Builds a system instruction appended to the LLM request for planning.
 
- Returns the instruction string, or None if no instruction is needed.
- """
+        Returns the instruction string, or None if no instruction is needed.
+        """
 
- @abc.abstractmethod
- def process_planning_response(
- self,
- callback_context: CallbackContext,
- response_parts: list[types.Part],
- ) -> list[types.Part] | None:
- """Post-processes the LLM response parts for planning.
+    @abc.abstractmethod
+    def process_planning_response(
+        self,
+        callback_context: CallbackContext,
+        response_parts: list[types.Part],
+    ) -> list[types.Part] | None:
+        """Post-processes the LLM response parts for planning.
 
- Returns processed parts, or None if no processing is needed.
- """
+        Returns processed parts, or None if no processing is needed.
+        """
 ```
 
 ### How the methods are used
@@ -102,10 +102,10 @@ class BasePlanner(ABC):
 
 ```python
 class BuiltInPlanner(BasePlanner):
- thinking_config: types.ThinkingConfig
+    thinking_config: types.ThinkingConfig
 
- def __init__(self, *, thinking_config: types.ThinkingConfig):
- self.thinking_config = thinking_config
+    def __init__(self, *, thinking_config: types.ThinkingConfig):
+        self.thinking_config = thinking_config
 ```
 
 Key `ThinkingConfig` fields:
@@ -128,13 +128,13 @@ from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
 agent = Agent(
- name="research_agent",
- model="gemini-2.5-flash",
- instruction="You are a research assistant that thoroughly analyzes questions.",
- tools=[search_tool, summarize_tool],
- planner=BuiltInPlanner(
- thinking_config=types.ThinkingConfig(thinking_budget=2048)
- ),
+    name="research_agent",
+    model="gemini-2.5-flash",
+    instruction="You are a research assistant that thoroughly analyzes questions.",
+    tools=[search_tool, summarize_tool],
+    planner=BuiltInPlanner(
+    thinking_config=types.ThinkingConfig(thinking_budget=2048)
+    ),
 )
 ```
 
@@ -185,11 +185,11 @@ from google.adk import Agent
 from google.adk.planners import PlanReActPlanner
 
 agent = Agent(
- name="data_analyst",
- model="gemini-2.5-flash",
- instruction="You are a data analyst. Answer questions using the available tools.",
- tools=[query_database, create_chart, export_csv],
- planner=PlanReActPlanner(),
+    name="data_analyst",
+    model="gemini-2.5-flash",
+    instruction="You are a data analyst. Answer questions using the available tools.",
+    tools=[query_database, create_chart, export_csv],
+    planner=PlanReActPlanner(),
 )
 ```
 
@@ -284,27 +284,27 @@ from google.adk.models.llm_request import LlmRequest
 from google.genai import types
 
 class MyCustomPlanner(BasePlanner):
- def build_planning_instruction(
- self,
- readonly_context: ReadonlyContext,
- llm_request: LlmRequest,
- ) -> str | None:
- # Return a system instruction string, or None
- return "Before answering, outline your approach in 3 bullet points."
+    def build_planning_instruction(
+        self,
+        readonly_context: ReadonlyContext,
+        llm_request: LlmRequest,
+    ) -> str | None:
+        # Return a system instruction string, or None
+        return "Before answering, outline your approach in 3 bullet points."
 
- def process_planning_response(
- self,
- callback_context: CallbackContext,
- response_parts: list[types.Part],
- ) -> list[types.Part] | None:
- # Post-process parts, or return None for no changes
- return None
+    def process_planning_response(
+        self,
+        callback_context: CallbackContext,
+        response_parts: list[types.Part],
+    ) -> list[types.Part] | None:
+        # Post-process parts, or return None for no changes
+        return None
 
 agent = Agent(
- name="custom_planner_agent",
- model="gemini-2.5-flash",
- planner=MyCustomPlanner(),
- ...
+    name="custom_planner_agent",
+    model="gemini-2.5-flash",
+    planner=MyCustomPlanner(),
+    ...
 )
 ```
 
