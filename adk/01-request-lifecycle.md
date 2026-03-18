@@ -72,61 +72,64 @@ User message: **"What's the weather in Tokyo?"**
 
 ```
 CALLER
- │ runner.run_async(user_id, session_id, new_message)
- ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ RUNNER [runners.py] │
-│ │
-│ get_session() ← SESSION READ │
-│ [create_session()] ← if missing + auto_create │
-│ append_event(user_msg) ← SESSION WRITE │
-│ [plugin.before_run()] ← plugin early-exit opportunity │
-│ agent.run_async(ctx) ────────────────────────────────────────┐ │
-│ yield Event / append_event() for each non-partial ◄──────────┘ │
-│ [compaction plugin] ← optional post-run │
-└─────────────────────────────────────────────────────────────────────┘
- ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ BASE AGENT [base_agent.py] │
-│ │
-│ before_agent_callback → None: continue | Content: skip agent │
-│ _run_async_impl(ctx) ─────────────────────────────────────────┐ │
-│ after_agent_callback → None: done | Content: extra event │ │
-└──────────────────────────────────────────────────────────────────┘ │
- ▼ ◄─────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────────────┐
-│ LLM AGENT [llm_agent.py] │
-│ │
-│ _llm_flow.run_async(ctx) │
-│ __maybe_save_output_to_state(event) ← if output_key is set │
-└─────────────────────────────────────────────────────────────────────┘
- ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ BASE LLM FLOW [base_llm_flow.py] │
-│ │
-│ ┌─ LOOP until no function calls ──────────────────────────────┐ │
-│ │ │ │
-│ │ preprocess → build LlmRequest (SESSION READ: history) │ │
-│ │ │ │
-│ │ before_model_callback → None: call LLM | LlmResponse: skip│ │
-│ │ LLM call ← on error: on_model_error_callback │ │
-│ │ after_model_callback → None: use it | LlmResponse: swap │ │
-│ │ │ │
-│ │ postprocess → yield Events │ │
-│ │ │ │
-│ │ if function call: │ │
-│ │ before_tool_callback → None: run | dict: skip tool │ │
-│ │ tool.run_async() ← on error: on_tool_error_callback │ │
-│ │ after_tool_callback → None: keep | dict: replace result │ │
-│ │ yield tool result Event │ │
-│ │ │ │
-│ └──────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
- ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ GEMINI LLM [models/gemini_llm.py] │
-│ generate_content_async(LlmRequest) → AsyncIterator[LlmResponse] │
-└─────────────────────────────────────────────────────────────────────┘
+  │  runner.run_async(user_id, session_id, new_message)
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ RUNNER [runners.py]                                               │
+│                                                                   │
+│   get_session()                              ← SESSION READ       │
+│   [create_session()]                         ← if missing         │
+│   append_event(user_msg)                     ← SESSION WRITE      │
+│   [plugin.before_run()]                      ← plugin early-exit  │
+│   agent.run_async(ctx) → yields Events back                      │
+│   [compaction plugin]                        ← optional post-run  │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ BASE AGENT [base_agent.py]                                        │
+│                                                                   │
+│   before_agent_callback → None: continue | Content: skip agent    │
+│   _run_async_impl(ctx)  → delegates to subclass                  │
+│   after_agent_callback  → None: done    | Content: extra event    │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ LLM AGENT [llm_agent.py]                                          │
+│                                                                   │
+│   _llm_flow.run_async(ctx)                                        │
+│   __maybe_save_output_to_state(event)        ← if output_key set │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ BASE LLM FLOW [base_llm_flow.py]                                  │
+│                                                                   │
+│   ┌─ LOOP until no function calls ─────────────────────────────┐  │
+│   │                                                             │  │
+│   │  preprocess → build LlmRequest (SESSION READ: history)      │  │
+│   │                                                             │  │
+│   │  before_model_callback → None: call LLM | LlmResponse: skip│  │
+│   │  LLM call              ← on error: on_model_error_callback  │  │
+│   │  after_model_callback  → None: use it   | LlmResponse: swap│  │
+│   │                                                             │  │
+│   │  postprocess → yield Events                                 │  │
+│   │                                                             │  │
+│   │  if function call:                                          │  │
+│   │    before_tool_callback → None: run  | dict: skip tool      │  │
+│   │    tool.run_async()     ← on error: on_tool_error_callback  │  │
+│   │    after_tool_callback  → None: keep | dict: replace result │  │
+│   │    yield tool result Event                                  │  │
+│   │                                                             │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ GEMINI LLM [models/gemini_llm.py]                                 │
+│   generate_content_async(LlmRequest) → AsyncIterator[LlmResponse] │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ---
