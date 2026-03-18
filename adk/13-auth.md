@@ -6,15 +6,15 @@
 
 ## What It Is
 
-ADK's auth module lets tools declare that they need credentials (API keys, OAuth tokens, service accounts) and orchestrates the flow of obtaining them. Instead of hardcoding secrets into tool functions, you describe **what kind of credential** the tool needs via an `AuthConfig`, and ADK handles the round-trip: requesting credentials from the client, exchanging tokens, and storing the result in session state.
+ADK's auth module lets tools declare credential requirements (API keys, OAuth tokens, service accounts) via `AuthConfig`. ADK handles the round-trip: requesting credentials, exchanging tokens, and storing results in session state.
 
-The auth system supports five credential types and integrates with OpenAPI 3.0 security schemes.
+Supports five credential types and OpenAPI 3.0 security schemes.
 
 ---
 
 ## Auth Model Overview
 
-The flow works in three phases:
+Three phases:
 
 1. **Tool declares its auth requirement** by calling `tool_context.request_credential(auth_config)` when it detects no valid credential is available.
 2. **ADK returns the auth request to the client** as part of the event stream. For OAuth, this includes a generated `auth_uri` the user must visit.
@@ -26,18 +26,18 @@ Tool runs
 ├─ Has credential? ──→ yes ──→ proceed with API call
 │
 └─ No credential
-   ├─ tool_context.request_credential(auth_config)
-   │  └─ ADK generates auth_uri (OAuth) or passes config to client
-   │
-   ├─ Client presents auth flow to user
-   │  └─ User completes OAuth / provides API key
-   │
-   ├─ Client sends auth response back
-   │  └─ ADK exchanges code for tokens (OAuth/OIDC)
-   │  └─ Stores credential in session state
-   │
-   └─ Tool re-invoked
-      └─ tool_context.get_auth_response(auth_config) returns credential
+ ├─ tool_context.request_credential(auth_config)
+ │ └─ ADK generates auth_uri (OAuth) or passes config to client
+ │
+ ├─ Client presents auth flow to user
+ │ └─ User completes OAuth / provides API key
+ │
+ ├─ Client sends auth response back
+ │ └─ ADK exchanges code for tokens (OAuth/OIDC)
+ │ └─ Stores credential in session state
+ │
+ └─ Tool re-invoked
+ └─ tool_context.get_auth_response(auth_config) returns credential
 ```
 
 ---
@@ -50,11 +50,11 @@ An enum defining the five supported credential types:
 
 ```python
 class AuthCredentialTypes(str, Enum):
-    API_KEY = "apiKey"
-    HTTP = "http"
-    OAUTH2 = "oauth2"
-    OPEN_ID_CONNECT = "openIdConnect"
-    SERVICE_ACCOUNT = "serviceAccount"
+ API_KEY = "apiKey"
+ HTTP = "http"
+ OAUTH2 = "oauth2"
+ OPEN_ID_CONNECT = "openIdConnect"
+ SERVICE_ACCOUNT = "serviceAccount"
 ```
 
 ### AuthCredential
@@ -63,12 +63,12 @@ The core credential container. Which fields are populated depends on `auth_type`
 
 ```python
 class AuthCredential(BaseModel):
-    auth_type: AuthCredentialTypes
-    resource_ref: str | None = None    # future: resource reference
-    api_key: str | None = None         # for API_KEY type
-    http: HttpAuth | None = None       # for HTTP type
-    service_account: ServiceAccount | None = None  # for SERVICE_ACCOUNT type
-    oauth2: OAuth2Auth | None = None   # for OAUTH2 and OPEN_ID_CONNECT types
+ auth_type: AuthCredentialTypes
+ resource_ref: str | None = None # future: resource reference
+ api_key: str | None = None # for API_KEY type
+ http: HttpAuth | None = None # for HTTP type
+ service_account: ServiceAccount | None = None # for SERVICE_ACCOUNT type
+ oauth2: OAuth2Auth | None = None # for OAUTH2 and OPEN_ID_CONNECT types
 ```
 
 ### HttpAuth and HttpCredentials
@@ -77,14 +77,14 @@ For HTTP authentication schemes (Basic, Bearer, etc.):
 
 ```python
 class HttpCredentials(BaseModel):
-    username: str | None = None
-    password: str | None = None
-    token: str | None = None
+ username: str | None = None
+ password: str | None = None
+ token: str | None = None
 
 class HttpAuth(BaseModel):
-    scheme: str                                  # e.g., "basic", "bearer"
-    credentials: HttpCredentials
-    additional_headers: dict[str, str] | None = None
+ scheme: str # e.g., "basic", "bearer"
+ credentials: HttpCredentials
+ additional_headers: dict[str, str] | None = None
 ```
 
 ### OAuth2Auth
@@ -93,25 +93,25 @@ Holds all the fields needed for an OAuth2 flow lifecycle:
 
 ```python
 class OAuth2Auth(BaseModel):
-    client_id: str | None = None
-    client_secret: str | None = None
-    auth_uri: str | None = None           # generated authorization URL
-    state: str | None = None              # CSRF state parameter
-    redirect_uri: str | None = None
-    auth_response_uri: str | None = None  # callback URI with code
-    auth_code: str | None = None
-    access_token: str | None = None
-    refresh_token: str | None = None
-    id_token: str | None = None
-    expires_at: int | None = None
-    expires_in: int | None = None
-    audience: str | None = None
-    token_endpoint_auth_method: Literal[
-        "client_secret_basic",
-        "client_secret_post",
-        "client_secret_jwt",
-        "private_key_jwt",
-    ] | None = "client_secret_basic"
+ client_id: str | None = None
+ client_secret: str | None = None
+ auth_uri: str | None = None # generated authorization URL
+ state: str | None = None # CSRF state parameter
+ redirect_uri: str | None = None
+ auth_response_uri: str | None = None # callback URI with code
+ auth_code: str | None = None
+ access_token: str | None = None
+ refresh_token: str | None = None
+ id_token: str | None = None
+ expires_at: int | None = None
+ expires_in: int | None = None
+ audience: str | None = None
+ token_endpoint_auth_method: Literal[
+ "client_secret_basic",
+ "client_secret_post",
+ "client_secret_jwt",
+ "private_key_jwt",
+ ] | None = "client_secret_basic"
 ```
 
 ### ServiceAccount
@@ -120,11 +120,11 @@ For Google Cloud service account authentication:
 
 ```python
 class ServiceAccount(BaseModel):
-    service_account_credential: ServiceAccountCredential | None = None
-    scopes: list[str] | None = None
-    use_default_credential: bool | None = False
-    use_id_token: bool | None = False    # exchange for ID token instead of access token
-    audience: str | None = None          # required when use_id_token is True
+ service_account_credential: ServiceAccountCredential | None = None
+ scopes: list[str] | None = None
+ use_default_credential: bool | None = False
+ use_id_token: bool | None = False # exchange for ID token instead of access token
+ audience: str | None = None # required when use_id_token is True
 ```
 
 Validation: `service_account_credential` is required when `use_default_credential` is `False`. `audience` is required when `use_id_token` is `True`.
@@ -135,21 +135,21 @@ Validation: `service_account_credential` is required when `use_default_credentia
 
 ```python
 AuthScheme = Union[SecurityScheme, OpenIdConnectWithConfig]
-AuthSchemeType = SecuritySchemeType  # re-export from FastAPI/OpenAPI
+AuthSchemeType = SecuritySchemeType # re-export from FastAPI/OpenAPI
 ```
 
 `OpenIdConnectWithConfig` flattens OIDC discovery into explicit fields:
 
 ```python
 class OpenIdConnectWithConfig(SecurityBase):
-    type_: SecuritySchemeType = SecuritySchemeType.openIdConnect
-    authorization_endpoint: str
-    token_endpoint: str
-    userinfo_endpoint: str | None = None
-    revocation_endpoint: str | None = None
-    token_endpoint_auth_methods_supported: list[str] | None = None
-    grant_types_supported: list[str] | None = None
-    scopes: list[str] | None = None
+ type_: SecuritySchemeType = SecuritySchemeType.openIdConnect
+ authorization_endpoint: str
+ token_endpoint: str
+ userinfo_endpoint: str | None = None
+ revocation_endpoint: str | None = None
+ token_endpoint_auth_methods_supported: list[str] | None = None
+ grant_types_supported: list[str] | None = None
+ scopes: list[str] | None = None
 ```
 
 ### AuthConfig
@@ -158,10 +158,10 @@ The configuration object that ties scheme + credential together and gets passed 
 
 ```python
 class AuthConfig(BaseModel):
-    auth_scheme: AuthScheme
-    raw_auth_credential: AuthCredential | None = None
-    exchanged_auth_credential: AuthCredential | None = None
-    credential_key: str | None = None
+ auth_scheme: AuthScheme
+ raw_auth_credential: AuthCredential | None = None
+ exchanged_auth_credential: AuthCredential | None = None
+ credential_key: str | None = None
 ```
 
 - `auth_scheme`: Describes the type of auth required (OpenAPI security scheme).
@@ -171,26 +171,26 @@ class AuthConfig(BaseModel):
 
 ### AuthHandler
 
-Internal class that orchestrates the flow. Not typically used directly by tool authors, but understanding it clarifies the mechanics:
+Internal orchestrator (not used directly by tool authors):
 
 ```python
 class AuthHandler:
-    def __init__(self, auth_config: AuthConfig): ...
+ def __init__(self, auth_config: AuthConfig): ...
 
-    def generate_auth_request(self) -> AuthConfig:
-        """Generates the auth config with auth_uri for OAuth flows."""
+ def generate_auth_request(self) -> AuthConfig:
+ """Generates the auth config with auth_uri for OAuth flows."""
 
-    async def exchange_auth_token(self) -> AuthCredential:
-        """Exchanges the auth code/response for tokens."""
+ async def exchange_auth_token(self) -> AuthCredential:
+ """Exchanges the auth code/response for tokens."""
 
-    async def parse_and_store_auth_response(self, state: State) -> None:
-        """Exchanges tokens and stores the result in session state."""
+ async def parse_and_store_auth_response(self, state: State) -> None:
+ """Exchanges tokens and stores the result in session state."""
 
-    def get_auth_response(self, state: State) -> AuthCredential:
-        """Retrieves the stored credential from session state."""
+ def get_auth_response(self, state: State) -> AuthCredential:
+ """Retrieves the stored credential from session state."""
 ```
 
-For OAuth/OIDC, `generate_auth_request` uses `authlib` (if available) to build the authorization URL with state. If `authlib` is not installed, it returns the raw credential as-is.
+`generate_auth_request` uses `authlib` to build the authorization URL. Without `authlib`, returns raw credential.
 
 ---
 
@@ -199,22 +199,22 @@ For OAuth/OIDC, `generate_auth_request` uses `authlib` (if available) to build t
 ### Visual: Two-Invocation Sequence
 
 ```
-ADK Agent                              User / Browser
-─────────                              ──────────────
+ADK Agent User / Browser
+───────── ──────────────
 
 Invocation 1:
-  Tool needs credentials
-  → request_credential(auth_config)
-  → Event with auth_uri sent to caller  ──────────►  User visits auth_uri
-                                                      User logs in + authorizes
-  Invocation pauses                     ◄──────────  Redirect with auth code
-                                                      Code stored in session state
+ Tool needs credentials
+ → request_credential(auth_config)
+ → Event with auth_uri sent to caller ──────────► User visits auth_uri
+ User logs in + authorizes
+ Invocation pauses ◄────────── Redirect with auth code
+ Code stored in session state
 
 Invocation 2:
-  get_auth_response(auth_config)
-  → credential found in session state
-  → Tool executes with valid token
-  → Final response to user
+ get_auth_response(auth_config)
+ → credential found in session state
+ → Tool executes with valid token
+ → Final response to user
 ```
 
 ### Before / After: What Auth Does for Your Tool
@@ -222,17 +222,17 @@ Invocation 2:
 ```python
 # WITHOUT auth — fails when API requires OAuth
 def search_gmail(query: str) -> dict:
-    return gmail_api.search(query)  # ← no token, 401 error
+ return gmail_api.search(query) # ← no token, 401 error
 
 # WITH auth — ADK handles the OAuth flow automatically
 def search_gmail(query: str, credential: AuthCredential) -> dict:
-    return gmail_api.search(query, token=credential.oauth2.access_token)
+ return gmail_api.search(query, token=credential.oauth2.access_token)
 # Wrap with: AuthenticatedFunctionTool(func=search_gmail, auth_config=...)
 ```
 
 ### Detailed Steps
 
-Here is the detailed sequence for OAuth2 authorization code flow:
+The detailed sequence for OAuth2 authorization code flow:
 
 1. **Tool calls `request_credential`**: This adds the `AuthConfig` to `EventActions.requested_auth_configs`, keyed by `function_call_id`.
 
@@ -294,119 +294,115 @@ Loads a previously saved credential from the credential service.
 from fastapi.openapi.models import SecurityScheme, SecuritySchemeType
 from google.adk.auth import AuthCredential, AuthCredentialTypes, AuthConfig
 
-
 api_key_scheme = SecurityScheme(
-    type=SecuritySchemeType.apiKey,
-    name="X-API-Key",
-    in_="header",
+ type=SecuritySchemeType.apiKey,
+ name="X-API-Key",
+ in_="header",
 )
 
 api_key_auth_config = AuthConfig(
-    auth_scheme=api_key_scheme,
-    credential_key="my_api_key",
+ auth_scheme=api_key_scheme,
+ credential_key="my_api_key",
 )
 
-
 async def call_external_api(
-    query: str,
-    ctx: CallbackContext,
+ query: str,
+ ctx: CallbackContext,
 ) -> dict[str, str]:
-    """Calls an external API that requires an API key."""
-    # Check if we already have a credential
-    credential = ctx.get_auth_response(api_key_auth_config)
+ """Calls an external API that requires an API key."""
+ # Check if we already have a credential
+ credential = ctx.get_auth_response(api_key_auth_config)
 
-    if credential is None:
-        # Request the credential from the user
-        ctx.request_credential(api_key_auth_config)
-        return {"status": "awaiting_api_key"}
+ if credential is None:
+ # Request the credential from the user
+ ctx.request_credential(api_key_auth_config)
+ return {"status": "awaiting_api_key"}
 
-    # Use the credential
-    api_key = credential.api_key
-    # ... make the API call with the key ...
-    return {"result": f"Called API with key for query: {query}"}
+ # Use the credential
+ api_key = credential.api_key
+ # ... make the API call with the key ...
+ return {"result": f"Called API with key for query: {query}"}
 ```
 
 ### Tool with OAuth2 Auth
 
 ```python
 from fastapi.openapi.models import (
-    SecurityScheme,
-    SecuritySchemeType,
-    OAuthFlows,
-    OAuthFlowAuthorizationCode,
+ SecurityScheme,
+ SecuritySchemeType,
+ OAuthFlows,
+ OAuthFlowAuthorizationCode,
 )
 from google.adk.auth import (
-    AuthCredential,
-    AuthCredentialTypes,
-    AuthConfig,
-    OAuth2Auth,
+ AuthCredential,
+ AuthCredentialTypes,
+ AuthConfig,
+ OAuth2Auth,
 )
 
-
 oauth_scheme = SecurityScheme(
-    type=SecuritySchemeType.oauth2,
-    flows=OAuthFlows(
-        authorizationCode=OAuthFlowAuthorizationCode(
-            authorizationUrl="https://accounts.google.com/o/oauth2/auth",
-            tokenUrl="https://oauth2.googleapis.com/token",
-            scopes={
-                "https://www.googleapis.com/auth/calendar.readonly": "Read calendar",
-            },
-        ),
-    ),
+ type=SecuritySchemeType.oauth2,
+ flows=OAuthFlows(
+ authorizationCode=OAuthFlowAuthorizationCode(
+ authorizationUrl="https://accounts.google.com/o/oauth2/auth",
+ tokenUrl="https://oauth2.googleapis.com/token",
+ scopes={
+ "https://www.googleapis.com/auth/calendar.readonly": "Read calendar",
+ },
+ ),
+ ),
 )
 
 oauth_credential = AuthCredential(
-    auth_type=AuthCredentialTypes.OAUTH2,
-    oauth2=OAuth2Auth(
-        client_id="YOUR_CLIENT_ID",
-        client_secret="YOUR_CLIENT_SECRET",
-        redirect_uri="http://localhost:8000/callback",
-    ),
+ auth_type=AuthCredentialTypes.OAUTH2,
+ oauth2=OAuth2Auth(
+ client_id="YOUR_CLIENT_ID",
+ client_secret="YOUR_CLIENT_SECRET",
+ redirect_uri="http://localhost:8000/callback",
+ ),
 )
 
 calendar_auth_config = AuthConfig(
-    auth_scheme=oauth_scheme,
-    raw_auth_credential=oauth_credential,
-    credential_key="google_calendar_oauth",
+ auth_scheme=oauth_scheme,
+ raw_auth_credential=oauth_credential,
+ credential_key="google_calendar_oauth",
 )
 
-
 async def list_calendar_events(
-    ctx: CallbackContext,
+ ctx: CallbackContext,
 ) -> dict[str, Any]:
-    """Lists upcoming calendar events using OAuth2."""
-    # Check if auth flow is complete
-    credential = ctx.get_auth_response(calendar_auth_config)
+ """Lists upcoming calendar events using OAuth2."""
+ # Check if auth flow is complete
+ credential = ctx.get_auth_response(calendar_auth_config)
 
-    if credential is None:
-        # Initiate OAuth flow — ADK will generate auth_uri
-        ctx.request_credential(calendar_auth_config)
-        return {"status": "awaiting_oauth"}
+ if credential is None:
+ # Initiate OAuth flow — ADK will generate auth_uri
+ ctx.request_credential(calendar_auth_config)
+ return {"status": "awaiting_oauth"}
 
-    # Auth complete — use the access token
-    access_token = credential.oauth2.access_token
-    # ... call Google Calendar API with access_token ...
-    return {"events": ["Meeting at 10am", "Lunch at noon"]}
+ # Auth complete — use the access token
+ access_token = credential.oauth2.access_token
+ # ... call Google Calendar API with access_token ...
+ return {"events": ["Meeting at 10am", "Lunch at noon"]}
 ```
 
 ### Tool with HTTP Bearer Token
 
 ```python
 from google.adk.auth import (
-    AuthCredential,
-    AuthCredentialTypes,
-    HttpAuth,
-    HttpCredentials,
+ AuthCredential,
+ AuthCredentialTypes,
+ HttpAuth,
+ HttpCredentials,
 )
 
 # Create a bearer token credential directly (no OAuth flow needed)
 bearer_credential = AuthCredential(
-    auth_type=AuthCredentialTypes.HTTP,
-    http=HttpAuth(
-        scheme="bearer",
-        credentials=HttpCredentials(token="eyJhbGciOiJSUzI1..."),
-    ),
+ auth_type=AuthCredentialTypes.HTTP,
+ http=HttpAuth(
+ scheme="bearer",
+ credentials=HttpCredentials(token="eyJhbGciOiJSUzI1..."),
+ ),
 )
 ```
 
@@ -416,11 +412,11 @@ bearer_credential = AuthCredential(
 from google.adk.auth import AuthCredential, AuthCredentialTypes, ServiceAccount
 
 sa_credential = AuthCredential(
-    auth_type=AuthCredentialTypes.SERVICE_ACCOUNT,
-    service_account=ServiceAccount(
-        use_default_credential=True,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"],
-    ),
+ auth_type=AuthCredentialTypes.SERVICE_ACCOUNT,
+ service_account=ServiceAccount(
+ use_default_credential=True,
+ scopes=["https://www.googleapis.com/auth/cloud-platform"],
+ ),
 )
 ```
 
@@ -428,12 +424,12 @@ For service-to-service ID token exchange (e.g., calling Cloud Run):
 
 ```python
 sa_credential = AuthCredential(
-    auth_type=AuthCredentialTypes.SERVICE_ACCOUNT,
-    service_account=ServiceAccount(
-        use_default_credential=True,
-        use_id_token=True,
-        audience="https://my-service-xyz.run.app",
-    ),
+ auth_type=AuthCredentialTypes.SERVICE_ACCOUNT,
+ service_account=ServiceAccount(
+ use_default_credential=True,
+ use_id_token=True,
+ audience="https://my-service-xyz.run.app",
+ ),
 )
 ```
 
@@ -441,9 +437,9 @@ sa_credential = AuthCredential(
 
 ## Credential Key
 
-The `credential_key` on `AuthConfig` determines where credentials are stored in session state (under `"temp:{credential_key}"`). If not explicitly set:
+`credential_key` determines storage location (`"temp:{key}"`). If unset:
 
 1. ADK checks `model_extra` on the raw credential and auth scheme for a `credential_key` or `credentialKey` field.
 2. If still not found, it auto-generates a key by hashing the auth scheme and raw credential: `"adk_{scheme_type}_{scheme_hash}_{cred_type}_{cred_hash}"`.
 
-Explicitly setting `credential_key` is recommended for clarity and stability across code changes.
+Set `credential_key` explicitly for stability across code changes.

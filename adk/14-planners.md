@@ -6,9 +6,9 @@
 
 ## What It Is
 
-A planner gives an `LlmAgent` the ability to **think before it acts**. Instead of jumping straight into tool calls, an agent with a planner will first produce a structured plan (or use the model's internal thinking mode), then execute that plan step by step, re-planning when things go wrong.
+A planner gives an `LlmAgent` the ability to produce a structured plan before acting, then execute step by step, re-planning on failure.
 
-Planners are optional. When `LlmAgent.planner` is `None` (the default), the agent runs its normal reason-act loop without any planning overlay. When set, the planner hooks into the flow's request and response processing pipeline via two methods: one that injects planning instructions into the LLM request, and one that post-processes the LLM response to separate reasoning from actions.
+Optional. Default `None` = normal reason-act loop. When set, the planner injects planning instructions into the request and post-processes the response to separate reasoning from actions.
 
 Use a planner when:
 - Tasks require **multi-step reasoning** (research, analysis, multi-tool workflows)
@@ -21,9 +21,9 @@ Use a planner when:
 ## Class Hierarchy
 
 ```
-BasePlanner           (base_planner.py)         — abstract, defines the two-method contract
-    ├── BuiltInPlanner    (built_in_planner.py)  — delegates to Gemini's native thinking mode
-    └── PlanReActPlanner  (plan_re_act_planner.py) — explicit plan-then-act via prompt engineering
+BasePlanner (base_planner.py) — abstract, defines the two-method contract
+ ├── BuiltInPlanner (built_in_planner.py) — delegates to Gemini's native thinking mode
+ └── PlanReActPlanner (plan_re_act_planner.py) — explicit plan-then-act via prompt engineering
 ```
 
 ---
@@ -36,18 +36,18 @@ Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningRespon
 BaseLlmFlow.run_async(ctx)
 │
 ├─ PREPROCESS
-│   ├─ ... (instructions, contents, functions)
-│   └─ _NlPlanningRequestProcessor
-│       ├─ BuiltInPlanner? → apply thinking_config to LlmRequest
-│       └─ PlanReActPlanner? → append planning system instruction
+│ ├─ ... (instructions, contents, functions)
+│ └─ _NlPlanningRequestProcessor
+│ ├─ BuiltInPlanner? → apply thinking_config to LlmRequest
+│ └─ PlanReActPlanner? → append planning system instruction
 │
 ├─ CALL MODEL
 │
 └─ POSTPROCESS
-    ├─ _NlPlanningResponse
-    │   ├─ BuiltInPlanner? → no-op (model handles thinking internally)
-    │   └─ PlanReActPlanner? → split response into thought/action/final_answer parts
-    └─ ... (function calls, agent transfer)
+ ├─ _NlPlanningResponse
+ │ ├─ BuiltInPlanner? → no-op (model handles thinking internally)
+ │ └─ PlanReActPlanner? → split response into thought/action/final_answer parts
+ └─ ... (function calls, agent transfer)
 ```
 
 The planner is read from `agent.planner` on the current `InvocationContext`. If the field exists but is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()`.
@@ -60,29 +60,29 @@ Every planner implements two abstract methods:
 
 ```python
 class BasePlanner(ABC):
-    """Abstract base class for all planners."""
+ """Abstract base class for all planners."""
 
-    @abc.abstractmethod
-    def build_planning_instruction(
-        self,
-        readonly_context: ReadonlyContext,
-        llm_request: LlmRequest,
-    ) -> str | None:
-        """Builds a system instruction appended to the LLM request for planning.
+ @abc.abstractmethod
+ def build_planning_instruction(
+ self,
+ readonly_context: ReadonlyContext,
+ llm_request: LlmRequest,
+ ) -> str | None:
+ """Builds a system instruction appended to the LLM request for planning.
 
-        Returns the instruction string, or None if no instruction is needed.
-        """
+ Returns the instruction string, or None if no instruction is needed.
+ """
 
-    @abc.abstractmethod
-    def process_planning_response(
-        self,
-        callback_context: CallbackContext,
-        response_parts: list[types.Part],
-    ) -> list[types.Part] | None:
-        """Post-processes the LLM response parts for planning.
+ @abc.abstractmethod
+ def process_planning_response(
+ self,
+ callback_context: CallbackContext,
+ response_parts: list[types.Part],
+ ) -> list[types.Part] | None:
+ """Post-processes the LLM response parts for planning.
 
-        Returns processed parts, or None if no processing is needed.
-        """
+ Returns processed parts, or None if no processing is needed.
+ """
 ```
 
 ### How the methods are used
@@ -96,19 +96,19 @@ class BasePlanner(ABC):
 
 ## BuiltInPlanner — Model-Native Thinking
 
-`BuiltInPlanner` leverages Gemini's built-in thinking features (extended thinking / chain-of-thought). It does not inject any prompt instructions. Instead, it configures `ThinkingConfig` on the LLM request, letting the model handle planning internally.
+`BuiltInPlanner` configures `ThinkingConfig` on the LLM request, delegating to Gemini's native thinking mode. No prompt injection.
 
 ### Configuration
 
 ```python
 class BuiltInPlanner(BasePlanner):
-    thinking_config: types.ThinkingConfig
+ thinking_config: types.ThinkingConfig
 
-    def __init__(self, *, thinking_config: types.ThinkingConfig):
-        self.thinking_config = thinking_config
+ def __init__(self, *, thinking_config: types.ThinkingConfig):
+ self.thinking_config = thinking_config
 ```
 
-The single configuration parameter is `thinking_config`, which is a `google.genai.types.ThinkingConfig` object. Key fields include:
+Key `ThinkingConfig` fields:
 
 | Field | Type | Description |
 |---|---|---|
@@ -128,13 +128,13 @@ from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
 agent = Agent(
-    name="research_agent",
-    model="gemini-2.5-flash",
-    instruction="You are a research assistant that thoroughly analyzes questions.",
-    tools=[search_tool, summarize_tool],
-    planner=BuiltInPlanner(
-        thinking_config=types.ThinkingConfig(thinking_budget=2048)
-    ),
+ name="research_agent",
+ model="gemini-2.5-flash",
+ instruction="You are a research assistant that thoroughly analyzes questions.",
+ tools=[search_tool, summarize_tool],
+ planner=BuiltInPlanner(
+ thinking_config=types.ThinkingConfig(thinking_budget=2048)
+ ),
 )
 ```
 
@@ -142,7 +142,7 @@ agent = Agent(
 
 ## PlanReActPlanner — Explicit Plan-Then-Act
 
-`PlanReActPlanner` uses prompt engineering to enforce a structured planning loop. It injects a detailed system instruction that tells the model to follow a Plan-Reasoning-Action-FinalAnswer format, then post-processes the response to label parts as thoughts or actions.
+`PlanReActPlanner` injects a system instruction enforcing Plan-Reasoning-Action-FinalAnswer format, then post-processes responses to label parts as thoughts or actions.
 
 ### Configuration
 
@@ -167,16 +167,16 @@ The planner defines five tags that structure the model's output:
 ### Behavior
 
 - **Request phase:** `build_planning_instruction()` returns a multi-section system prompt that instructs the model to:
-  1. Create a numbered plan under `/*PLANNING*/`
-  2. Interleave tool calls (`/*ACTION*/`) with reasoning (`/*REASONING*/`)
-  3. Re-plan under `/*REPLANNING*/` if execution fails
-  4. Produce a final answer under `/*FINAL_ANSWER*/`
+ 1. Create a numbered plan under `/*PLANNING*/`
+ 2. Interleave tool calls (`/*ACTION*/`) with reasoning (`/*REASONING*/`)
+ 3. Re-plan under `/*REPLANNING*/` if execution fails
+ 4. Produce a final answer under `/*FINAL_ANSWER*/`
 
 - **Response phase:** `process_planning_response()` parses the model's output:
-  - Text starting with `/*PLANNING*/`, `/*REASONING*/`, `/*ACTION*/`, or `/*REPLANNING*/` is marked as `thought=True` (hidden from the user by default)
-  - Text after the last `/*FINAL_ANSWER*/` tag is preserved as the visible response
-  - Function call parts are preserved and grouped together
-  - Empty function call names are filtered out
+ - Text starting with `/*PLANNING*/`, `/*REASONING*/`, `/*ACTION*/`, or `/*REPLANNING*/` is marked as `thought=True` (hidden from the user by default)
+ - Text after the last `/*FINAL_ANSWER*/` tag is preserved as the visible response
+ - Function call parts are preserved and grouped together
+ - Empty function call names are filtered out
 
 ### Example
 
@@ -185,11 +185,11 @@ from google.adk import Agent
 from google.adk.planners import PlanReActPlanner
 
 agent = Agent(
-    name="data_analyst",
-    model="gemini-2.5-flash",
-    instruction="You are a data analyst. Answer questions using the available tools.",
-    tools=[query_database, create_chart, export_csv],
-    planner=PlanReActPlanner(),
+ name="data_analyst",
+ model="gemini-2.5-flash",
+ instruction="You are a data analyst. Answer questions using the available tools.",
+ tools=[query_database, create_chart, export_csv],
+ planner=PlanReActPlanner(),
 )
 ```
 
@@ -214,29 +214,29 @@ The query returned 3 rows with monthly totals. Next, I'll create a chart.
 Here are the Q1 2026 sales results: ...
 ```
 
-The planner marks everything before `/*FINAL_ANSWER*/` as thought (internal reasoning), and only the final answer text is surfaced to the user.
+Everything before `/*FINAL_ANSWER*/` is thought (hidden). Only the final answer reaches the user.
 
 ```
 What the model outputs vs what the user sees:
 
 RAW MODEL OUTPUT:
 ┌──────────────────────────────────────────────────────┐
-│ /*PLANNING*/                                         │  ← thought=True
-│ I need to check the weather first, then book a hotel │     (hidden from user)
-│ /*PLANNING*/                                         │
-│                                                      │
-│ /*ACTION*/                                           │  ← function call
-│ get_weather(city="Tokyo")                            │     (executed by ADK)
-│ /*ACTION*/                                           │
-│                                                      │
-│ /*FINAL_ANSWER*/                                     │  ← thought=False
-│ The weather in Tokyo is 18°C and sunny!              │     (shown to user)
-│ /*FINAL_ANSWER*/                                     │
+│ /*PLANNING*/ │ ← thought=True
+│ I need to check the weather first, then book a hotel │ (hidden from user)
+│ /*PLANNING*/ │
+│ │
+│ /*ACTION*/ │ ← function call
+│ get_weather(city="Tokyo") │ (executed by ADK)
+│ /*ACTION*/ │
+│ │
+│ /*FINAL_ANSWER*/ │ ← thought=False
+│ The weather in Tokyo is 18°C and sunny! │ (shown to user)
+│ /*FINAL_ANSWER*/ │
 └──────────────────────────────────────────────────────┘
 
 WHAT THE USER SEES:
-  "The weather in Tokyo is 18°C and sunny!"
-  (everything before FINAL_ANSWER is internal reasoning)
+ "The weather in Tokyo is 18°C and sunny!"
+ (everything before FINAL_ANSWER is internal reasoning)
 ```
 
 ---
@@ -260,14 +260,14 @@ WHAT THE USER SEES:
 Need an agent to reason before acting?
 │
 ├─ Using Gemini with thinking support?
-│   ├─ Want structured, visible plans? → PlanReActPlanner
-│   └─ Trust model's internal reasoning? → BuiltInPlanner
+│ ├─ Want structured, visible plans? → PlanReActPlanner
+│ └─ Trust model's internal reasoning? → BuiltInPlanner
 │
 ├─ Using non-Gemini model (Anthropic, LiteLLM)?
-│   └─ → PlanReActPlanner (only option)
+│ └─ → PlanReActPlanner (only option)
 │
 └─ Simple task, no multi-step reasoning needed?
-    └─ → No planner (leave planner=None)
+ └─ → No planner (leave planner=None)
 ```
 
 ---
@@ -283,30 +283,28 @@ from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models.llm_request import LlmRequest
 from google.genai import types
 
-
 class MyCustomPlanner(BasePlanner):
-    def build_planning_instruction(
-        self,
-        readonly_context: ReadonlyContext,
-        llm_request: LlmRequest,
-    ) -> str | None:
-        # Return a system instruction string, or None
-        return "Before answering, outline your approach in 3 bullet points."
+ def build_planning_instruction(
+ self,
+ readonly_context: ReadonlyContext,
+ llm_request: LlmRequest,
+ ) -> str | None:
+ # Return a system instruction string, or None
+ return "Before answering, outline your approach in 3 bullet points."
 
-    def process_planning_response(
-        self,
-        callback_context: CallbackContext,
-        response_parts: list[types.Part],
-    ) -> list[types.Part] | None:
-        # Post-process parts, or return None for no changes
-        return None
-
+ def process_planning_response(
+ self,
+ callback_context: CallbackContext,
+ response_parts: list[types.Part],
+ ) -> list[types.Part] | None:
+ # Post-process parts, or return None for no changes
+ return None
 
 agent = Agent(
-    name="custom_planner_agent",
-    model="gemini-2.5-flash",
-    planner=MyCustomPlanner(),
-    ...
+ name="custom_planner_agent",
+ model="gemini-2.5-flash",
+ planner=MyCustomPlanner(),
+ ...
 )
 ```
 

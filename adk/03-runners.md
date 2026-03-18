@@ -6,7 +6,7 @@
 
 ## What It Is
 
-`Runner` is the outermost layer that connects everything. It owns the lifecycle of a single user request:
+`Runner` owns the lifecycle of a single user request:
 
 1. Fetch or create a `Session`
 2. Build an `InvocationContext`
@@ -15,17 +15,17 @@
 5. Persist events to the session service
 6. Optionally compact old events (summarize history)
 
-`Runner` is **stateless** — it holds no conversation state itself. All state lives in `Session` (via `session_service`). This means the same `Runner` instance can handle many concurrent invocations safely.
+`Runner` is stateless. All state lives in `Session`. One Runner handles many concurrent invocations safely.
 
 ### Who Owns What
 
 ```
-Runner (stateless)      Agent (stateless)       Session (stateful)
-─────────────────       ─────────────────       ──────────────────
-Owns: request lifecycle Owns: behavior          Owns: conversation history
-Holds: service refs     Holds: config           Holds: state + events
-Creates: InvocationCtx  Creates: LlmRequest     Created by: SessionService
-Dies after: run_async() Lives forever           Lives across invocations
+Runner (stateless) Agent (stateless) Session (stateful)
+───────────────── ───────────────── ──────────────────
+Owns: request lifecycle Owns: behavior Owns: conversation history
+Holds: service refs Holds: config Holds: state + events
+Creates: InvocationCtx Creates: LlmRequest Created by: SessionService
+Dies after: run_async() Lives forever Lives across invocations
 ```
 
 ---
@@ -34,21 +34,21 @@ Dies after: run_async() Lives forever           Lives across invocations
 
 ```python
 runner = Runner(
-    agent=root_agent,                      # the root agent to run
-    app_name='my_app',
-    session_service=InMemorySessionService(),
+ agent=root_agent, # the root agent to run
+ app_name='my_app',
+ session_service=InMemorySessionService(),
 
-    # optional:
-    artifact_service=...,
-    memory_service=...,
-    credential_service=...,
-    auto_create_session=False,             # raise if session not found
+ # optional:
+ artifact_service=...,
+ memory_service=...,
+ credential_service=...,
+ auto_create_session=False, # raise if session not found
 )
 
 # For production: pass an App instead (adds plugins, compaction, caching — see 10-apps.md)
 runner = Runner(
-    app=my_app,                            # App bundles agent + plugins + config
-    session_service=...,
+ app=my_app, # App bundles agent + plugins + config
+ session_service=...,
 )
 ```
 
@@ -60,14 +60,14 @@ runner = Runner(
 
 ```python
 async def run_async(
-    self,
-    *,
-    user_id: str,
-    session_id: str,
-    invocation_id: Optional[str] = None,
-    new_message: Optional[types.Content] = None,
-    state_delta: Optional[dict[str, Any]] = None,
-    run_config: Optional[RunConfig] = None,
+ self,
+ *,
+ user_id: str,
+ session_id: str,
+ invocation_id: Optional[str] = None,
+ new_message: Optional[types.Content] = None,
+ state_delta: Optional[dict[str, Any]] = None,
+ run_config: Optional[RunConfig] = None,
 ) -> AsyncGenerator[Event, None]:
 ```
 
@@ -77,24 +77,24 @@ The main entry point. Yields Events as they are produced:
 
 ```
 user message event
-  → agent reasoning events (partial=True streaming chunks)
-  → function call events
-  → function response events
-  → final agent response event (partial=False)
+ → agent reasoning events (partial=True streaming chunks)
+ → function call events
+ → function response events
+ → final agent response event (partial=False)
 ```
 
 ### `run_live` — Audio/Video Mode
 
 ```python
 async def run_live(
-    user_id: str,
-    session_id: str,
-    live_request_queue: LiveRequestQueue,
-    run_config: Optional[RunConfig] = None,
+ user_id: str,
+ session_id: str,
+ live_request_queue: LiveRequestQueue,
+ run_config: Optional[RunConfig] = None,
 ) -> AsyncGenerator[Event, None]:
 ```
 
-Bidirectional streaming for real-time audio/video (Gemini Live API). Uses a queue instead of a single message.
+Bidirectional streaming for Gemini Live API.
 
 ### `run` — Sync Wrapper
 
@@ -102,7 +102,7 @@ Bidirectional streaming for real-time audio/video (Gemini Live API). Uses a queu
 def run(...) -> Generator[Event, None, None]:
 ```
 
-Synchronous wrapper over `run_async`. Runs the event loop in a background thread via `create_thread`. Useful for scripts and CLIs.
+Sync wrapper. Runs event loop in background thread. For scripts and CLIs.
 
 ---
 
@@ -112,33 +112,33 @@ Synchronous wrapper over `run_async`. Runs the event loop in a background thread
 Runner.run_async(user_id, session_id, new_message)
 │
 ├─ 1. _get_or_create_session(user_id, session_id)
-│      → session_service.get_session(...)
-│      → auto-creates if auto_create_session=True, else raises
+│ → session_service.get_session(...)
+│ → auto-creates if auto_create_session=True, else raises
 │
 ├─ 2. _setup_context_for_new_invocation(session, new_message, run_config)
-│      → Appends user message Event to session
-│      → Creates InvocationContext with invocation_id, branch, services
+│ → Appends user message Event to session
+│ → Creates InvocationContext with invocation_id, branch, services
 │
 ├─ 3. agent.run_async(invocation_context)
-│      → Delegate to the root agent
-│      → Yields Events as they stream out
+│ → Delegate to the root agent
+│ → Yields Events as they stream out
 │
 ├─ 4. For each event:
-│      → session_service.append_event(session, event)   (persist)
-│      → yield event                                    (stream to caller)
+│ → session_service.append_event(session, event) (persist)
+│ → yield event (stream to caller)
 │
 └─ 5. Post-invocation:
-       → _run_compaction_for_sliding_window(...)  (if App has compaction config)
-       → Close plugin contexts
+ → _run_compaction_for_sliding_window(...) (if App has compaction config)
+ → Close plugin contexts
 ```
 
 ---
 
 ## Session Auto-Creation
 
-By default (`auto_create_session=False`), passing an unknown `session_id` raises `SessionNotFoundError` with a helpful message. This makes bugs obvious.
+Default `auto_create_session=False` raises `SessionNotFoundError` for unknown sessions.
 
-Set `auto_create_session=True` when you want the Runner to silently create a new session on first use (useful in demos and lightweight scripts).
+`auto_create_session=True` silently creates sessions on first use (demos, scripts).
 
 ---
 
@@ -148,34 +148,34 @@ Set `auto_create_session=True` when you want the Runner to silently create a new
 
 ```python
 class RunConfig:
-    streaming_mode: StreamingMode   # SSE, NONE
-    max_llm_calls: int              # safety cap on LLM calls per invocation
-    save_input_blobs_as_artifacts: bool
-    support_cfc: bool               # client function calling
-    custom_metadata: dict           # attached to all events from this run
+ streaming_mode: StreamingMode # SSE, NONE
+ max_llm_calls: int # safety cap on LLM calls per invocation
+ save_input_blobs_as_artifacts: bool
+ support_cfc: bool # client function calling
+ custom_metadata: dict # attached to all events from this run
 ```
 
 ---
 
 ## Plugins
 
-Runner initializes a `PluginManager` from the plugin list. Plugins hook into:
+Runner initializes `PluginManager`. Plugins hook into:
 - `before_agent_callback` / `after_agent_callback` (at the Runner level, runs for every agent)
 - Session lifecycle
 
-Plugins are provided via the `App` object (preferred) or the deprecated `plugins=` argument.
+Provide via `App` (preferred) or deprecated `plugins=` on Runner.
 
 ---
 
 ## Event Compaction
 
-After an invocation completes, Runner can trigger **sliding window compaction** if configured in `App.events_compaction_config`:
+Post-invocation **sliding window compaction** (if configured):
 
 - After every N invocations, old events get summarized into a single compacted Event
 - `overlap_size` controls how many recent invocations are kept verbatim for context
 - The summarizer is pluggable (`BaseEventsSummarizer`)
 
-This prevents `Session.events` from growing unboundedly in long conversations.
+Prevents unbounded event growth.
 
 ---
 

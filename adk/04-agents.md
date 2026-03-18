@@ -6,21 +6,21 @@
 
 ## What It Is
 
-Agents are the primary building block in ADK. An agent defines *what* an AI should do: which model to use, which tools it has, what its system prompt is, and how it should behave. Agents do **not** hold conversation state — that lives in `Session`.
+Agents define AI behavior: model, tools, system prompt, sub-agents. They hold no conversation state (that lives in `Session`).
 
 ---
 
 ## Class Hierarchy
 
 ```
-BaseAgent           (base_agent.py)   — abstract, common contract
-    ├── LlmAgent    (llm_agent.py)    — primary: calls an LLM in a loop
-    ├── LoopAgent                     — runs sub-agents in a loop until done
-    ├── ParallelAgent                 — runs sub-agents concurrently, merges results
-    └── SequentialAgent               — runs sub-agents one after another
+BaseAgent (base_agent.py) — abstract, common contract
+ ├── LlmAgent (llm_agent.py) — primary: calls an LLM in a loop
+ ├── LoopAgent — runs sub-agents in a loop until done
+ ├── ParallelAgent — runs sub-agents concurrently, merges results
+ └── SequentialAgent — runs sub-agents one after another
 ```
 
-`Agent` is a type alias for `LlmAgent` — it's what most users instantiate.
+`Agent` is a type alias for `LlmAgent`.
 
 ---
 
@@ -30,11 +30,11 @@ Every agent must implement one method:
 
 ```python
 async def _run_async_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-    ...
+ ...
 
 # Optionally also:
 async def _run_live_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-    ...  # for video/audio (Live API) mode
+ ... # for video/audio (Live API) mode
 ```
 
 `BaseAgent` provides the **final** public entry points that wrap `_run_async_impl`:
@@ -42,11 +42,11 @@ async def _run_live_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
 ```python
 @final
 async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, None]:
-    # 1. Creates a child InvocationContext for this agent
-    # 2. Runs before_agent_callback (can short-circuit the run)
-    # 3. Delegates to _run_async_impl
-    # 4. Runs after_agent_callback
-    # 5. Yields all resulting Events
+ # 1. Creates a child InvocationContext for this agent
+ # 2. Runs before_agent_callback (can short-circuit the run)
+ # 3. Delegates to _run_async_impl
+ # 4. Runs after_agent_callback
+ # 5. Yields all resulting Events
 ```
 
 `@final` means subclasses must **not** override `run_async` — only `_run_async_impl`.
@@ -54,12 +54,12 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 ### BaseAgent Fields
 
 ```python
-name: str               # must be a valid Python identifier, unique in tree
-description: str        # one-line summary; LLM uses this to decide delegation
-sub_agents: list[BaseAgent]    # child agents in the hierarchy
-parent_agent: Optional[BaseAgent]  # set automatically, defaults to None, not in constructor
-before_agent_callback: ...     # runs before _run_async_impl; can short-circuit
-after_agent_callback: ...      # runs after _run_async_impl; can append events
+name: str # must be a valid Python identifier, unique in tree
+description: str # one-line summary; LLM uses this to decide delegation
+sub_agents: list[BaseAgent] # child agents in the hierarchy
+parent_agent: Optional[BaseAgent] # set automatically, defaults to None, not in constructor
+before_agent_callback: ... # runs before _run_async_impl; can short-circuit
+after_agent_callback: ... # runs after _run_async_impl; can append events
 ```
 
 **Agent name constraint:** Cannot be `"user"` (reserved for end-user messages). Must be a valid Python identifier. Names must be unique within the tree.
@@ -72,22 +72,22 @@ after_agent_callback: ...      # runs after _run_async_impl; can append events
 
 ```python
 async def _run_async_impl(ctx):
-    async for event in self._llm_flow.run_async(ctx):
-        self.__maybe_save_output_to_state(event)  # output_key → state_delta
-        yield event
+ async for event in self._llm_flow.run_async(ctx):
+ self.__maybe_save_output_to_state(event) # output_key → state_delta
+ yield event
 ```
 
 ### Which flow does it use?
 
-If your agent has sub-agents or allows transfers, ADK uses AutoFlow (adds agent-routing). If your agent works alone, ADK uses SingleFlow (simpler). This is automatic — you never set it manually.
+ADK auto-selects AutoFlow (agent routing) when sub-agents exist, SingleFlow otherwise.
 
 ### Key Fields
 
 ```python
-model: Union[str, BaseLlm]  # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
-                             # Default: '' (empty string). Resolution walks up parent agents;
-                             # falls back to class variable DEFAULT_MODEL ('gemini-2.5-flash')
-                             # only if no ancestor sets a model.
+model: Union[str, BaseLlm] # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
+ # Default: '' (empty string). Resolution walks up parent agents;
+ # falls back to class variable DEFAULT_MODEL ('gemini-2.5-flash')
+ # only if no ancestor sets a model.
 
 instruction: Union[str, InstructionProvider]
 # System prompt. Supports {variable} placeholders resolved from session state.
@@ -122,8 +122,8 @@ disallow_transfer_to_parent: bool
 disallow_transfer_to_peers: bool
 # Control agent routing behavior.
 
-planner: Optional[BasePlanner]   # step-by-step planning / thinking
-code_executor: Optional[BaseCodeExecutor]  # run generated code blocks
+planner: Optional[BasePlanner] # step-by-step planning / thinking
+code_executor: Optional[BaseCodeExecutor] # run generated code blocks
 ```
 
 ### Callbacks on LlmAgent
@@ -145,16 +145,16 @@ LlmAgent adds finer-grained hooks compared to BaseAgent:
 
 ```python
 def on_model_error_callback(
-    callback_context: CallbackContext,
-    llm_request: LlmRequest,
-    error: Exception,
+ callback_context: CallbackContext,
+ llm_request: LlmRequest,
+ error: Exception,
 ) -> Optional[LlmResponse]: ...
 
 def on_tool_error_callback(
-    tool: BaseTool,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-    error: Exception,
+ tool: BaseTool,
+ args: dict[str, Any],
+ tool_context: ToolContext,
+ error: Exception,
 ) -> Optional[dict]: ...
 ```
 
@@ -178,31 +178,31 @@ LlmAgent.canonical_model -> BaseLlm
 
 ## InvocationContext — The Shared Thread
 
-`InvocationContext` is created by `Runner` and flows through every layer. It carries everything needed for one request:
+Created by `Runner`, flows through every layer:
 
 ```python
 class InvocationContext:
-    agent: BaseAgent         # current agent being run
-    session: Session         # the full conversation history + state
-    invocation_id: str       # unique ID for this run_async() call
-    branch: str              # routing path (e.g. 'root.sub.leaf')
-    end_invocation: bool     # set to True to stop the entire invocation
+ agent: BaseAgent # current agent being run
+ session: Session # the full conversation history + state
+ invocation_id: str # unique ID for this run_async() call
+ branch: str # routing path (e.g. 'root.sub.leaf')
+ end_invocation: bool # set to True to stop the entire invocation
 
-    # Services injected by Runner:
-    session_service: BaseSessionService
-    artifact_service: BaseArtifactService
-    memory_service: BaseMemoryService
-    credential_service: BaseCredentialService
-    plugin_manager: PluginManager
+ # Services injected by Runner:
+ session_service: BaseSessionService
+ artifact_service: BaseArtifactService
+ memory_service: BaseMemoryService
+ credential_service: BaseCredentialService
+ plugin_manager: PluginManager
 ```
 
-When an agent calls a sub-agent, it creates a child context (`model_copy(update={'agent': sub_agent})`). The branch and session are shared.
+Sub-agent calls create a child context via `model_copy()`. Branch and session are shared.
 
 ---
 
 ## Agent Trees and Transfer
 
-Agents compose into trees via `sub_agents`. The LLM can transfer control to a sub-agent by calling the special `transfer_to_agent` function. `LlmAgent._run_async_impl` handles this by resuming the right sub-agent on the next turn.
+Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_to_agent`.
 
 ```
 root_agent (LlmAgent)
@@ -218,20 +218,20 @@ The LLM in `root_agent` can say "transfer to search_agent", which triggers `Even
 User: "Book me a flight to Tokyo"
 
 ┌─ router_agent (AutoFlow) ─────────────────────────────────────┐
-│                                                                │
-│  LLM thinks: "This is a travel request"                       │
-│  LLM calls: transfer_to_agent("travel_agent")                 │
-│                                                                │
-│  ┌─ travel_agent ───────────────────────────────────────────┐  │
-│  │                                                          │  │
-│  │  LLM receives: full conversation history                 │  │
-│  │  LLM calls: search_flights(destination="Tokyo")          │  │
-│  │  Tool returns: [{flight: "JL001", price: "$450"}, ...]   │  │
-│  │  LLM responds: "I found flight JL001 for $450..."        │  │
-│  │                                                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                │
-│  Events flow back to caller with author="travel_agent"         │
+│ │
+│ LLM thinks: "This is a travel request" │
+│ LLM calls: transfer_to_agent("travel_agent") │
+│ │
+│ ┌─ travel_agent ───────────────────────────────────────────┐ │
+│ │ │ │
+│ │ LLM receives: full conversation history │ │
+│ │ LLM calls: search_flights(destination="Tokyo") │ │
+│ │ Tool returns: [{flight: "JL001", price: "$450"}, ...] │ │
+│ │ LLM responds: "I found flight JL001 for $450..." │ │
+│ │ │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│ │
+│ Events flow back to caller with author="travel_agent" │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -242,29 +242,29 @@ As agents nest, the `branch` field on each event tracks which agent produced it.
 ```
 Event stream with branches:
 
-  evt-001  author="user"           branch=None
-  evt-002  author="router_agent"   branch=None        ← transfer_to_agent
-  evt-003  author="travel_agent"   branch="travel_agent"  ← child branch
-  evt-004  author="travel_agent"   branch="travel_agent"  ← tool call
-  evt-005  author="travel_agent"   branch="travel_agent"  ← final answer
+ evt-001 author="user" branch=None
+ evt-002 author="router_agent" branch=None ← transfer_to_agent
+ evt-003 author="travel_agent" branch="travel_agent" ← child branch
+ evt-004 author="travel_agent" branch="travel_agent" ← tool call
+ evt-005 author="travel_agent" branch="travel_agent" ← final answer
 ```
 
 ### Minimal Multi-Agent Example
 
 ```python
 travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",
-    instruction="You book flights.", tools=[search_flights])
+ instruction="You book flights.", tools=[search_flights])
 
 weather_agent = LlmAgent(name="weather_agent", model="gemini-2.5-flash",
-    instruction="You report weather.", tools=[get_weather])
+ instruction="You report weather.", tools=[get_weather])
 
 router = LlmAgent(name="router", model="gemini-2.5-flash",
-    instruction="Route to the right specialist.",
-    sub_agents=[travel_agent, weather_agent])
+ instruction="Route to the right specialist.",
+ sub_agents=[travel_agent, weather_agent])
 # AutoFlow is selected automatically because sub_agents is non-empty
 ```
 
-When the user says "Book me a flight", the router's LLM sees `travel_agent` and `weather_agent` as available transfer targets (injected as tool definitions by `AutoFlow`). It calls `transfer_to_agent("travel_agent")`, and the framework routes the conversation to `travel_agent` for the rest of the turn.
+The router LLM sees sub-agents as transfer targets (injected by AutoFlow) and calls `transfer_to_agent()` to route.
 
 ---
 

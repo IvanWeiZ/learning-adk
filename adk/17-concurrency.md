@@ -21,41 +21,41 @@
 
 ## Parallel Tool Execution
 
-When an LLM response contains multiple tool calls, `functions.py` dispatches them via `asyncio.gather`:
+`functions.py` dispatches multiple tool calls via `asyncio.gather`:
 
-- All tool coroutines are launched concurrently and awaited together.
+- All tool coroutines launch concurrently.
 - `return_exceptions=True` is **not** used -- one failing tool re-raises immediately while the others keep running in the background. This is a potential resource leak.
 - State deltas from parallel tools are merged via `deep_merge_dicts`. On key conflicts the last-merged tool's value wins silently.
 
 ```
 Parallel Tool Execution — Happy Path:
 
-  LLM returns: [FunctionCall("get_weather"), FunctionCall("get_news")]
-                          │                           │
-                          ▼                           ▼
-                   ┌─────────────┐            ┌─────────────┐
-                   │ get_weather │            │  get_news   │
-                   │ (200ms)     │            │  (300ms)    │
-                   └──────┬──────┘            └──────┬──────┘
-                          │                           │
-                          └─────────┬─────────────────┘
-                                    ▼
-                         asyncio.gather() merges results
-                         → single FunctionResponse event
-                         → back to LLM
+ LLM returns: [FunctionCall("get_weather"), FunctionCall("get_news")]
+ │ │
+ ▼ ▼
+ ┌─────────────┐ ┌─────────────┐
+ │ get_weather │ │ get_news │
+ │ (200ms) │ │ (300ms) │
+ └──────┬──────┘ └──────┬──────┘
+ │ │
+ └─────────┬─────────────────┘
+ ▼
+ asyncio.gather() merges results
+ → single FunctionResponse event
+ → back to LLM
 
-  Total time: 300ms (not 500ms) — parallel wins!
+ Total time: 300ms (not 500ms) — parallel wins!
 
 Collision Scenario — both tools write same state key:
 
-  Tool A: ctx.state["result"] = "sunny"     (finishes first)
-  Tool B: ctx.state["result"] = "breaking"  (finishes second)
-                          │
-                          ▼
-              deep_merge_dicts → last write wins
-              state["result"] = "breaking"  ← Tool A's write is lost!
+ Tool A: ctx.state["result"] = "sunny" (finishes first)
+ Tool B: ctx.state["result"] = "breaking" (finishes second)
+ │
+ ▼
+ deep_merge_dicts → last write wins
+ state["result"] = "breaking" ← Tool A's write is lost!
 
-  Fix: use different state keys per tool
+ Fix: use different state keys per tool
 ```
 
 ---
@@ -78,15 +78,15 @@ Collision Scenario — both tools write same state key:
 
 ## Plugin Execution
 
-Plugins run **strictly sequentially** (a `for` loop with `await` on each plugin). The `close` phase is also sequential to avoid task-context issues with anyio/MCP on Python 3.10.
+Plugins run strictly sequentially. `close` is also sequential (anyio/MCP compatibility).
 
 ---
 
 ## ParallelAgent
 
-- Each sub-agent receives an isolated `InvocationContext` copy with a unique `branch`.
-- Events are serialized back to the caller via an `asyncio.Queue` + resume-signal pattern.
-- All sub-agents share the same `Session` reference, but event delivery to the session is serialized through the queue.
+- Each sub-agent gets an isolated `InvocationContext` with unique `branch`.
+- Events serialize via `asyncio.Queue` + resume-signal.
+- Sub-agents share one `Session`; event delivery is serialized through the queue.
 - **Known race:** parallel sub-agents that write the same `output_key` produce a last-write-wins result.
 
 ---

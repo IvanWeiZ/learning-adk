@@ -6,7 +6,7 @@
 
 ## What It Is
 
-`BaseLlmFlow` implements the core **reason-act loop** that drives `LlmAgent`. When `LlmAgent._run_async_impl` is called, it delegates entirely to `self._llm_flow.run_async(ctx)`.
+`BaseLlmFlow` implements the core **reason-act loop**. `LlmAgent._run_async_impl` delegates to `self._llm_flow.run_async(ctx)`.
 
 The flow is responsible for:
 1. Building the LLM request (history, system prompt, tool definitions)
@@ -14,16 +14,16 @@ The flow is responsible for:
 3. Handling the response (stream events, execute tools)
 4. Looping until the LLM produces a final text response
 
-> **Do I need to know this?** You will almost never create or configure a Flow directly — ADK selects the right one automatically. Understanding flows helps when debugging (e.g., why your agent transfers to a sub-agent) or writing custom request/response processors.
+Flows are auto-selected. Understanding them helps when debugging transfers or writing custom processors.
 
 ---
 
 ## Flow Variants
 
 ```
-BaseLlmFlow  (base_llm_flow.py)  — abstract, implements the loop
-    ├── SingleFlow               — no agent routing; pure tool-use loop
-    └── AutoFlow                 — adds agent transfer/delegation support
+BaseLlmFlow (base_llm_flow.py) — abstract, implements the loop
+ ├── SingleFlow — no agent routing; pure tool-use loop
+ └── AutoFlow — adds agent transfer/delegation support
 ```
 
 `LlmAgent._llm_flow` selects:
@@ -36,29 +36,29 @@ BaseLlmFlow  (base_llm_flow.py)  — abstract, implements the loop
 
 ```
 ┌─────────────────────────────────────────────┐
-│              BaseLlmFlow Loop               │
-│                                             │
-│  ┌─────────────┐                            │
-│  │  preprocess  │ ← build LlmRequest        │
-│  │  (history +  │   from session.events      │
-│  │   tools)     │                            │
-│  └──────┬───────┘                            │
-│         ▼                                    │
-│  ┌─────────────┐                            │
-│  │  call LLM   │                            │
-│  └──────┬───────┘                            │
-│         ▼                                    │
-│     Has function    ──── No ──── ► yield     │
-│     calls?                        final      │
-│         │                         Event      │
-│        Yes                        (EXIT)     │
-│         ▼                                    │
-│  ┌─────────────┐                            │
-│  │ execute      │                            │
-│  │ tool(s)      │                            │
-│  └──────┬───────┘                            │
-│         │                                    │
-│         └──────── loop back ─────────────┘   │
+│ BaseLlmFlow Loop │
+│ │
+│ ┌─────────────┐ │
+│ │ preprocess │ ← build LlmRequest │
+│ │ (history + │ from session.events │
+│ │ tools) │ │
+│ └──────┬───────┘ │
+│ ▼ │
+│ ┌─────────────┐ │
+│ │ call LLM │ │
+│ └──────┬───────┘ │
+│ ▼ │
+│ Has function ──── No ──── ► yield │
+│ calls? final │
+│ │ Event │
+│ Yes (EXIT) │
+│ ▼ │
+│ ┌─────────────┐ │
+│ │ execute │ │
+│ │ tool(s) │ │
+│ └──────┬───────┘ │
+│ │ │
+│ └──────── loop back ─────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 
@@ -68,15 +68,15 @@ BaseLlmFlow  (base_llm_flow.py)  — abstract, implements the loop
 User: "What's the weather in Tokyo?"
 
 Iteration 1:
-  preprocess  → LlmRequest with [user message]
-  LLM returns → FunctionCall(get_weather, city="Tokyo")
-  execute     → get_weather("Tokyo") → {temp: 18, condition: "cloudy"}
-  → loop back
+ preprocess → LlmRequest with [user message]
+ LLM returns → FunctionCall(get_weather, city="Tokyo")
+ execute → get_weather("Tokyo") → {temp: 18, condition: "cloudy"}
+ → loop back
 
 Iteration 2:
-  preprocess  → LlmRequest with [user message + function call + function response]
-  LLM returns → "The weather in Tokyo is 18°C and cloudy."
-  no function calls → yield final Event → EXIT
+ preprocess → LlmRequest with [user message + function call + function response]
+ LLM returns → "The weather in Tokyo is 18°C and cloudy."
+ no function calls → yield final Event → EXIT
 ```
 
 ---
@@ -87,43 +87,43 @@ Iteration 2:
 BaseLlmFlow.run_async(ctx)
 │
 └─ loop until done:
-    │
-    ├─ PREPROCESS (build LlmRequest)
-    │   ├── _preprocess_async(ctx, llm_request)
-    │   │   Each registered BaseLlmRequestProcessor runs in order:
-    │   │   - instructions.py  → inject system prompt + variable substitution
-    │   │   - contents.py      → inject conversation history (filtered by branch)
-    │   │   - functions.py     → inject tool definitions from agent.tools
-    │   │   - context_cache.py → apply explicit context cache config
-    │   │   - output_schema.py → inject response schema (if output_schema set)
-    │   └── before_model_callback → can mutate request or short-circuit
-    │
-    ├─ CALL LLM
-    │   ├── _call_llm_async(ctx, llm_request)
-    │   │   → model.generate_content_async(llm_request, stream=...)
-    │   │   → yields LlmResponse chunks (partial=True ... partial=False)
-    │   └── Streaming events yielded as they arrive
-    │
-    ├─ POSTPROCESS (handle response)
-    │   ├── after_model_callback → can replace LlmResponse
-    │   ├── _postprocess_async(ctx, llm_response)
-    │   │   Each registered BaseLlmResponseProcessor runs:
-    │   │   - code_execution.py → run code blocks if code_executor set
-    │   │   - functions.py      → execute tool calls, append tool response events
-    │   │   - agent_transfer.py → handle transfer_to_agent responses (AutoFlow)
-    │   └── Yield model response event
-    │
-    └─ DECIDE: loop again?
-        - If function calls were made and handled → loop (tools ran, need LLM to continue)
-        - If agent transfer happened → delegate and exit
-        - If final text response → exit loop
+ │
+ ├─ PREPROCESS (build LlmRequest)
+ │ ├── _preprocess_async(ctx, llm_request)
+ │ │ Each registered BaseLlmRequestProcessor runs in order:
+ │ │ - instructions.py → inject system prompt + variable substitution
+ │ │ - contents.py → inject conversation history (filtered by branch)
+ │ │ - functions.py → inject tool definitions from agent.tools
+ │ │ - context_cache.py → apply explicit context cache config
+ │ │ - output_schema.py → inject response schema (if output_schema set)
+ │ └── before_model_callback → can mutate request or short-circuit
+ │
+ ├─ CALL LLM
+ │ ├── _call_llm_async(ctx, llm_request)
+ │ │ → model.generate_content_async(llm_request, stream=...)
+ │ │ → yields LlmResponse chunks (partial=True ... partial=False)
+ │ └── Streaming events yielded as they arrive
+ │
+ ├─ POSTPROCESS (handle response)
+ │ ├── after_model_callback → can replace LlmResponse
+ │ ├── _postprocess_async(ctx, llm_response)
+ │ │ Each registered BaseLlmResponseProcessor runs:
+ │ │ - code_execution.py → run code blocks if code_executor set
+ │ │ - functions.py → execute tool calls, append tool response events
+ │ │ - agent_transfer.py → handle transfer_to_agent responses (AutoFlow)
+ │ └── Yield model response event
+ │
+ └─ DECIDE: loop again?
+ - If function calls were made and handled → loop (tools ran, need LLM to continue)
+ - If agent transfer happened → delegate and exit
+ - If final text response → exit loop
 ```
 
 ---
 
 ## Request Processors (Preprocessors)
 
-Each preprocessor implements `BaseLlmRequestProcessor` and mutates the `LlmRequest` before it is sent to the model.
+Each implements `BaseLlmRequestProcessor`, mutating `LlmRequest` before the model call.
 
 | Processor | What it does |
 |-----------|-------------|
@@ -137,7 +137,7 @@ Each preprocessor implements `BaseLlmRequestProcessor` and mutates the `LlmReque
 
 ## Response Processors (Postprocessors)
 
-Each postprocessor implements `BaseLlmResponseProcessor` and handles the LLM's response.
+Each implements `BaseLlmResponseProcessor`.
 
 | Processor | What it does |
 |-----------|-------------|
@@ -153,20 +153,20 @@ When the LLM returns a function call:
 
 ```
 LLM → FunctionCall(name='search', args={'query': 'ADK'})
-  → functions.py finds the matching BaseTool by name
-  → Runs before_tool_callback (can skip execution)
-  → tool.run_async(args=..., tool_context=...)
-  → Runs after_tool_callback (can replace result)
-  → Creates Event(author=agent.name, content=[FunctionResponse(...)])
-  → Appends to session, yields event
-  → Flow loops → LLM gets the tool result → continues reasoning
+ → functions.py finds the matching BaseTool by name
+ → Runs before_tool_callback (can skip execution)
+ → tool.run_async(args=..., tool_context=...)
+ → Runs after_tool_callback (can replace result)
+ → Creates Event(author=agent.name, content=[FunctionResponse(...)])
+ → Appends to session, yields event
+ → Flow loops → LLM gets the tool result → continues reasoning
 ```
 
 ---
 
 ## Live Mode
 
-`BaseLlmFlow` also has `run_live(ctx)` for the Gemini Live API (bidirectional audio/video streaming). Instead of `generate_content_async`, it uses `model.connect(llm_request)` to open a persistent `BaseLlmConnection`. The structure is similar but driven by a `LiveRequestQueue` instead of a single message.
+`run_live(ctx)` supports Gemini Live API (bidirectional streaming) via `model.connect()` and `LiveRequestQueue`.
 
 ---
 
