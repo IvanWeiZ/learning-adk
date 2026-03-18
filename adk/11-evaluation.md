@@ -35,7 +35,7 @@ AgentEvaluator              (evaluation/agent_evaluator.py — orchestrates runs
 
 ## Core Data Types
 
-### [ ] EvalCase — One Test Scenario
+### EvalCase — One Test Scenario
 
 ```python
 class EvalCase(BaseModel):
@@ -57,7 +57,7 @@ class EvalCase(BaseModel):
     session_input: SessionInput | None = None  # pre-seeded state/history
 ```
 
-### [ ] ConversationTurn
+### ConversationTurn
 
 ```python
 class ConversationTurn(BaseModel):
@@ -66,7 +66,7 @@ class ConversationTurn(BaseModel):
     reference_answer: str | None = None  # expected agent reply for this turn
 ```
 
-### [ ] ToolUse — Expected Tool Call
+### ToolUse — Expected Tool Call
 
 ```python
 class ToolUse(BaseModel):
@@ -75,7 +75,7 @@ class ToolUse(BaseModel):
     tool_output: str | None              # optional: mock output to inject
 ```
 
-### [ ] EvalSet — A Suite of Cases
+### EvalSet — A Suite of Cases
 
 ```python
 class EvalSet(BaseModel):
@@ -85,7 +85,7 @@ class EvalSet(BaseModel):
     creation_timestamp: float
 ```
 
-### [ ] EvalMetric — What to Measure
+### EvalMetric — What to Measure
 
 ```python
 class EvalMetric(BaseModel):
@@ -145,7 +145,7 @@ class EvalMetricResult(BaseModel):
 
 ## Metrics Deep Dive
 
-### [ ] 1. `tool_trajectory_avg_score`
+### 1. `tool_trajectory_avg_score`
 
 Measures whether the agent called the **right tools in the right order**.
 
@@ -157,7 +157,7 @@ Scoring logic:
 
 Example: if you expect `[search, summarize]` and agent did `[search, translate, summarize]`, score is 1.0 (both expected steps matched, extras don't penalize).
 
-### [ ] 2. `response_match_score`
+### 2. `response_match_score`
 
 Measures how well the agent's **final text response** matches the `reference_answer`.
 

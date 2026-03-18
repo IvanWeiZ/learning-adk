@@ -8,7 +8,7 @@
 
 When an `LlmAgent` runs, the `BaseLlmFlow` executes a pipeline of **request processors** (build the prompt) and **response processors** (handle the output). Understanding this pipeline is key to advanced customization.
 
-### [ ] Full Request Processor Pipeline
+### Full Request Processor Pipeline
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -56,7 +56,7 @@ When an `LlmAgent` runs, the `BaseLlmFlow` executes a pipeline of **request proc
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] AutoFlow Adds Agent Transfer
+### AutoFlow Adds Agent Transfer
 
 `AutoFlow` extends `SingleFlow` by injecting one extra request processor:
 
@@ -141,7 +141,7 @@ The core loop in `BaseLlmFlow.run_async()`:
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Parallel Tool Execution
+### Parallel Tool Execution
 
 When the LLM returns multiple function calls, ADK runs them concurrently:
 
@@ -185,7 +185,7 @@ LLM returns: [get_weather("Tokyo"), get_weather("London"), get_weather("NYC")]
 
 Plugins wrap the entire agent lifecycle. They execute **before** agent-level callbacks.
 
-### [ ] Plugin Execution Order
+### Plugin Execution Order
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -229,7 +229,7 @@ Plugins wrap the entire agent lifecycle. They execute **before** agent-level cal
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Building a Custom Plugin
+### Building a Custom Plugin
 
 ```python
 from google.adk.plugins import BasePlugin
@@ -277,7 +277,7 @@ class MetricsPlugin(BasePlugin):
         return None
 ```
 
-### [ ] Registering Plugins
+### Registering Plugins
 
 ```python
 from google.adk.apps import App
@@ -295,7 +295,7 @@ app = App(
 
 ## 4. Custom Tools — Beyond FunctionTool
 
-### [ ] BaseTool Subclass (Full Lifecycle Control)
+### BaseTool Subclass (Full Lifecycle Control)
 
 ```python
 from google.adk.tools import BaseTool
@@ -361,7 +361,7 @@ class HttpApiTool(BaseTool):
                 return {"status": response.status, "data": data}
 ```
 
-### [ ] LongRunningFunctionTool (Async Operations)
+### LongRunningFunctionTool (Async Operations)
 
 For tools that take minutes/hours — file processing, CI/CD triggers, approval workflows:
 
@@ -414,7 +414,7 @@ Normal tool:                     LongRunningFunctionTool:
                                  └─────────────┘
 ```
 
-### [ ] AgentTool (Wrap an Agent as a Tool)
+### AgentTool (Wrap an Agent as a Tool)
 
 ```python
 from google.adk.tools.agent_tool import AgentTool
@@ -570,7 +570,7 @@ Toolset resolution at runtime:
 
 ## 6. Authentication Flow — How Tools Get Credentials
 
-### [ ] The Full Auth Dance
+### The Full Auth Dance
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -610,7 +610,7 @@ Toolset resolution at runtime:
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Implementing an Authenticated Tool
+### Implementing an Authenticated Tool
 
 ```python
 from google.adk.tools.tool_context import ToolContext
@@ -661,7 +661,7 @@ agent = Agent(
 
 ## 7. Artifacts — File Management Across Sessions
 
-### [ ] How Artifacts Work
+### How Artifacts Work
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -695,7 +695,7 @@ agent = Agent(
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Using Artifacts in Tools
+### Using Artifacts in Tools
 
 ```python
 from google.adk.tools.tool_context import ToolContext
@@ -726,7 +726,7 @@ async def load_previous_report(filename: str, tool_context: ToolContext) -> str:
 
 ## 8. Code Executors — Running Code in Agents
 
-### [ ] Architecture
+### Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -766,7 +766,7 @@ async def load_previous_report(filename: str, tool_context: ToolContext) -> str:
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Configuration
+### Configuration
 
 ```python
 from google.adk.code_executors import BuiltInCodeExecutor
@@ -790,7 +790,7 @@ agent = Agent(
 
 ## 9. Planners — Structured Reasoning
 
-### [ ] PlanReActPlanner
+### PlanReActPlanner
 
 Adds explicit planning/reasoning tags to the LLM's response:
 
@@ -839,7 +839,7 @@ Adds explicit planning/reasoning tags to the LLM's response:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] BuiltInPlanner (Model-Native Thinking)
+### BuiltInPlanner (Model-Native Thinking)
 
 ```python
 from google.adk.planners import BuiltInPlanner
@@ -887,7 +887,7 @@ A2A enables agents running in different services to communicate:
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] A2aAgentExecutor
+### A2aAgentExecutor
 
 ```python
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
@@ -937,7 +937,7 @@ After compaction (summary + recent events):
 └──────────────────────────────────────────┘
 ```
 
-### [ ] Configuration
+### Configuration
 
 ```python
 from google.adk.apps import App
@@ -1026,7 +1026,7 @@ Before sending back to LLM, ADK strips the "adk-" prefix:
 
 ## 14. Streaming and Live Mode
 
-### [ ] Standard Streaming
+### Standard Streaming
 
 ```python
 # Events are yielded as they're produced
@@ -1039,7 +1039,7 @@ async for event in runner.run_async(session_id, user_id, message):
                 print(f"\n[Calling {part.function_call.name}...]")
 ```
 
-### [ ] Live Mode (Bidirectional Streaming)
+### Live Mode (Bidirectional Streaming)
 
 ```
 Standard mode:                    Live mode:
@@ -1069,7 +1069,7 @@ async def live_tool(
 
 ## 15. Advanced Agent Patterns
 
-### [ ] Pattern: Guardrail Agent
+### Pattern: Guardrail Agent
 
 ```python
 async def safety_check(callback_context, llm_response):
@@ -1093,7 +1093,7 @@ agent = Agent(
 )
 ```
 
-### [ ] Pattern: Retry with Reflection
+### Pattern: Retry with Reflection
 
 ```python
 async def retry_on_tool_error(tool, args, tool_context, tool_response):
@@ -1110,7 +1110,7 @@ async def retry_on_tool_error(tool, args, tool_context, tool_response):
     return None
 ```
 
-### [ ] Pattern: Dynamic Instruction Based on Conversation Phase
+### Pattern: Dynamic Instruction Based on Conversation Phase
 
 ```python
 async def phase_aware_instruction(ctx) -> str:

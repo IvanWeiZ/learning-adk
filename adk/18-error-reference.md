@@ -45,7 +45,7 @@ run_async() invocation
 
 ## Recoverable Errors (Callback-Interceptable)
 
-### [ ] LLM API Errors
+### LLM API Errors
 
 Any exception from `llm.generate_content_async()` is caught by `_run_and_handle_error()` in [`base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py).
 
@@ -60,7 +60,7 @@ Any exception from `llm.generate_content_async()` is caught by `_run_and_handle_
 - `ClientError` — Gemini 400/403/500 responses
 - `_ResourceExhaustedError` — Gemini 429 (rate limit). Includes a link to quota increase docs in the error message.
 
-### [ ] Tool Execution Errors
+### Tool Execution Errors
 
 Any exception from `tool.run_async()` is caught in [`functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py).
 
@@ -76,7 +76,7 @@ Any exception from `tool.run_async()` is caught in [`functions.py`](../adk-pytho
 
 ## Fatal Errors (No Callback Recovery)
 
-### [ ] `LlmCallsLimitExceededError`
+### `LlmCallsLimitExceededError`
 
 Raised when the invocation has used all allowed LLM calls.
 
@@ -85,13 +85,13 @@ Raised when the invocation has used all allowed LLM calls.
 - Default limit: **500** (`RunConfig.max_llm_calls`).
 - Typical cause: agent loops (tool → LLM → tool → LLM ...) that never reach a termination condition.
 
-### [ ] `SessionNotFoundError`
+### `SessionNotFoundError`
 
 Raised when `Runner.run_async()` calls `get_session()`, the service returns `None`, and `auto_create_session=False`.
 
 - Fix: pre-create sessions before calling `run_async()`, or set `auto_create_session=True` on the `Runner`.
 
-### [ ] Callback Exceptions
+### Callback Exceptions
 
 If any `before_agent_callback`, `after_agent_callback`, `before_model_callback`, `after_model_callback`, `before_tool_callback`, or `after_tool_callback` raises an exception, it crashes the entire invocation.
 
@@ -99,7 +99,7 @@ If any `before_agent_callback`, `after_agent_callback`, `before_model_callback`,
 - Only `on_model_error_callback` and `on_tool_error_callback` exist as recovery points — and they only fire for model/tool errors, **not** for callback errors.
 - Defensive coding inside callbacks is essential.
 
-### [ ] Agent Transfer Errors
+### Agent Transfer Errors
 
 When the LLM issues a transfer to an agent name that does not exist in the agent tree:
 
@@ -109,7 +109,7 @@ ValueError("Agent 'X' not found")
 
 This propagates uncaught. Mitigation: ensure `sub_agents` names match what the LLM has been instructed to use.
 
-### [ ] Constructor Validation Errors
+### Constructor Validation Errors
 
 These fire at agent construction time (before any `run_async()` call):
 
@@ -121,13 +121,13 @@ These fire at agent construction time (before any `run_async()` call):
 
 ## Silent Failures
 
-### [ ] `InMemorySessionService.append_event()`
+### `InMemorySessionService.append_event()`
 
 If the backing store does not contain the session (e.g., session was deleted between calls), events log a `WARNING` but are **not** persisted. No exception is raised.
 
 This is the most dangerous silent failure in the pipeline — it causes **silent data loss**. Events appear to succeed but vanish on reload.
 
-### [ ] Toolset Auth Resolution
+### Toolset Auth Resolution
 
 `ValueError` from `CredentialManager.get_auth_credential()` is caught and swallowed. A warning is logged, and the toolset proceeds without authentication.
 
@@ -137,7 +137,7 @@ The tool will likely fail later when it tries to call the authenticated API. Tha
 
 ## Error Handling Patterns
 
-### [ ] Recommended Pattern
+### Recommended Pattern
 
 ```python
 from google.adk.agents.run_config import LlmCallsLimitExceededError
@@ -169,7 +169,7 @@ async def handle_model_error(
 
 agent = LlmAgent(
     name="my_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     on_model_error_callback=handle_model_error,
     on_tool_error_callback=my_tool_error_handler,
 )

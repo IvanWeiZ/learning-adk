@@ -51,7 +51,7 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 
 `@final` means subclasses must **not** override `run_async` — only `_run_async_impl`.
 
-### [ ] BaseAgent Fields
+### BaseAgent Fields
 
 ```python
 name: str               # must be a valid Python identifier, unique in tree
@@ -77,7 +77,7 @@ async def _run_async_impl(ctx):
         yield event
 ```
 
-### [ ] Which flow does it use?
+### Which flow does it use?
 
 ```python
 @property
@@ -88,7 +88,7 @@ def _llm_flow(self) -> BaseLlmFlow:
         return AutoFlow()     # handles agent transfer/delegation
 ```
 
-### [ ] Key Fields
+### Key Fields
 
 ```python
 model: Union[str, BaseLlm]  # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
@@ -131,7 +131,7 @@ planner: Optional[BasePlanner]   # step-by-step planning / thinking
 code_executor: Optional[BaseCodeExecutor]  # run generated code blocks
 ```
 
-### [ ] Callbacks on LlmAgent
+### Callbacks on LlmAgent
 
 LlmAgent adds finer-grained hooks compared to BaseAgent:
 
@@ -163,7 +163,7 @@ def on_tool_error_callback(
 ) -> Optional[dict]: ...
 ```
 
-### [ ] Key Methods
+### Key Methods
 
 ```python
 @classmethod
@@ -228,3 +228,4 @@ The LLM in `root_agent` can say "transfer to search_agent", which triggers `Even
 - [`agents/parallel_agent.py`](../adk-python/src/google/adk/agents/parallel_agent.py) — parallel composition
 - [`agents/sequential_agent.py`](../adk-python/src/google/adk/agents/sequential_agent.py) — sequential composition
 - [`agents/callback_context.py`](../adk-python/src/google/adk/agents/callback_context.py) — context passed to callbacks
+- [21-planners.md](21-planners.md) — BuiltInPlanner and PlanReActPlanner deep dive

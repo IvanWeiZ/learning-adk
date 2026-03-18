@@ -45,7 +45,7 @@ runner = Runner(
 
 ## Key Methods
 
-### [ ] `run_async` — Text/Chat Mode
+### `run_async` — Text/Chat Mode
 
 ```python
 async def run_async(
@@ -72,7 +72,7 @@ user message event
   → final agent response event (partial=False)
 ```
 
-### [ ] `run_live` — Audio/Video Mode
+### `run_live` — Audio/Video Mode
 
 ```python
 async def run_live(
@@ -85,7 +85,7 @@ async def run_live(
 
 Bidirectional streaming for real-time audio/video (Gemini Live API). Uses a queue instead of a single message.
 
-### [ ] `run` — Sync Wrapper
+### `run` — Sync Wrapper
 
 ```python
 def run(...) -> Generator[Event, None, None]:
@@ -175,3 +175,5 @@ This prevents `Session.events` from growing unboundedly in long conversations.
 - [`agents/invocation_context.py`](../adk-python/src/google/adk/agents/invocation_context.py) — context object Runner creates
 - [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) — session persistence
 - [`apps/compaction.py`](../adk-python/src/google/adk/apps/compaction.py) — event compaction logic
+- [17-session-service-lifecycle.md](17-session-service-lifecycle.md) — Session service call timeline and latency optimization
+- [18-error-reference.md](18-error-reference.md) — Error reference (SessionNotFoundError, LlmCallsLimitExceededError)

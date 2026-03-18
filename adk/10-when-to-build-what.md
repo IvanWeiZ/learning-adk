@@ -8,7 +8,7 @@ A decision guide for every extensibility point in ADK. Each section answers: **w
 
 The most common concrete scenarios and the exact ADK component that solves each one.
 
-### [ ] Tools
+### Tools
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -29,7 +29,7 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Tool needs user OAuth tokens (e.g. Google Drive, GitHub) | `AuthenticatedFunctionTool` wraps any callable with the full OAuth flow. When credentials are missing, the invocation pauses for user authorization. See [20-auth.md](20-auth.md). |
 | Multiple independent API calls in one turn | Automatic. When the LLM returns multiple function calls in a single response, ADK runs them concurrently via `asyncio.gather`. No configuration needed. Don't confuse with `ParallelAgent` (concurrent sub-agents across invocations). |
 
-### [ ] Agent Callbacks (single-agent hooks)
+### Agent Callbacks (single-agent hooks)
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -46,7 +46,7 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Normalize/clean a tool's return value before the LLM sees it | `after_tool_callback` → return transformed dict |
 | Alert on-call when a tool raises an exception | `on_tool_error_callback` → send alert, return fallback dict |
 
-### [ ] Plugins (app-wide hooks)
+### Plugins (app-wide hooks)
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -57,7 +57,7 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Enforce a global system prompt added to every LLM call | `BasePlugin` with `before_model_callback` |
 | Clean up DB connections when the server shuts down | `BasePlugin.close()` |
 
-### [ ] Agent Composition
+### Agent Composition
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -70,7 +70,7 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | Expose an ADK agent as a remote service for other systems | `to_a2a(agent)` creates a Starlette ASGI app implementing the A2A protocol. |
 | Consume a remote agent as a sub-agent | `RemoteA2aAgent(agent_card=...)` as a drop-in `sub_agent`. |
 
-### [ ] Custom Agents
+### Custom Agents
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -79,7 +79,7 @@ The most common concrete scenarios and the exact ADK component that solves each 
 | An agent that calls an external orchestration API and streams its events back | `BaseAgent` subclass |
 | Use a non-Gemini model (OpenAI, Anthropic, etc.) | `LiteLlm` adapter supports 100+ providers via `'provider/model-name'` format (e.g., `'openai/gpt-4o'`). For fully custom models, subclass `BaseLlm`, implement `generate_content_async()`, and register via `LLMRegistry.register(MyLlm)`. See [05-models.md](05-models.md). |
 
-### [ ] Runtime & Configuration
+### Runtime & Configuration
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -134,18 +134,18 @@ I need to...
 
 **TL;DR** — The default. Wrap any Python function. ADK auto-generates the schema from type hints and docstrings.
 
-### [ ] When to use
+### When to use
 - The tool is a simple, stateless function
 - No cleanup, no connection pooling, no long-running behavior
 - You want zero boilerplate
 
-### [ ] When NOT to use
+### When NOT to use
 - You need custom LLM schema (`_get_declaration`) not derivable from type hints
 - The tool is long-running (`is_long_running=True`)
 - The tool needs to modify the `LlmRequest` before it reaches the model
 - You're grouping many tools together dynamically
 
-### [ ] How to build
+### How to build
 
 ```python
 # Sync function — ADK wraps it in FunctionTool automatically
@@ -193,17 +193,17 @@ agent = LlmAgent(
 
 **TL;DR** — When you need full control: custom schema, long-running behavior, or request-level mutation.
 
-### [ ] When to use
+### When to use
 - Need `is_long_running=True` (returns operation ID, finishes asynchronously) — prefer `LongRunningFunctionTool` for simple cases; use `BaseTool` subclass only when you also need a custom schema. The same pause mechanism supports human-in-the-loop approval (invocation pauses, user's next message carries the approval).
 - Need a hand-crafted `FunctionDeclaration` (e.g. complex nested schema, optional fields, enums)
 - Need to modify the `LlmRequest` before it's sent (e.g. inject a special header or flag into the request)
 - Need `custom_metadata` for manifest or tool discovery
 - The tool is a built-in model capability (like `google_search`) that doesn't need `run_async`
 
-### [ ] When NOT to use
+### When NOT to use
 - A plain function works — don't subclass just for the sake of it
 
-### [ ] How to build
+### How to build
 
 ```python
 from google.adk.tools.base_tool import BaseTool
@@ -250,16 +250,16 @@ class ExportReportTool(BaseTool):
 
 **TL;DR** — When you have a collection of tools that is dynamic, context-dependent, or backed by an external source (REST API, MCP server, database schema).
 
-### [ ] When to use
+### When to use
 - Tools are discovered at runtime (OpenAPI spec, database tables, MCP manifest)
 - The set of tools changes based on user/session/permissions
 - You need a single `close()` for cleanup (HTTP connection pool, subprocess)
 - You want a `tool_filter` or `tool_name_prefix` applied across all tools
 
-### [ ] When NOT to use
+### When NOT to use
 - You have a fixed, known list of tools — just pass them as `tools=[...]` on the agent
 
-### [ ] How to build
+### How to build
 
 ```python
 from google.adk.tools.base_toolset import BaseToolset
@@ -301,7 +301,7 @@ agent = LlmAgent(
 
 **TL;DR** — Hooks on a **specific agent** for before/after its run. Defined inline on the agent, not reusable across agents.
 
-### [ ] Callback map
+### Callback map
 
 ```
 before_agent_callback(callback_context)
@@ -347,7 +347,7 @@ on_tool_error_callback(tool, args, tool_context, error)
     → return None    → re-raise the error
 ```
 
-### [ ] When to use each
+### When to use each
 
 | Callback | Use for |
 |----------|---------|
@@ -360,11 +360,11 @@ on_tool_error_callback(tool, args, tool_context, error)
 | `after_tool_callback` | Result transformation, logging, caching tool results |
 | `on_tool_error_callback` | Graceful degradation, fallback data, error alerting |
 
-### [ ] When NOT to use agent callbacks
+### When NOT to use agent callbacks
 - You need the same behavior on **all** agents → use a Plugin instead
 - You want to observe events at the Runner level → use a Plugin's `on_event_callback`
 
-### [ ] How to build
+### How to build
 
 ```python
 from google.adk.agents import LlmAgent
@@ -416,16 +416,16 @@ agent = LlmAgent(
 
 **TL;DR** — Like agent callbacks but **app-wide**: runs for every agent in the tree. Defined once, applied everywhere.
 
-### [ ] When to use
+### When to use
 - Cross-cutting concerns: logging, tracing, rate limiting, safety guardrails
 - You want the same `before_model_callback` behavior on every agent without repeating it
 - You need Runner-level hooks (`before_run_callback`, `after_run_callback`, `on_event_callback`)
 
-### [ ] When NOT to use
+### When NOT to use
 - Behavior is specific to one agent → use agent callbacks instead (scoped, no coupling)
 - Very simple single-agent app → callbacks are simpler
 
-### [ ] Plugin hooks (superset of agent callbacks)
+### Plugin hooks (superset of agent callbacks)
 
 ```python
 class BasePlugin(ABC):
@@ -454,7 +454,7 @@ class BasePlugin(ABC):
 
 **Execution order:** Plugins run **before** agent callbacks. If a plugin returns a non-`None` value, all subsequent plugins and agent callbacks are skipped.
 
-### [ ] How to build
+### How to build
 
 ```python
 import logging
@@ -519,16 +519,16 @@ runner = Runner(app=app, session_service=session_service)
 
 **TL;DR** — Build a fully custom execution loop when none of the built-in agent types fit.
 
-### [ ] When to use
+### When to use
 - You need control flow that `LlmAgent`, `SequentialAgent`, `LoopAgent`, `ParallelAgent` can't express
 - You are building a non-LLM agent (rules engine, deterministic pipeline, external orchestrator)
 - You want to wrap an external agent framework (LangGraph, CrewAI, etc.) as an ADK agent
 
-### [ ] When NOT to use
+### When NOT to use
 - An `LlmAgent` with the right tools and instruction handles it → don't over-engineer
 - You only need composition → use `SequentialAgent` / `LoopAgent` / `ParallelAgent`
 
-### [ ] How to build
+### How to build
 
 ```python
 from google.adk.agents.base_agent import BaseAgent
@@ -587,7 +587,7 @@ rules_agent = RulesAgent(
 
 These are **not subclassed** — you instantiate them directly with `sub_agents`.
 
-### [ ] SequentialAgent — run sub-agents one after another
+### SequentialAgent — run sub-agents one after another
 
 **Use when:** Pipeline stages that must run in order, each passing output to the next via session state.
 
@@ -613,7 +613,7 @@ pipeline = SequentialAgent(
 
 ---
 
-### [ ] ParallelAgent — run sub-agents concurrently
+### ParallelAgent — run sub-agents concurrently
 
 **Use when:** Independent tasks that don't depend on each other's output. Results are merged into the session and a downstream agent synthesizes them.
 
@@ -647,7 +647,7 @@ full_pipeline = SequentialAgent(
 
 ---
 
-### [ ] LoopAgent — repeat until escalate or max_iterations
+### LoopAgent — repeat until escalate or max_iterations
 
 **Use when:** Iterative refinement, polling, retry loops, or any "keep going until done" pattern.
 
@@ -744,7 +744,7 @@ The LLM calls the hidden `transfer_to_agent` function. `AutoFlow` intercepts it 
 
 ---
 
-### [ ] Use Case 1 — Parse the User Message, Enrich with API Context, Feed Only Enriched Context to the Responder Agent
+### Use Case 1 — Parse the User Message, Enrich with API Context, Feed Only Enriched Context to the Responder Agent
 
 **Scenario:**
 The user sends a raw message like `"abc media_id:1"`. You want to:
@@ -775,7 +775,7 @@ Additional context for the media:
 
 ---
 
-#### [ ] How it works: `include_contents="none"` is the key
+#### How it works: `include_contents="none"` is the key
 
 `LlmAgent` has a field `include_contents: Literal["default", "none"]`.
 
@@ -790,7 +790,7 @@ Stage 2 is completely isolated. It reads only what stage 1 wrote to state.
 
 ---
 
-#### [ ] Three Options for Stage 1 (the extraction step)
+#### Three Options for Stage 1 (the extraction step)
 
 The responder agent is always the same. What varies is how you do the extraction.
 
@@ -1060,7 +1060,7 @@ agent = LlmAgent(
 
 ---
 
-#### [ ] Comparison
+#### Comparison
 
 | | Option A: `before_agent_callback` | Option B: `SequentialAgent` | Option C: `before_model_callback` |
 |--|-----------------------------------|------------------------------|------------------------------------|
@@ -1076,7 +1076,7 @@ agent = LlmAgent(
 
 ---
 
-#### [ ] Data Flow
+#### Data Flow
 
 ```
 User sends: "abc media_id:1"

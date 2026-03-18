@@ -4,7 +4,7 @@
 
 ---
 
-## [x] What It Is
+## What It Is
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 `Event` is the single shared data type that flows through the entire ADK system. Every observable action produces an Event:
@@ -19,7 +19,7 @@ A `Session` is essentially just an ordered list of Events. Everything else in th
 
 ---
 
-## [x] Class Hierarchy
+## Class Hierarchy
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```
@@ -34,7 +34,7 @@ pydantic.BaseModel
 
 ---
 
-## [x] Key Fields
+## Key Fields
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```python
@@ -62,7 +62,7 @@ class Event(LlmResponse):
 
 ---
 
-## [x] EventActions — The Side-Effect Envelope
+## EventActions — The Side-Effect Envelope
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 `EventActions` carries all side-effects that an event triggers. Stored on `event.actions`.
@@ -88,7 +88,7 @@ class EventActions(BaseModel):
 
 ---
 
-## [x] Key Methods on Event
+## Key Methods on Event
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```python
@@ -111,7 +111,7 @@ event.has_trailing_code_execution_result() -> bool
 
 ---
 
-## [x] The Branch Field
+## The Branch Field
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 In a multi-agent tree, sibling agents should not see each other's conversation history. The `branch` field encodes the path from root to the current agent:
@@ -124,7 +124,7 @@ When building LLM context, the flow filters events by branch so each agent only 
 
 ---
 
-## [x] How Events Flow
+## How Events Flow
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 ```
@@ -149,7 +149,7 @@ When building LLM context, the flow filters events by branch so each agent only 
 
 ---
 
-## [x] Related Files
+## Related Files
 <!-- completed: 2026-03-18T03:27:24.773Z -->
 
 - [`events/event_actions.py`](../adk-python/src/google/adk/events/event_actions.py) — `EventActions` definition

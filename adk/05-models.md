@@ -4,13 +4,13 @@
 
 ---
 
-## [ ] What It Is
+## What It Is
 
 The `models/` package is a thin adapter layer between ADK's internal types (`LlmRequest`, `LlmResponse`) and various LLM providers (Gemini, Anthropic, any LiteLLM-supported provider). It hides all provider-specific SDK calls behind a single interface.
 
 ---
 
-## [ ] Class Hierarchy
+## Class Hierarchy
 
 ```
 BaseLlm  (base_llm.py)   — abstract interface
@@ -21,7 +21,7 @@ BaseLlm  (base_llm.py)   — abstract interface
 
 ---
 
-## [ ] BaseLlm — The Interface
+## BaseLlm — The Interface
 
 ```python
 class BaseLlm(BaseModel):
@@ -52,7 +52,7 @@ class BaseLlm(BaseModel):
 
 ---
 
-## [ ] Streaming Contract
+## Streaming Contract
 
 `generate_content_async` with `stream=True` yields:
 
@@ -69,7 +69,7 @@ Function calls, thoughts, and blobs follow the same pattern — they can arrive 
 
 ---
 
-## [ ] LLMRegistry — Auto-Dispatch
+## LLMRegistry — Auto-Dispatch
 
 `LLMRegistry` maps model name strings to the correct `BaseLlm` subclass using regex matching:
 
@@ -91,7 +91,7 @@ llm = LLMRegistry.new_llm('gemini-2.5-flash')
 
 ---
 
-## [ ] LlmRequest
+## LlmRequest
 
 The request object assembled by the flow before calling the model:
 
@@ -116,7 +116,7 @@ class LlmRequest:
 
 ---
 
-## [ ] LlmResponse
+## LlmResponse
 
 The response object returned by the model:
 
@@ -136,7 +136,7 @@ class LlmResponse:
 
 ---
 
-## [ ] Default Model
+## Default Model
 
 ```python
 LlmAgent.DEFAULT_MODEL = 'gemini-2.5-flash'
@@ -152,7 +152,7 @@ Model inheritance: if `model = ''` on an agent, it walks up `parent_agent` until
 
 ---
 
-## [ ] Adding a Custom Adapter
+## Adding a Custom Adapter
 
 ```python
 from google.adk.models.base_llm import BaseLlm
@@ -173,7 +173,7 @@ LLMRegistry.register(MyLlm)
 
 ---
 
-## [ ] Related Files
+## Related Files
 
 - [`models/base_llm.py`](../adk-python/src/google/adk/models/base_llm.py) — abstract interface
 - [`models/registry.py`](../adk-python/src/google/adk/models/registry.py) — model dispatch

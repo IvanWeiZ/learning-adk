@@ -154,7 +154,7 @@ async for event in runner.run_async(...):
 
 ## Step-by-Step Trace
 
-### [ ] Step 0 — Session State Before the Request
+### Step 0 — Session State Before the Request
 
 ```python
 # Session loaded by get_session() — empty for a brand-new conversation
@@ -169,7 +169,7 @@ Session(
 
 ---
 
-### [ ] Step 1 — Runner Entry
+### Step 1 — Runner Entry
 
 **Source:** [`runners.py`](../adk-python/src/google/adk/runners.py)
 
@@ -210,7 +210,7 @@ InvocationContext(
 
 ---
 
-### [ ] Step 2 — Agent Callbacks (before_agent_callback)
+### Step 2 — Agent Callbacks (before_agent_callback)
 
 **Source:** [`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py)
 
@@ -240,7 +240,7 @@ CallbackContext(
 
 ---
 
-### [ ] Step 3 — Build LlmRequest (Preprocess)
+### Step 3 — Build LlmRequest (Preprocess)
 
 **Source:** [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py)
 
@@ -276,7 +276,7 @@ LlmRequest(
 
 ---
 
-### [ ] Step 4 — LLM Call → Function Call Response
+### Step 4 — LLM Call → Function Call Response
 
 **Source:** [`models/gemini_llm.py`](../adk-python/src/google/adk/models/gemini_llm.py)
 
@@ -310,7 +310,7 @@ Event(
 
 ---
 
-### [ ] Step 5 — Tool Dispatch
+### Step 5 — Tool Dispatch
 
 **Source:** [`flows/llm_flows/functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py)
 
@@ -356,7 +356,7 @@ Event(
 
 ---
 
-### [ ] Step 6 — Rebuild LlmRequest (Loop Iteration 2)
+### Step 6 — Rebuild LlmRequest (Loop Iteration 2)
 
 The flow loops. Session now has 3 events. A new `LlmRequest` includes the full history:
 
@@ -380,7 +380,7 @@ LlmRequest(
 
 ---
 
-### [ ] Step 7 — Final LLM Response (Streaming)
+### Step 7 — Final LLM Response (Streaming)
 
 The LLM has the tool result and streams the answer token by token:
 
@@ -419,7 +419,7 @@ Event(
 
 ---
 
-### [ ] Step 8 — Session After the Request
+### Step 8 — Session After the Request
 
 ```python
 Session(
@@ -513,7 +513,7 @@ Caller       Runner          BaseAgent      BaseLlmFlow     GeminiLLM    get_wea
 
 All callbacks follow the same execution pattern: **plugins run first** (stop at first non-None), then the agent's own list (stop at first non-None). Each can be a single function or a `list`.
 
-### [ ] Signatures and Return Effects
+### Signatures and Return Effects
 
 ```python
 # ── AGENT ────────────────────────────────────────────────────────────────────
@@ -551,7 +551,7 @@ def after_tool_callback(tool: BaseTool, args: dict[str, Any], tool_context: Tool
 def on_tool_error_callback(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, error: Exception) -> Optional[dict]: ...
 ```
 
-### [ ] Quick Reference
+### Quick Reference
 
 | Callback | None | Non-None |
 |---|---|---|
@@ -564,7 +564,7 @@ def on_tool_error_callback(tool: BaseTool, args: dict[str, Any], tool_context: T
 | `after_tool_callback` | use actual result | replace with returned `dict` |
 | `on_tool_error_callback` | re-raise | suppress, use returned `dict` |
 
-### [ ] Plugin-Only Callbacks
+### Plugin-Only Callbacks
 
 Plugins intercept all eight above plus four more:
 
@@ -581,7 +581,7 @@ Plugins intercept all eight above plus four more:
 
 **Source:** [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py)
 
-### [ ] Session Calls Per Invocation
+### Session Calls Per Invocation
 
 ```
 run_async()
@@ -598,7 +598,7 @@ run_async()
 
 Calls 4+ are the hot path. A tool-call turn generates 3–4+ `append_event` calls minimum.
 
-### [ ] What `append_event()` Does
+### What `append_event()` Does
 
 ```python
 async def append_event(session: Session, event: Event) -> Event:
@@ -622,7 +622,7 @@ async def append_event(session: Session, event: Event) -> Event:
     return event
 ```
 
-### [ ] State Key Scopes
+### State Key Scopes
 
 | Prefix | Scope | Persisted? | Notes |
 |---|---|---|---|
@@ -639,7 +639,7 @@ ctx.state["user:prefs"] = {"theme": "dark"}     # across all sessions for this u
 ctx.state["app:config"] = {"max_results": 10}   # all users of the app
 ```
 
-### [ ] Backend Comparison
+### Backend Comparison
 
 | | `InMemorySessionService` | `DatabaseSessionService` |
 |---|---|---|
@@ -655,11 +655,11 @@ ctx.state["app:config"] = {"max_results": 10}   # all users of the app
 
 ## Variations
 
-### [ ] LLM calls two tools in one response
+### LLM calls two tools in one response
 
 `functions.py` receives a single Event with two `FunctionCall` parts, runs both tools (potentially in parallel), then yields a single Event with two `FunctionResponse` parts. The loop continues with both results in the next `LlmRequest`.
 
-### [ ] `output_key="result"` set on the agent
+### `output_key="result"` set on the agent
 
 After the final Event is yielded, `__maybe_save_output_to_state` runs:
 
@@ -669,7 +669,7 @@ event.actions.state_delta["result"] = "The weather in Tokyo is currently 18°C�
 # → applied by append_event() → session.state["result"] is now set
 ```
 
-### [ ] Sub-agent transfer (AutoFlow)
+### Sub-agent transfer (AutoFlow)
 
 The LLM returns a `transfer_to_agent` function call. `auto_flow.py` intercepts it, finds the target agent in the tree, and calls `sub_agent.run_async(ctx)`. The sub-agent runs its own full lifecycle (its own loop), emitting events with its own `author` and a child `branch`.
 

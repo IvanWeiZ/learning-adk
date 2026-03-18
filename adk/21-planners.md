@@ -186,7 +186,7 @@ from google.adk.planners import PlanReActPlanner
 
 agent = Agent(
     name="data_analyst",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     instruction="You are a data analyst. Answer questions using the available tools.",
     tools=[query_database, create_chart, export_csv],
     planner=PlanReActPlanner(),
@@ -281,7 +281,7 @@ class MyCustomPlanner(BasePlanner):
 
 agent = Agent(
     name="custom_planner_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     planner=MyCustomPlanner(),
     ...
 )

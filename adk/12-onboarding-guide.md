@@ -256,7 +256,7 @@ def view_cart(tool_context: ToolContext) -> str:
 
 ## 6. Multi-Agent Systems (The Real Power)
 
-### [ ] Pattern 1: Agent Transfer (LLM Decides Routing)
+### Pattern 1: Agent Transfer (LLM Decides Routing)
 
 ```python
 from google.adk import Agent
@@ -320,7 +320,7 @@ User: "Find a flight to Tokyo"
 
 **Key insight:** ADK automatically injects a `transfer_to_agent` tool into agents that have sub-agents. The LLM decides when to transfer based on the agent `description` fields.
 
-### [ ] Pattern 2: Sequential Pipeline (Fixed Order)
+### Pattern 2: Sequential Pipeline (Fixed Order)
 
 ```python
 from google.adk import Agent
@@ -381,7 +381,7 @@ User: "I want a large pepperoni pizza"
 └────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern 3: Parallel Execution (Concurrent Agents)
+### Pattern 3: Parallel Execution (Concurrent Agents)
 
 ```python
 from google.adk import Agent
@@ -452,7 +452,7 @@ User: "I love how fast the new API is!"
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern 4: Loop Agent (Iterate Until Done)
+### Pattern 4: Loop Agent (Iterate Until Done)
 
 ```python
 from google.adk import Agent
@@ -497,7 +497,7 @@ root_agent = LoopAgent(
 
 ## 7. Running Your Agent
 
-### [ ] Quick Debug Mode
+### Quick Debug Mode
 
 ```python
 from google.adk.runners import InMemoryRunner
@@ -515,7 +515,7 @@ await runner.run_debug([
 ])
 ```
 
-### [ ] Production Setup
+### Production Setup
 
 ```python
 from google.adk.runners import Runner

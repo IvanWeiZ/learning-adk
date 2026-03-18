@@ -18,7 +18,7 @@ This guide covers the most common ways sessions and events leak across user boun
 
 ## 1. Session Isolation — The #1 Source of Privacy Incidents
 
-### [ ] The Core Rule
+### The Core Rule
 
 **Every `get_session` and `create_session` call MUST include the correct `user_id`.** ADK uses the `(app_name, user_id, session_id)` triple as the session key. If you pass the wrong `user_id`, you either get someone else's session or create a session under the wrong owner.
 
@@ -46,7 +46,7 @@ session = await session_service.get_session(
 )
 ```
 
-### [ ] What Happens When user_id Is Wrong
+### What Happens When user_id Is Wrong
 
 ```
 Scenario: User A's request arrives with user_id="user_b" (due to a bug)
@@ -67,7 +67,7 @@ Scenario: User A's request arrives with user_id="user_b" (due to a bug)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Warning: list_sessions Can List ALL Users' Sessions
+### Warning: list_sessions Can List ALL Users' Sessions
 
 The `BaseSessionService.list_sessions()` accepts an **optional** `user_id`. If you call it without a `user_id`, it returns sessions for ALL users:
 
@@ -90,7 +90,7 @@ sessions = await session_service.list_sessions(
 
 **Never expose `list_sessions` without filtering by `user_id`** in any user-facing API.
 
-### [ ] Runner Has No Built-In Authorization
+### Runner Has No Built-In Authorization
 
 This is critical to understand: **`Runner` performs zero authentication or authorization.** It blindly passes `user_id` to the session service. From `runners.py`:
 
@@ -111,7 +111,7 @@ async def run_async(
 
 **This means your application layer is the ONLY security boundary.** If a bug in your API handler passes the wrong `user_id` to `runner.run_async()`, ADK will happily serve the wrong user's session. There are no guardrails inside ADK itself.
 
-### [ ] Defense: Validate user_id at the Gateway
+### Defense: Validate user_id at the Gateway
 
 ```python
 from fastapi import Depends, HTTPException
@@ -144,7 +144,7 @@ async def chat(
 
 ## 2. Session ID Guessability — Don't Let Users Enumerate Sessions
 
-### [ ] The Problem
+### The Problem
 
 If session IDs are sequential or predictable, an attacker can guess other users' session IDs:
 
@@ -172,7 +172,7 @@ async def get_session(session_id: str):
     )
 ```
 
-### [ ] Defense: Use UUIDs and Always Check Ownership
+### Defense: Use UUIDs and Always Check Ownership
 
 ```python
 import uuid
@@ -220,7 +220,7 @@ But relying on this alone is insufficient — always use unpredictable IDs as de
 
 ADK state scoping is the primary mechanism for controlling data visibility between users. Picking the wrong prefix is one of the most common causes of cross-user data leakage. Understand these boundaries deeply before writing any state.
 
-### [ ] How State Scoping Actually Works (Source Code)
+### How State Scoping Actually Works (Source Code)
 
 Understanding the implementation is critical for reasoning about security. ADK does **not** store all state in one flat dict — it splits state into three separate storage locations based on prefix:
 
@@ -280,7 +280,7 @@ def _merge_state(app_state, user_state, session_state) -> dict[str, Any]:
 
 **Security implication:** The `app:` row is a single shared row per application. A write to `app:maintenance_mode` from User A's session modifies the exact same database row that User B reads from. There is no per-user isolation at the storage level for `app:` state.
 
-### [ ] The Four Scopes and Their Security Implications
+### The Four Scopes and Their Security Implications
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -319,7 +319,7 @@ def _merge_state(app_state, user_state, session_state) -> dict[str, Any]:
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Visibility Matrix
+### Visibility Matrix
 
 ```
 ┌──────────────────────┬───────────┬───────────┬──────────┬───────────┐
@@ -335,7 +335,7 @@ def _merge_state(app_state, user_state, session_state) -> dict[str, Any]:
 * temp: visible within the same request/invocation only, not across turns
 ```
 
-### [ ] Decision Tree: Which Prefix to Use
+### Decision Tree: Which Prefix to Use
 
 ```
 What kind of data are you storing?
@@ -363,7 +363,7 @@ What kind of data are you storing?
     └── temp:   (in-memory, not persisted)
 ```
 
-### [ ] Best Practice Examples
+### Best Practice Examples
 
 ```python
 # ─── TEMP: for secrets and transient data ─────────────────
@@ -395,7 +395,7 @@ tool_context.state["app:model_version"] = "2.5"            # ✅ App-wide config
 tool_context.state["app:announcement"] = "System upgrade tonight"  # ✅ Broadcast
 ```
 
-### [ ] Common Mistakes That Cause Data Leaks
+### Common Mistakes That Cause Data Leaks
 
 ```python
 # ❌ CATASTROPHIC: User data in app: scope
@@ -431,7 +431,7 @@ def tool_a(tool_context: ToolContext) -> str:
     return "Here are your results..."
 ```
 
-### [ ] The app: State Trap in Multi-Tenant Systems
+### The app: State Trap in Multi-Tenant Systems
 
 `app:` state is shared across every user in the application. In multi-tenant setups, this means across ALL tenants:
 
@@ -458,7 +458,7 @@ tool_context.state["app:tenant_a:billing_plan"] = "enterprise"
 # → Better approach: use separate app_name per tenant (see Section 9)
 ```
 
-### [ ] How temp: State Works Under the Hood
+### How temp: State Works Under the Hood
 
 `temp:` is the only scope that is **never persisted** to any storage backend. Here's exactly what happens in the source code:
 
@@ -499,7 +499,7 @@ def _trim_temp_delta_state(self, event):
 - On the next `run_async()` call, `get_session()` loads from storage — `temp:` keys are gone
 - This makes `temp:` the **safest scope for secrets** — they cannot leak through DB backups, event logs, or session dumps
 
-### [ ] State Prefix Quick Reference
+### State Prefix Quick Reference
 
 ```
 ┌────────────┬──────────────────────┬──────────────────────────────────┐
@@ -516,7 +516,7 @@ def _trim_temp_delta_state(self, event):
 
 ## 4. Event History Leaks in Multi-Agent Systems
 
-### [ ] The Branch Isolation Problem
+### The Branch Isolation Problem
 
 In multi-agent trees, events carry a `branch` field that controls visibility. If you manually construct events or bypass the normal flow, you can accidentally make events visible to wrong agents — and their users.
 
@@ -540,7 +540,7 @@ event = Event(
 )
 ```
 
-### [ ] Cross-User Event Visibility via Shared Sessions
+### Cross-User Event Visibility via Shared Sessions
 
 ```python
 # ❌ DANGEROUS: Two users sharing a session
@@ -561,7 +561,7 @@ session = await session_service.get_session(
 
 ## 5. Sensitive Data in Event Content — What Gets Persisted
 
-### [ ] Everything in Events Is Persisted
+### Everything in Events Is Persisted
 
 Every event yielded by an agent is passed to `session_service.append_event()` and stored permanently. This includes:
 
@@ -581,7 +581,7 @@ What gets stored in session.events (verified from event_actions.py):
 
 **The `requested_auth_configs` field is especially dangerous.** When a tool requests OAuth credentials, the `EventActions` stores `dict[str, AuthConfig]` keyed by function call ID. These auth configs are **persisted to your session storage backend** as part of the event. If your database isn't encrypted at rest, auth credentials sit in plaintext.
 
-### [ ] Common Leak Vectors
+### Common Leak Vectors
 
 ```python
 # ❌ DANGEROUS: Tool that returns full database records with PII
@@ -612,7 +612,7 @@ def lookup_customer(customer_id: str) -> str:
     return str(safe_record)
 ```
 
-### [ ] Tool Arguments Are Also Stored
+### Tool Arguments Are Also Stored
 
 ```python
 # ❌ DANGEROUS: Tool that accepts sensitive data as arguments
@@ -634,7 +634,7 @@ def process_payment(payment_method_id: str, amount: float) -> str:
 
 ## 6. Session Service Backend Security
 
-### [ ] InMemorySessionService — Development Only
+### InMemorySessionService — Development Only
 
 ```python
 # ❌ DANGEROUS: Using InMemorySessionService in production
@@ -650,7 +650,7 @@ runner = Runner(
 # - All sessions in one Python process's memory
 ```
 
-### [ ] DatabaseSessionService — Production Considerations
+### DatabaseSessionService — Production Considerations
 
 ```python
 # ✅ Production setup with security considerations
@@ -691,7 +691,7 @@ SQLite does **not** support row-level locking, so concurrent writes from multipl
 
 ## 7. Session Lifecycle — Creation, Access, and Deletion
 
-### [ ] Don't Reuse Sessions Across Users
+### Don't Reuse Sessions Across Users
 
 ```python
 # ❌ DANGEROUS: Reassigning a session to a different user
@@ -705,7 +705,7 @@ session = await session_service.get_session(
 # if you build a lookup layer on top, watch out for this pattern.
 ```
 
-### [ ] Implement Session Expiry
+### Implement Session Expiry
 
 ADK does not automatically delete old sessions. In production, stale sessions containing sensitive data sit in storage indefinitely unless you clean them up:
 
@@ -739,7 +739,7 @@ async def cleanup_expired_sessions(
                 )
 ```
 
-### [ ] User Data Deletion (GDPR / Right to Be Forgotten)
+### User Data Deletion (GDPR / Right to Be Forgotten)
 
 When a user requests data deletion, you must delete all their sessions:
 
@@ -767,7 +767,7 @@ async def delete_all_user_data(
 
 ## 8. Callback and Plugin Security
 
-### [ ] Callbacks Can Leak Data Across Sessions
+### Callbacks Can Leak Data Across Sessions
 
 ```python
 # ❌ DANGEROUS: Callback with closure over mutable shared state
@@ -789,7 +789,7 @@ async def my_after_agent(callback_context):
     return None
 ```
 
-### [ ] before_model_callback — Don't Log Full Requests
+### before_model_callback — Don't Log Full Requests
 
 ```python
 # ❌ DANGEROUS: Logging the full LLM request (contains conversation history)
@@ -810,7 +810,7 @@ async def my_before_model(callback_context, llm_request):
 
 ## 9. Multi-Tenant Architecture Patterns
 
-### [ ] Pattern 1: One App Per Tenant (Strongest Isolation)
+### Pattern 1: One App Per Tenant (Strongest Isolation)
 
 ```
 Tenant A: app_name="app_tenant_a"  →  Separate DB / schema
@@ -820,7 +820,7 @@ Pros: Complete isolation, tenant-specific configuration
 Cons: More infrastructure, harder to manage
 ```
 
-### [ ] Pattern 2: Shared App, User-Level Isolation (Common)
+### Pattern 2: Shared App, User-Level Isolation (Common)
 
 ```
 All tenants: app_name="my_app"
@@ -841,7 +841,7 @@ def get_namespaced_user_id(tenant_id: str, user_id: str) -> str:
 # are the same user in ADK — they share user: scoped state!
 ```
 
-### [ ] Pattern 3: Separate Session Services Per Tenant
+### Pattern 3: Separate Session Services Per Tenant
 
 ```python
 # ✅ Strongest isolation with shared infrastructure
@@ -911,7 +911,7 @@ def get_session_service(tenant_id: str) -> BaseSessionService:
 
 ## 11. Incident Scenarios and Mitigations
 
-### [ ] Scenario 1: User Sees Another User's Conversation
+### Scenario 1: User Sees Another User's Conversation
 
 ```
 Root cause: user_id extracted from unverified header instead of auth token.
@@ -919,7 +919,7 @@ Mitigation: Always derive user_id from server-side verified authentication.
 Detection:  Monitor for sessions accessed by multiple IP addresses.
 ```
 
-### [ ] Scenario 2: PII Leaked via Tool Response
+### Scenario 2: PII Leaked via Tool Response
 
 ```
 Root cause: Tool returned full customer record including SSN and email.
@@ -927,7 +927,7 @@ Mitigation: Tools return only the fields the agent needs. Redact at the tool lay
 Detection:  Regex scan on event content for PII patterns (SSN, email, credit card).
 ```
 
-### [ ] Scenario 3: Tenant A Reads Tenant B's Feature Flags
+### Scenario 3: Tenant A Reads Tenant B's Feature Flags
 
 ```
 Root cause: Feature flags stored in app: state in a shared-app multi-tenant setup.
@@ -935,7 +935,7 @@ Mitigation: Use tenant-specific state keys ("app:tenant_a:flags") or separate ap
 Detection:  Audit app: state writes — flag any that contain tenant-specific data.
 ```
 
-### [ ] Scenario 4: Stale Sessions Exposed in Data Breach
+### Scenario 4: Stale Sessions Exposed in Data Breach
 
 ```
 Root cause: No session TTL — 2-year-old conversations still in the database.
@@ -943,7 +943,7 @@ Mitigation: Implement automated session cleanup with configurable retention peri
 Detection:  Periodic report on session age distribution.
 ```
 
-### [ ] Scenario 5: Agent Logs Expose Conversation Content
+### Scenario 5: Agent Logs Expose Conversation Content
 
 ```
 Root cause: before_model_callback logs full LLM requests for debugging.
@@ -957,7 +957,7 @@ Detection:  Scan log output for conversation patterns. Use structured logging wi
 
 ADK includes several safety mechanisms. Understanding what ADK does and doesn't protect helps you know where to add your own defenses.
 
-### [ ] What ADK DOES Protect
+### What ADK DOES Protect
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -994,7 +994,7 @@ ADK includes several safety mechanisms. Understanding what ADK does and doesn't 
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] What ADK Does NOT Protect
+### What ADK Does NOT Protect
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐

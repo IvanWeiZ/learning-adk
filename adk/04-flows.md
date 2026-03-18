@@ -4,7 +4,7 @@
 
 ---
 
-## [ ] What It Is
+## What It Is
 
 `BaseLlmFlow` implements the core **reason-act loop** that drives `LlmAgent`. When `LlmAgent._run_async_impl` is called, it delegates entirely to `self._llm_flow.run_async(ctx)`.
 
@@ -16,7 +16,7 @@ The flow is responsible for:
 
 ---
 
-## [ ] Flow Variants
+## Flow Variants
 
 ```
 BaseLlmFlow  (base_llm_flow.py)  — abstract, implements the loop
@@ -30,7 +30,7 @@ BaseLlmFlow  (base_llm_flow.py)  — abstract, implements the loop
 
 ---
 
-## [ ] The Loop in Detail
+## The Loop in Detail
 
 ```
 BaseLlmFlow.run_async(ctx)
@@ -70,7 +70,7 @@ BaseLlmFlow.run_async(ctx)
 
 ---
 
-## [ ] Request Processors (Preprocessors)
+## Request Processors (Preprocessors)
 
 Each preprocessor implements `BaseLlmRequestProcessor` and mutates the `LlmRequest` before it is sent to the model.
 
@@ -84,7 +84,7 @@ Each preprocessor implements `BaseLlmRequestProcessor` and mutates the `LlmReque
 
 ---
 
-## [ ] Response Processors (Postprocessors)
+## Response Processors (Postprocessors)
 
 Each postprocessor implements `BaseLlmResponseProcessor` and handles the LLM's response.
 
@@ -96,7 +96,7 @@ Each postprocessor implements `BaseLlmResponseProcessor` and handles the LLM's r
 
 ---
 
-## [ ] Tool Execution Inside the Flow
+## Tool Execution Inside the Flow
 
 When the LLM returns a function call:
 
@@ -113,13 +113,13 @@ LLM → FunctionCall(name='search', args={'query': 'ADK'})
 
 ---
 
-## [ ] Live Mode
+## Live Mode
 
 `BaseLlmFlow` also has `run_live(ctx)` for the Gemini Live API (bidirectional audio/video streaming). Instead of `generate_content_async`, it uses `model.connect(llm_request)` to open a persistent `BaseLlmConnection`. The structure is similar but driven by a `LiveRequestQueue` instead of a single message.
 
 ---
 
-## [ ] Auth Flow
+## Auth Flow
 
 When a tool requires OAuth credentials:
 1. Tool calls `tool_context.request_credential(auth_config)`
@@ -129,7 +129,7 @@ When a tool requires OAuth credentials:
 
 ---
 
-## [ ] Related Files
+## Related Files
 
 - [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) — the loop
 - [`flows/llm_flows/single_flow.py`](../adk-python/src/google/adk/flows/llm_flows/single_flow.py) — no-routing variant

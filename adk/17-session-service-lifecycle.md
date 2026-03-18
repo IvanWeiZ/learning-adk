@@ -22,7 +22,7 @@ The session service is ADK's durability backbone. It loads context before agent 
 | `delete_session` | Yes | `async def delete_session(*, app_name, user_id, session_id) -> None` | Deletes a session. |
 | `append_event` | No (concrete) | `async def append_event(session, event) -> Event` | Appends an event to the session. Has a default implementation that subclasses call via `super()`. |
 
-### [ ] The `append_event` Base Implementation
+### The `append_event` Base Implementation
 
 This is the critical method. Every subclass calls `super().append_event()` first:
 
@@ -65,7 +65,7 @@ For a standard `run_async` invocation, here is every point where the session ser
  └─────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Call 1: `get_session` — Fetch session at invocation start
+### Call 1: `get_session` — Fetch session at invocation start
 
 **Where:** `_get_or_create_session()` (called from `run_async` inside `_run_with_trace`)
 
@@ -80,7 +80,7 @@ session = await self.session_service.get_session(
 
 **Why:** The Runner is stateless. Every invocation begins by loading the session (history + state) from the session service. `GetSessionConfig` (from `run_config`) controls how much history is loaded (e.g., `num_recent_events` to limit the context window).
 
-### [ ] Call 2: `create_session` — Auto-create if missing
+### Call 2: `create_session` — Auto-create if missing
 
 **Where:** `_get_or_create_session()`, only when `auto_create_session=True` and `get_session` returned `None`.
 
@@ -92,7 +92,7 @@ session = await self.session_service.create_session(
 
 **Why:** Convenience for development/testing. In production, sessions are typically pre-created. If missing and auto-create is disabled, `SessionNotFoundError` is raised.
 
-### [ ] Call 3: `append_event` — Persist the user's input message
+### Call 3: `append_event` — Persist the user's input message
 
 **Where:** `_append_new_message_to_session()` (called from `_handle_new_message`)
 
@@ -104,7 +104,7 @@ The event has `author='user'` and carries the user's `new_message` content plus 
 
 **Why:** The user's message must be persisted *before* the agent runs, so it appears in the conversation history that the LLM sees.
 
-### [ ] Call 4+: `append_event` — Persist each agent-generated event
+### Call 4+: `append_event` — Persist each agent-generated event
 
 **Where:** `_exec_with_plugin()`, inside the event iteration loop.
 
@@ -117,11 +117,11 @@ if event.partial is not True:
 
 **This is the hot path.** A single user turn can generate 5–20+ events (think: model response → tool call → tool result → model response → another tool call → ...). Each one is an `await` on the session service.
 
-### [ ] Call 5: `append_event` — Plugin early exit
+### Call 5: `append_event` — Plugin early exit
 
 **Where:** `_exec_with_plugin()`, when `before_run` callback returns content.
 
-### [ ] Call 6: `append_event` — Rewind
+### Call 6: `append_event` — Rewind
 
 **Where:** `rewind_async()` — creates a special event with `rewind_before_invocation_id` and a computed `state_delta` that reverses previous state changes.
 
@@ -129,7 +129,7 @@ if event.partial is not True:
 
 ## How State Gets Committed
 
-### [ ] State Scoping
+### State Scoping
 
 The `State` class defines three prefixes:
 
@@ -140,7 +140,7 @@ The `State` class defines three prefixes:
 | `user:` | User-level | Shared across all sessions for a user |
 | `temp:` | Invocation-level | In-memory only, never persisted |
 
-### [ ] The Delta Flow
+### The Delta Flow
 
 ```
 Agent code sets state              State._delta accumulates
@@ -177,7 +177,7 @@ Agent code sets state              State._delta accumulates
 
 If you're okay losing all state on failure — e.g., chatbots, demos, internal tools, stateless interactions — the default `append_event`-on-every-event model is unnecessarily expensive. Here are the strategies, ranked from simplest to most aggressive:
 
-### [ ] Strategy 1: Use InMemorySessionService (Baseline)
+### Strategy 1: Use InMemorySessionService (Baseline)
 
 ```python
 from google.adk.sessions import InMemorySessionService
@@ -192,7 +192,7 @@ runner = Runner(agent=agent, app_name="my_app", session_service=session_service)
 
 **When to use:** This is the right default if you don't need durable sessions. Most demos and development workflows should start here.
 
-### [ ] Strategy 2: Limit Event History with `GetSessionConfig`
+### Strategy 2: Limit Event History with `GetSessionConfig`
 
 ```python
 from google.adk.sessions import GetSessionConfig
@@ -208,7 +208,7 @@ run_config = RunConfig(
 
 **When to use:** Always. Even with InMemorySessionService, limiting event history prevents unbounded memory growth.
 
-### [ ] Strategy 3: Write a No-Op or Batched Session Service
+### Strategy 3: Write a No-Op or Batched Session Service
 
 If `InMemorySessionService` is still too heavy (e.g., the `deepcopy` on `get_session` is showing up in profiles), write a minimal subclass:
 
@@ -244,7 +244,7 @@ class FastSessionService(InMemorySessionService):
 
 **Trade-off:** The Runner and the storage share the same object. Safe if only one coroutine uses the session at a time (which is the normal case).
 
-### [ ] Strategy 4: Batch append_event Writes (Database-Backed Only)
+### Strategy 4: Batch append_event Writes (Database-Backed Only)
 
 If you must use a database but want lower latency, batch event writes:
 
@@ -284,7 +284,7 @@ class BatchingDatabaseSessionService(DatabaseSessionService):
 
 **Trade-off:** Events are only durable after flush. A crash between flushes loses buffered events.
 
-### [ ] Strategy 5: Fire-and-Forget append_event (Most Aggressive)
+### Strategy 5: Fire-and-Forget append_event (Most Aggressive)
 
 If you truly don't care about persistence and want the absolute lowest latency:
 
@@ -354,11 +354,11 @@ Need durable sessions across restarts?
 
 ## Locking and Concurrency
 
-### [ ] InMemorySessionService
+### InMemorySessionService
 
 No locking. The class docstring says: *"not suitable for multi-threaded production environments."* `copy.deepcopy` on `get_session` prevents accidental mutation of internal storage, but concurrent writes will race.
 
-### [ ] DatabaseSessionService
+### DatabaseSessionService
 
 Two layers:
 
@@ -388,7 +388,7 @@ get_session     append(user)   LLM call #1        tool exec    LLM call #2      
 
 **The LLM calls dominate.** Session service latency only matters when it's database-backed. But there are still meaningful wins across the full stack.
 
-### [ ] 1. Model Selection (Biggest Single Lever)
+### 1. Model Selection (Biggest Single Lever)
 
 The LLM call is 80–95% of total latency. Model choice matters more than anything else.
 
@@ -406,7 +406,7 @@ agent = LlmAgent(model="gemini-2.5-flash", ...)
 
 **Tip:** Use a fast model for routing/triage agents, save expensive models for the final response agent.
 
-### [ ] 2. Streaming (Reduce Perceived Latency)
+### 2. Streaming (Reduce Perceived Latency)
 
 ADK streams by default. The Runner yields `partial=True` events as LLM tokens arrive. This doesn't reduce total latency but dramatically improves **time-to-first-token** (perceived responsiveness).
 
@@ -419,7 +419,7 @@ async for event in runner.run_async(...):
 
 **Key insight:** Partial events are free — `append_event` skips them (`if event.partial: return event`). Only the final aggregated event is persisted.
 
-### [ ] 3. Reduce LLM Round-Trips (Tool Call Batching)
+### 3. Reduce LLM Round-Trips (Tool Call Batching)
 
 Each tool call creates a full LLM round-trip: `LLM → tool → LLM`. If the LLM needs 3 tool calls sequentially, that's 4 LLM calls total.
 
@@ -437,7 +437,7 @@ Each tool call creates a full LLM round-trip: `LLM → tool → LLM`. If the LLM
 - Use `output_schema` to force structured output when you don't need tool use
 - Reduce the number of tools visible to the agent (fewer tools = faster LLM decisions)
 
-### [ ] 4. Minimize Tool Execution Time
+### 4. Minimize Tool Execution Time
 
 Tools run synchronously (awaited) in the flow loop. A slow tool blocks the entire turn.
 
@@ -466,7 +466,7 @@ async def search_database(query: str, tool_context: ToolContext) -> list[dict]:
 
 **For I/O-heavy tools:** Consider `LongRunningFunctionTool` which returns immediately with a pending status and completes asynchronously.
 
-### [ ] 5. Limit Conversation History
+### 5. Limit Conversation History
 
 The `contents.py` preprocessor builds the LLM prompt from `session.events`. More events = larger prompt = slower LLM call (both TTFT and total).
 
@@ -486,7 +486,7 @@ app = App(
 
 **Impact:** Reducing from 100 events to 20 can cut LLM latency by 30–50% (fewer input tokens).
 
-### [ ] 6. Simplify Instructions and Tool Schemas
+### 6. Simplify Instructions and Tool Schemas
 
 The `instructions.py` preprocessor injects the system prompt. Large instructions with many variable substitutions slow down both preprocessing and the LLM.
 
@@ -506,7 +506,7 @@ agent = LlmAgent(
 
 **Fewer tools = smaller prompt = faster LLM response.** If you need many tools, use a routing agent that delegates to specialized sub-agents with small tool sets.
 
-### [ ] 7. Skip Callbacks You Don't Need
+### 7. Skip Callbacks You Don't Need
 
 Every callback in the chain is awaited sequentially:
 
@@ -526,7 +526,7 @@ agent = LlmAgent(
 )
 ```
 
-### [ ] 8. Avoid Unnecessary Agent Transfers
+### 8. Avoid Unnecessary Agent Transfers
 
 Agent transfers in `AutoFlow` are expensive: each transfer triggers a new `agent.run_async()` which re-runs all preprocessors and makes a new LLM call.
 
@@ -537,7 +537,7 @@ User → Router Agent (LLM call #1) → transfer → Weather Agent (LLM call #2)
 
 That's 3 LLM calls for what could be 2. Consider whether you really need a router or if one agent can handle the task directly.
 
-### [ ] 9. Use `SingleFlow` When Possible
+### 9. Use `SingleFlow` When Possible
 
 `AutoFlow` (the default) adds agent transfer overhead to every LLM response — it checks for `transfer_to_agent` function calls. If your agent doesn't transfer, force `SingleFlow`:
 
@@ -550,7 +550,7 @@ agent = LlmAgent(
 )
 ```
 
-### [ ] 10. Disable Compaction for Short-Lived Sessions
+### 10. Disable Compaction for Short-Lived Sessions
 
 Compaction (`App` plugin) runs after each invocation to summarize old events. If your sessions are short-lived or you don't need history compression, skip it:
 

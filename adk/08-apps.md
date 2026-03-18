@@ -4,7 +4,7 @@
 
 ---
 
-## [ ] What It Is
+## What It Is
 
 `App` is an optional but recommended wrapper around your root agent. It bundles together:
 - The root agent
@@ -17,7 +17,7 @@ Without `App`, you can pass `agent=` and `app_name=` directly to `Runner`. With 
 
 ---
 
-## [ ] App Fields
+## App Fields
 
 ```python
 class App(BaseModel):
@@ -31,7 +31,7 @@ class App(BaseModel):
 
 ---
 
-## [ ] Basic Usage
+## Basic Usage
 
 ```python
 from google.adk.apps import App
@@ -48,7 +48,7 @@ runner = Runner(app=app, session_service=InMemorySessionService())
 
 ---
 
-## [ ] Plugins
+## Plugins
 
 Plugins are app-wide hooks that run around every agent call, without modifying the agent itself. They implement `BasePlugin`:
 
@@ -78,7 +78,7 @@ app = App(name='my_app', root_agent=agent, plugins=[MyLoggingPlugin()])
 
 ---
 
-## [ ] Event Compaction
+## Event Compaction
 
 For long-running conversations, `Session.events` can grow to thousands of entries. Compaction summarizes old events into a single compact event, keeping the list manageable while preserving context.
 
@@ -105,7 +105,7 @@ How compaction works:
 
 ---
 
-## [ ] Context Cache Config
+## Context Cache Config
 
 For agents with long static instructions (e.g., large documents in `static_instruction`), context caching can dramatically reduce latency and cost:
 
@@ -127,7 +127,7 @@ Without `static_instruction`, caching has no effect (nothing is cacheable). The 
 
 ---
 
-## [ ] Resumability Config (Experimental)
+## Resumability Config (Experimental)
 
 Allows invocations to pause on long-running tool calls and resume later:
 
@@ -150,7 +150,7 @@ Resumability requires that tool calls be **idempotent** (at-least-once execution
 
 ---
 
-## [ ] App vs. Bare Agent
+## App vs. Bare Agent
 
 | Feature | `app=App(...)` | `agent=..., app_name=...` |
 |---------|---------------|--------------------------|
@@ -164,13 +164,13 @@ For production use, always use `App`. For quick scripts and demos, bare agent is
 
 ---
 
-## [ ] App Name Constraints
+## App Name Constraints
 
 App names must be valid Python identifiers (letters, digits, underscores). Cannot be `"user"` (reserved). The name is used to scope sessions — all sessions with `app_name='my_app'` are grouped together.
 
 ---
 
-## [ ] Related Files
+## Related Files
 
 - [`apps/app.py`](../adk-python/src/google/adk/apps/app.py) — `App`, `EventsCompactionConfig`, `ResumabilityConfig`
 - [`apps/compaction.py`](../adk-python/src/google/adk/apps/compaction.py) — sliding window compaction logic

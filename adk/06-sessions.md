@@ -4,7 +4,7 @@
 
 ---
 
-## [ ] What It Is
+## What It Is
 
 A `Session` represents a single conversation thread between a user and agents. It stores:
 - The full ordered list of `Event`s (conversation history)
@@ -14,7 +14,7 @@ The `BaseSessionService` provides CRUD operations and is the only way to read/wr
 
 ---
 
-## [ ] Session Data Model
+## Session Data Model
 
 ```python
 class Session(BaseModel):
@@ -30,7 +30,7 @@ That's it — intentionally minimal. All the complexity is in the service and in
 
 ---
 
-## [ ] Session State
+## Session State
 
 `session.state` is a free-form dict. Agents write to it via `EventActions.state_delta`:
 
@@ -54,7 +54,7 @@ Scoping is handled by the session service implementations.
 
 ---
 
-## [ ] BaseSessionService — The Interface
+## BaseSessionService — The Interface
 
 ```python
 class BaseSessionService(ABC):
@@ -87,7 +87,7 @@ class BaseSessionService(ABC):
 
 ---
 
-## [ ] Implementations
+## Implementations
 
 | Class | Storage | Use Case |
 |-------|---------|----------|
@@ -100,7 +100,7 @@ All implement the same `BaseSessionService` interface, so swapping backends requ
 
 ---
 
-## [ ] GetSessionConfig — Partial Loading
+## GetSessionConfig — Partial Loading
 
 For long conversations, you can load only recent events:
 
@@ -116,7 +116,7 @@ This is useful when sessions have thousands of events but you only need recent c
 
 ---
 
-## [ ] How Runner Uses Sessions
+## How Runner Uses Sessions
 
 ```
 Runner.run_async(user_id, session_id, new_message)
@@ -138,7 +138,7 @@ Runner.run_async(user_id, session_id, new_message)
 
 ---
 
-## [ ] State Scoping in Practice
+## State Scoping in Practice
 
 ```python
 # Session-scoped (default) — only this session sees this:
@@ -153,7 +153,7 @@ tool_context.state['app:feature_flags'] = {'beta': True}
 
 ---
 
-## [ ] Related Files
+## Related Files
 
 - [`sessions/session.py`](../adk-python/src/google/adk/sessions/session.py) — data model
 - [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) — abstract interface
@@ -161,3 +161,5 @@ tool_context.state['app:feature_flags'] = {'beta': True}
 - [`sessions/sqlite_session_service.py`](../adk-python/src/google/adk/sessions/sqlite_session_service.py) — local persistence
 - [`sessions/database_session_service.py`](../adk-python/src/google/adk/sessions/database_session_service.py) — production DB
 - [`sessions/state.py`](../adk-python/src/google/adk/sessions/state.py) — state scoping constants
+- [16-session-event-security.md](16-session-event-security.md) — Session event security considerations
+- [17-session-service-lifecycle.md](17-session-service-lifecycle.md) — Session service call timeline and optimization
