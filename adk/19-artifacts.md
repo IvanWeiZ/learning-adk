@@ -312,27 +312,27 @@ runner = Runner(
 
 ```python
 from google.adk.agents import Agent
-from google.adk.agents.context import CallbackContext
+from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
 
 async def generate_report(
     topic: str,
-    ctx: CallbackContext,
+    tool_context: ToolContext,
 ) -> dict[str, str]:
     """Generates a report and saves it as an artifact."""
     report_text = f"# Report on {topic}\n\nThis is the report content."
 
-    version = await ctx.save_artifact(
+    version = await tool_context.save_artifact(
         filename="report.md",
         artifact=types.Part(text=report_text),
     )
     return {"status": "saved", "filename": "report.md", "version": version}
 
 
-async def read_report(ctx: CallbackContext) -> dict[str, str]:
+async def read_report(tool_context: ToolContext) -> dict[str, str]:
     """Reads the latest version of the report artifact."""
-    part = await ctx.load_artifact("report.md")
+    part = await tool_context.load_artifact("report.md")
     if part is None:
         return {"error": "No report found"}
     return {"content": part.text}
@@ -343,10 +343,10 @@ async def read_report(ctx: CallbackContext) -> dict[str, str]:
 ```python
 async def save_chart(
     chart_bytes: bytes,
-    ctx: CallbackContext,
+    tool_context: ToolContext,
 ) -> dict[str, str]:
     """Saves a PNG chart as a binary artifact."""
-    version = await ctx.save_artifact(
+    version = await tool_context.save_artifact(
         filename="chart.png",
         artifact=types.Part(
             inline_data=types.Blob(
@@ -364,10 +364,10 @@ async def save_chart(
 ```python
 async def save_user_preference(
     preferences_json: str,
-    ctx: CallbackContext,
+    tool_context: ToolContext,
 ) -> dict[str, str]:
     """Saves preferences visible from all sessions for this user."""
-    version = await ctx.save_artifact(
+    version = await tool_context.save_artifact(
         filename="user:preferences.json",  # "user:" prefix = user-scoped
         artifact=types.Part(text=preferences_json),
     )
@@ -377,13 +377,13 @@ async def save_user_preference(
 ### Listing and inspecting artifact versions
 
 ```python
-async def inspect_artifacts(ctx: CallbackContext) -> dict[str, Any]:
+async def inspect_artifacts(tool_context: ToolContext) -> dict[str, Any]:
     """Lists all artifacts and checks version info."""
-    filenames = await ctx.list_artifacts()
+    filenames = await tool_context.list_artifacts()
     result: dict[str, Any] = {"artifacts": filenames}
 
     for name in filenames:
-        version_info = await ctx.get_artifact_version(name)
+        version_info = await tool_context.get_artifact_version(name)
         if version_info:
             result[name] = {
                 "latest_version": version_info.version,

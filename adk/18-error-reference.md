@@ -38,7 +38,7 @@ run_async() invocation
 | `LlmCallsLimitExceededError` | [`run_config.py`](../adk-python/src/google/adk/agents/run_config.py) | `Exception` | `RunConfig.max_llm_calls` exceeded |
 | `SessionNotFoundError` | [`runners.py`](../adk-python/src/google/adk/runners.py) | `ValueError` | Session lookup failed, `auto_create_session=False` |
 | `AlreadyExistsError` | [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) | `Exception` | Duplicate `session_id` on `create_session()` |
-| `ToolExecutionError` | [`tools/tool_context.py`](../adk-python/src/google/adk/tools/tool_context.py) | `Exception` | Tool authors raise with optional `error_type` |
+| `ToolExecutionError` | [`errors/tool_execution_error.py`](../adk-python/src/google/adk/errors/tool_execution_error.py) | `Exception` | Tool authors raise with optional `error_type` |
 | `_ResourceExhaustedError` | [`models/google_llm.py`](../adk-python/src/google/adk/models/google_llm.py) | `ClientError` | Gemini HTTP 429, adds mitigation link |
 
 ---
@@ -140,7 +140,7 @@ The tool will likely fail later when it tries to call the authenticated API. Tha
 ### Recommended Pattern
 
 ```python
-from google.adk.agents.run_config import LlmCallsLimitExceededError
+from google.adk.agents.invocation_context import LlmCallsLimitExceededError
 from google.adk.runners import Runner
 
 # Catch fatal errors that bypass callbacks
@@ -160,7 +160,7 @@ except SessionNotFoundError:
 
 # Use callbacks for recoverable errors
 async def handle_model_error(
-    callback_context, llm_request, llm_response, error
+    callback_context, llm_request, error
 ):
     if isinstance(error, _ResourceExhaustedError):
         await asyncio.sleep(5)

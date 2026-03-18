@@ -106,7 +106,7 @@ static_instruction: Optional[types.ContentUnion]
 tools: list[ToolUnion]
 # Accepts: BaseTool instances, BaseToolset instances, plain Python callables.
 
-generate_content_config: types.GenerateContentConfig
+generate_content_config: Optional[types.GenerateContentConfig] = None
 # Temperature, safety settings, etc. Tools/instructions must NOT be set here.
 
 output_schema: Optional[SchemaType]

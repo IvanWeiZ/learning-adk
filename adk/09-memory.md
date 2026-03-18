@@ -40,10 +40,11 @@ The unit of storage. A memory is a distilled piece of information with metadata:
 
 ```python
 class MemoryEntry(BaseModel):
-    content: types.Content       # the remembered information (text, structured data)
-    author: str                  # who produced this (agent name or 'user')
-    timestamp: float             # when this was stored (unix)
-    session_id: str              # source session
+    content: types.Content                    # the remembered information (text, structured data)
+    author: Optional[str] = None              # who produced this (agent name or 'user')
+    timestamp: Optional[str] = None           # when this was stored (ISO 8601)
+    id: Optional[str] = None                  # unique identifier
+    custom_metadata: Optional[dict] = None    # arbitrary key-value metadata
     # (Vertex AI backend adds an embedding vector internally)
 ```
 
@@ -53,12 +54,7 @@ What comes back from a query:
 
 ```python
 class SearchMemoryResponse(BaseModel):
-    memories: list[MemoryResult]
-
-class MemoryResult(BaseModel):
-    session_id: str
-    content: types.Content
-    score: float               # relevance score (0.0–1.0, higher = more relevant)
+    memories: list[MemoryEntry]
 ```
 
 ---
@@ -84,7 +80,7 @@ class BaseMemoryService(ABC):
     ) -> SearchMemoryResponse:
         """
         Semantic search over past sessions for this user.
-        Returns ranked MemoryResult list.
+        Returns ranked MemoryEntry list.
         """
 ```
 
@@ -207,10 +203,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import ToolContext
 
 async def after_agent(callback_context) -> None:
-    session = callback_context.session
-    memory_service = callback_context.memory_service
-    if memory_service:
-        await memory_service.add_session_to_memory(session)
+    await callback_context.add_session_to_memory()
 
 agent = LlmAgent(
     name="my_agent",
@@ -231,7 +224,7 @@ async def inject_memories(callback_context, llm_request) -> None:
         snippets = "\n".join(
             f"- {m.content.parts[0].text}" for m in results.memories[:3]
         )
-        llm_request.system_instruction += f"\n\nRelevant past context:\n{snippets}"
+        llm_request.config.system_instruction += f"\n\nRelevant past context:\n{snippets}"
 ```
 
 ### Pattern 3: Explicit Memory Tool
@@ -245,7 +238,7 @@ async def search_my_memory(topic: str, tool_context: ToolContext) -> str:
     if not results.memories:
         return "Nothing relevant found."
     return "\n".join(
-        f"[{m.session_id[:8]}] {m.content.parts[0].text}"
+        f"{m.content.parts[0].text}"
         for m in results.memories[:5]
     )
 

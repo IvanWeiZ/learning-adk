@@ -54,10 +54,10 @@ Plugins are app-wide hooks that run around every agent call, without modifying t
 
 ```python
 class BasePlugin:
-    async def before_agent_callback(self, agent, callback_context) -> Optional[Content]:
+    async def before_agent_callback(self, *, agent, callback_context) -> Optional[Content]:
         ...  # return Content to short-circuit the agent
 
-    async def after_agent_callback(self, agent, callback_context) -> Optional[Content]:
+    async def after_agent_callback(self, *, agent, callback_context) -> Optional[Content]:
         ...  # return Content to append an extra event
 ```
 
@@ -69,7 +69,10 @@ Use cases:
 
 ```python
 class MyLoggingPlugin(BasePlugin):
-    async def before_agent_callback(self, agent, ctx):
+    def __init__(self):
+        super().__init__(name="my_logging_plugin")
+
+    async def before_agent_callback(self, *, agent, callback_context):
         print(f'Agent {agent.name} starting...')
         return None  # don't short-circuit
 
