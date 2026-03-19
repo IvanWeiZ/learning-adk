@@ -65,8 +65,6 @@ def log_calls(func):
 
 **Rule:** Always use `@functools.wraps(func)` on wrapper functions. ADK's `FunctionTool` inspects `__name__` and `__doc__` to generate the tool's name and description for the LLM.
 
----
-
 ### Decorators with Arguments
 
 When a decorator needs configuration, add an outer function that returns the actual decorator (three-level nesting):
@@ -109,8 +107,6 @@ def my_func(): ...
 ```
 
 Think of it like nested middleware or servlet filters.
-
----
 
 ### Common Standard Library Decorators
 
@@ -168,8 +164,6 @@ class ToolCall:
 
 **Note:** ADK uses Pydantic `BaseModel` instead of `@dataclass` (adds validation, serialization, schema generation), but `@dataclass` is common in Python at large.
 
----
-
 ### Custom Class Decorators
 
 ```python
@@ -184,9 +178,7 @@ class WeatherAgent:
 # WeatherAgent is now in AGENT_REGISTRY and is still the same class.
 ```
 
-**Java parallel:** Like `@Entity` or `@Component` — but in Python, the decorator *is* the processor. It runs immediately at class definition time, no annotation scanning needed.
-
----
+**Java parallel:** Like `@Entity` or `@Component` — but in Python, the decorator *is* the processor, running immediately at class definition time.
 
 ## How ADK Uses Decorators
 
@@ -212,9 +204,7 @@ class LlmAgent(BaseAgent):
         ...  # LLM-specific implementation
 ```
 
-**Java parallel:** `@final` = `final` keyword; `@override` = `@Override`. Key difference: Python's `@final` is advisory (enforced by mypy, not the runtime). `@override` catches method name typos at type-check time.
-
----
+**Java parallel:** `@final` = `final` keyword; `@override` = `@Override`. Key difference: Python's `@final` is advisory (enforced by mypy, not the runtime).
 
 ### Pydantic's @field_validator and @model_validator
 
@@ -242,8 +232,6 @@ class LlmAgent(BaseModel):
 ```
 
 See [python-pydantic-deep-dive.md](python-pydantic-deep-dive.md) for full Pydantic validator coverage.
-
----
 
 ### @pytest.mark.asyncio for Async Tests
 
