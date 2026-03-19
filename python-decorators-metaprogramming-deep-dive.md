@@ -343,8 +343,6 @@ class LLMRegistry(metaclass=SingletonMeta): ...
 
 **In ADK:** Metaclasses are rare. Pydantic uses `ModelMetaclass` internally; `ABCMeta` backs `ABC`. Prefer `__init_subclass__` or class decorators instead.
 
----
-
 ## Practical Examples
 
 ### Writing a Logging Decorator (Async-Aware)
@@ -409,7 +407,7 @@ async def call_external_api(endpoint: str) -> dict:
 
 ### Decorator That Validates Function Arguments
 
-Illustrates how ADK's `FunctionTool` validates tool inputs using `inspect` and type hints:
+Illustrates how ADK's `FunctionTool` validates tool inputs using `inspect`:
 
 ```python
 import functools, inspect
@@ -417,9 +415,7 @@ from typing import get_type_hints
 
 def validate_args(func):
     """Enforce type hints at runtime."""
-    hints = get_type_hints(func)
-    sig = inspect.signature(func)
-
+    hints, sig = get_type_hints(func), inspect.signature(func)
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         bound = sig.bind(*args, **kwargs)
@@ -431,8 +427,8 @@ def validate_args(func):
     return wrapper
 
 @validate_args
-def create_agent(name: str, max_retries: int, verbose: bool = False) -> dict:
-    return {"name": name, "max_retries": max_retries, "verbose": verbose}
+def create_agent(name: str, max_retries: int) -> dict:
+    return {"name": name, "max_retries": max_retries}
 
 create_agent("my_agent", 3)       # OK
 create_agent("my_agent", "three")  # TypeError: 'max_retries' expected int, got str
