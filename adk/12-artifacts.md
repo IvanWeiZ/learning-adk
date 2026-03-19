@@ -413,3 +413,12 @@ async def inspect_artifacts(tool_context: ToolContext) -> dict[str, Any]:
             }
     return result
 ```
+
+---
+
+## Cross-References
+
+- [09-tools.md](09-tools.md) — tools access artifacts via `ToolContext.save_artifact()` and `ToolContext.load_artifact()`
+- [10-apps.md](10-apps.md) — `App` container that holds the artifact service
+- [03-runners.md](03-runners.md) — `Runner` accepts `artifact_service` and threads it into the invocation context
+- [13-auth.md](13-auth.md) — credentials, another service-level concern wired similarly to artifacts

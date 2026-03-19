@@ -815,5 +815,7 @@ State has four scopes controlled by key prefixes: session (no prefix), `user:`, 
 - [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
 - [08-sessions.md](08-sessions.md) — Session state deep dive
 - [09-tools.md](09-tools.md) — Tool system reference
+- [12-artifacts.md](12-artifacts.md) — Artifact storage and versioning
+- [13-auth.md](13-auth.md) — OAuth and credential management
 - [04-agents.md](04-agents.md) — Agent types and configuration
 - [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request example

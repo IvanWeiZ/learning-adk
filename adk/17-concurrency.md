@@ -103,7 +103,8 @@ Plugins run strictly sequentially. `close` is also sequential (anyio/MCP compati
 
 ## Cross-References
 
-- [Request Lifecycle](01-request-lifecycle.md) -- full traced request showing where session calls happen
-- [Sessions](08-sessions.md) -- session state model and storage backends
-- [Session Service Lifecycle](18-session-lifecycle.md) -- detailed `append_event` flow and state delta mechanics
-- [Error Reference](16-error-reference.md) -- what happens when tool or model calls fail mid-execution
+- [Request Lifecycle](01-request-lifecycle.md) — full traced request showing where session calls happen
+- [Sessions](08-sessions.md) — session state model and storage backends
+- [Session Service Lifecycle](18-session-lifecycle.md) — detailed `append_event` flow and state delta mechanics
+- [Error Reference](16-error-reference.md) — what happens when tool or model calls fail mid-execution
+- [Apps](10-apps.md) — plugins are configured in `App` and execute sequentially

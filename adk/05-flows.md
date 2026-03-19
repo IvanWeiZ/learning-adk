@@ -180,6 +180,13 @@ When a tool requires OAuth credentials:
 
 ---
 
+## Cross-References
+
+- [09-tools.md](09-tools.md) — tool system that flows dispatch during the postprocess phase
+- [14-planners.md](14-planners.md) — planning processors that plug into the flow's request pipeline
+- [04-agents.md](04-agents.md) — agents that delegate to flows via `_run_async_impl`
+- [13-auth.md](13-auth.md) — auth flow triggered by `request_credential` during tool execution
+
 ## Related Files
 
 - [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) — the loop

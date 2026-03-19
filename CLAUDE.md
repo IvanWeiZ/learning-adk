@@ -47,10 +47,12 @@ learning-adk/
 ├── python-asyncio-deep-dive.md                    # Async/await patterns
 ├── python-decorators-metaprogramming-deep-dive.md # Decorators and metaprogramming
 ├── python-pydantic-deep-dive.md                   # Pydantic v2 reference
-└── python-testing-and-mocking-guide.md            # pytest, AsyncMock, mocking strategies
+├── python-testing-and-mocking-guide.md            # pytest, AsyncMock, mocking strategies
+├── glossary.md                                    # ADK terminology quick-reference
+└── java-to-python-cheat-sheet.md                  # Side-by-side Java → Python mappings
 ```
 
-**Total:** ~11,300 lines across 16 Markdown files.
+**Total:** ~14,000+ lines across 33 Markdown files.
 
 ---
 
@@ -172,7 +174,7 @@ Need to add a capability to an agent?
 
 ## Git Workflow
 
-**Active branch:** `claude/add-claude-documentation-OCX0K`
+**Active branch:** `claude/document-project-contents-n0J8I`
 
 ```bash
 # Stage and commit new documentation
@@ -180,7 +182,7 @@ git add <file>.md
 git commit -m "docs: <short description>"
 
 # Push to remote
-git push -u origin claude/add-claude-documentation-OCX0K
+git push -u origin claude/document-project-contents-n0J8I
 ```
 
 **Commit message conventions:**

@@ -217,6 +217,13 @@ LLMRegistry.register(MyLlm)
 
 ---
 
+## Cross-References
+
+- [02-when-to-build-what.md](02-when-to-build-what.md) — decision guide for when to use non-Gemini models
+- [05-flows.md](05-flows.md) — flows call `model.generate_content_async()` during the LLM step
+- [14-planners.md](14-planners.md) — `ThinkingConfig` and model-level thinking mode
+- [22-testing.md](22-testing.md) — `MockModel` as a drop-in replacement for real adapters
+
 ## Related Files
 
 - [`models/base_llm.py`](../adk-python/src/google/adk/models/base_llm.py) — abstract interface
