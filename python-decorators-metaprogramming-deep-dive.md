@@ -14,19 +14,12 @@ Decorators are Python's answer to Java annotations + AOP, but with a critical di
 
 ### Basic Decorator Pattern
 
-A decorator is any callable that takes a function and returns a function. The `@` syntax is sugar for reassignment.
+A decorator is any callable that takes a function and returns a function. The `@` syntax is sugar:
 
 ```python
-# These two are identical:
-
 @my_decorator
-def greet(name: str) -> str:
-    return f"Hello, {name}"
-
-# is exactly:
-def greet(name: str) -> str:
-    return f"Hello, {name}"
-greet = my_decorator(greet)
+def greet(name: str) -> str: ...
+# is exactly: greet = my_decorator(greet)
 ```
 
 The standard pattern uses a nested wrapper function:
@@ -53,8 +46,6 @@ def add(a: int, b: int) -> int:
 Without `@functools.wraps`, the wrapper replaces the original function's `__name__`, `__doc__`, and `__annotations__`. This breaks introspection and ADK's tool system (which reads function metadata to build tool declarations).
 
 ```python
-import functools
-
 def log_calls(func):
     @functools.wraps(func)  # copies __name__, __doc__, __module__, __annotations__
     def wrapper(*args, **kwargs):
@@ -63,7 +54,7 @@ def log_calls(func):
     return wrapper
 ```
 
-**Rule:** Always use `@functools.wraps(func)` on wrapper functions. ADK's `FunctionTool` inspects `__name__` and `__doc__` to generate the tool's name and description for the LLM.
+**Rule:** Always use `@functools.wraps(func)`. ADK's `FunctionTool` inspects `__name__` and `__doc__` for the tool's LLM-facing name and description.
 
 ### Decorators with Arguments
 
@@ -152,14 +143,13 @@ A class decorator receives a class and returns a (possibly modified) class. Same
 The most common class decorator. Generates `__init__`, `__repr__`, `__eq__` from annotated fields:
 
 ```python
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 @dataclass
-class ToolCall:
+class ToolCall:       # generates __init__, __repr__, __eq__
     name: str
     args: dict[str, str]
-    call_id: str = field(default_factory=lambda: str(uuid4()))
-# Java equivalent: a record or a class with Lombok @Data
+# Java equivalent: a record or Lombok @Data
 ```
 
 **Note:** ADK uses Pydantic `BaseModel` instead of `@dataclass` (adds validation, serialization, schema generation), but `@dataclass` is common in Python at large.
@@ -184,34 +174,33 @@ class WeatherAgent:
 
 ### @final and @override on BaseAgent
 
-ADK marks `run_async` as `@final` (Template Method pattern) and expects subclasses to use `@override` on `_run_async_impl`:
+ADK marks `run_async` as `@final` (Template Method pattern) and expects `@override` on `_run_async_impl`:
 
 ```python
 from typing import final, override
 
 class BaseAgent:
     @final
-    async def run_async(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-        # Orchestration: callbacks, context creation, delegation
+    async def run_async(self, ctx) -> AsyncGenerator[Event, None]:
         ...  # subclasses CANNOT override this
 
-    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
+    async def _run_async_impl(self, ctx) -> AsyncGenerator[Event, None]:
         raise NotImplementedError
 
 class LlmAgent(BaseAgent):
     @override
-    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
+    async def _run_async_impl(self, ctx) -> AsyncGenerator[Event, None]:
         ...  # LLM-specific implementation
 ```
 
-**Java parallel:** `@final` = `final` keyword; `@override` = `@Override`. Key difference: Python's `@final` is advisory (enforced by mypy, not the runtime).
+**Java parallel:** `@final` = `final` keyword; `@override` = `@Override`. Python's `@final` is advisory (enforced by mypy, not runtime).
 
 ### Pydantic's @field_validator and @model_validator
 
 ADK agents inherit from Pydantic `BaseModel`, so field validation uses Pydantic decorators:
 
 ```python
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 
 class LlmAgent(BaseModel):
     name: str
@@ -223,12 +212,6 @@ class LlmAgent(BaseModel):
         if not v.isidentifier() or v == "user":
             raise ValueError(f"Invalid agent name: {v!r}")
         return v
-
-    @model_validator(mode="after")
-    def check_model_or_sub_agents(self) -> "LlmAgent":
-        if self.model is None and not self.sub_agents:
-            raise ValueError("Agent must have either a model or sub_agents")
-        return self
 ```
 
 See [python-pydantic-deep-dive.md](python-pydantic-deep-dive.md) for full Pydantic validator coverage.
@@ -251,7 +234,7 @@ async def test_agent_run():
 
 ## Metaprogramming Basics
 
-Metaprogramming means writing code that manipulates code. Python supports this through several mechanisms, from simple to advanced.
+Metaprogramming means writing code that manipulates code. Python supports several mechanisms, from simple to advanced.
 
 ### \_\_init\_subclass\_\_ — Hook into Subclassing
 
@@ -300,13 +283,11 @@ Descriptors power `@property`, `@classmethod`, and `@staticmethod` under the hoo
 
 ```python
 class TypeChecked:
-    """Descriptor that enforces a type on assignment."""
     def __init__(self, expected_type: type):
         self.expected_type = expected_type
 
     def __set_name__(self, owner, name):
-        self.attr_name = f"_{name}"
-        self.public_name = name
+        self.attr_name, self.public_name = f"_{name}", name
 
     def __get__(self, obj, objtype=None):
         return self if obj is None else getattr(obj, self.attr_name, None)
@@ -347,12 +328,13 @@ class LLMRegistry(metaclass=SingletonMeta): ...
 
 ### Writing a Logging Decorator (Async-Aware)
 
+Key technique: check `asyncio.iscoroutinefunction` to handle both sync and async targets:
+
 ```python
 import asyncio, functools, logging
 logger = logging.getLogger(__name__)
 
 def log_calls(func):
-    """Log entry and exit for sync and async functions."""
     if asyncio.iscoroutinefunction(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -360,15 +342,12 @@ def log_calls(func):
             result = await func(*args, **kwargs)
             logger.info(f"<- {func.__name__} returned {result!r}")
             return result
-        return wrapper
     else:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             logger.info(f"-> {func.__name__}")
-            result = func(*args, **kwargs)
-            logger.info(f"<- {func.__name__} returned {result!r}")
-            return result
-        return wrapper
+            return func(*args, **kwargs)
+    return wrapper
 ```
 
 ---
