@@ -440,18 +440,16 @@ create_agent("my_agent", "three")  # TypeError: 'max_retries' expected int, got 
 
 | Java | Python | Notes |
 |---|---|---|
-| `@Override` | `@override` (typing) | Java: compile-time check. Python: type-checker check. |
-| `@Deprecated` | `warnings.warn("...", DeprecationWarning)` | No built-in decorator; use `warnings` in the function body or write a custom decorator. |
-| `@SuppressWarnings` | `# type: ignore` / `# noqa` | Per-line pragmas, not decorators. |
-| `@FunctionalInterface` | `typing.Protocol` with single method | Structural typing, not nominal. |
-| `abstract` keyword | `@abstractmethod` | Must use `ABC` base class. |
-| `final` keyword | `@final` (typing) | Advisory; enforced by type checkers, not runtime. |
-| `static` keyword | `@staticmethod` | No implicit `this`/`self`. |
-| `interface` | `class Foo(ABC)` or `Protocol` | ABC = nominal; Protocol = structural (duck typing). |
-| Annotation + processor | Decorator | Decorator is the processor — runs at definition time. |
-| `@Entity`, `@Component` | `@dataclass`, `@register` | Class decorators replace annotation scanning. |
-| AOP (`@Around`, `@Before`) | Decorator wrapping | No framework needed; decorators are native AOP. |
-| Proxy / `InvocationHandler` | Decorator + `__getattr__` | Python's attribute protocol is more flexible. |
+| `@Override` | `@override` (typing) | Compile-time vs type-checker check |
+| `@Deprecated` | `warnings.warn(..., DeprecationWarning)` | No built-in decorator; use `warnings` or write one |
+| `@SuppressWarnings` | `# type: ignore` / `# noqa` | Per-line pragmas, not decorators |
+| `@FunctionalInterface` | `typing.Protocol` with single method | Structural typing, not nominal |
+| `abstract` keyword | `@abstractmethod` + `ABC` base class | Runtime check at instantiation |
+| `final` keyword | `@final` (typing) | Advisory; enforced by type checkers only |
+| `static` keyword | `@staticmethod` | No implicit `this`/`self` |
+| `interface` | `ABC` or `Protocol` | ABC = nominal; Protocol = structural |
+| Annotation + processor | Decorator | Decorator is the processor |
+| AOP (`@Around`) | Decorator wrapping | No framework needed; native AOP |
 
 ---
 
