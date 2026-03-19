@@ -12,6 +12,51 @@ Agents define AI behavior: model, tools, system prompt, sub-agents. They hold no
 
 ## Class Hierarchy
 
+```mermaid
+classDiagram
+    class BaseAgent {
+        <<abstract>>
+        +name: str
+        +description: str
+        +sub_agents: list~BaseAgent~
+        +before_agent_callback
+        +after_agent_callback
+        +run_async(ctx)* AsyncGenerator~Event~
+        #_run_async_impl(ctx)* AsyncGenerator~Event~
+    }
+
+    class LlmAgent {
+        +model: str | BaseLlm
+        +instruction: str | Callable
+        +tools: list~ToolUnion~
+        +output_key: str
+        +output_schema: SchemaType
+        +before_model_callback
+        +after_model_callback
+        +before_tool_callback
+        +after_tool_callback
+    }
+
+    class LoopAgent {
+        Runs sub-agents in a loop until done
+    }
+
+    class ParallelAgent {
+        Runs sub-agents concurrently
+    }
+
+    class SequentialAgent {
+        Runs sub-agents one after another
+    }
+
+    BaseAgent <|-- LlmAgent
+    BaseAgent <|-- LoopAgent
+    BaseAgent <|-- ParallelAgent
+    BaseAgent <|-- SequentialAgent
+```
+
+**ASCII version:**
+
 ```
 BaseAgent (base_agent.py) — abstract, common contract
  ├── LlmAgent (llm_agent.py) — primary: calls an LLM in a loop
@@ -213,6 +258,33 @@ root_agent (LlmAgent)
 The LLM in `root_agent` can say "transfer to search_agent", which triggers `EventActions.transfer_to_agent = 'search_agent'`.
 
 ### How Agent Transfer Works
+
+```mermaid
+flowchart TD
+    User["User: 'Book me a flight to Tokyo'"]
+    User --> Router
+
+    subgraph Router["router_agent (AutoFlow)"]
+        R1["LLM thinks: 'This is a travel request'"]
+        R1 --> R2["LLM calls: transfer_to_agent('travel_agent')"]
+    end
+
+    Router --> Travel
+
+    subgraph Travel["travel_agent"]
+        T1["Receives full conversation history"]
+        T1 --> T2["Calls: search_flights(destination='Tokyo')"]
+        T2 --> T3["Tool returns flight results"]
+        T3 --> T4["Responds: 'I found flight JL001 for $450...'"]
+    end
+
+    Travel -->|"Events flow back with author='travel_agent'"| Caller["Caller receives events"]
+
+    style Router fill:#e1f5fe,stroke:#0288d1
+    style Travel fill:#e8f5e9,stroke:#388e3c
+```
+
+**ASCII version:**
 
 ```
 User: "Book me a flight to Tokyo"

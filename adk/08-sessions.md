@@ -118,6 +118,33 @@ sessions have thousands of events but you only need recent context.
 
 ## How Runner Uses Sessions
 
+```mermaid
+sequenceDiagram
+    participant R as Runner
+    participant SS as SessionService
+    participant A as Agent
+    participant S as Session
+
+    R->>SS: get_session(app_name, user_id, session_id)
+    SS-->>R: Session (or SessionNotFoundError)
+
+    R->>SS: append_event(session, user_event)
+    SS->>S: Add event, apply state_delta
+
+    R->>A: agent.run_async(ctx)
+
+    loop For each yielded Event
+        A-->>R: yield Event
+        R->>SS: append_event(session, event)
+        SS->>S: Add event, apply state_delta
+        SS->>S: Persist to storage
+    end
+
+    Note over R: Optional: compaction (summarize old events)
+```
+
+**ASCII version:**
+
 ```
 Runner.run_async(user_id, session_id, new_message)
 │
@@ -140,6 +167,30 @@ Runner.run_async(user_id, session_id, new_message)
 
 ## State Delta Lifecycle
 
+```mermaid
+sequenceDiagram
+    participant Code as Your Code
+    participant State as State Object
+    participant EA as EventActions
+    participant R as Runner
+    participant SS as SessionService
+    participant DB as Storage
+
+    Code->>State: ctx.state["city"] = "Tokyo"
+    State->>State: _delta["city"] = "Tokyo"
+    State->>State: _value["city"] = "Tokyo" (immediately readable)
+
+    Note over State,EA: When event is yielded
+    State->>EA: event.actions.state_delta = {"city": "Tokyo"}
+
+    Note over R,SS: Runner calls append_event
+    R->>SS: append_event(session, event)
+    SS->>SS: session.state["city"] = "Tokyo" (committed)
+    SS->>DB: Persist to storage
+```
+
+**ASCII version:**
+
 ```
 Your code EventActions Session Service
 ───────── ──────────── ───────────────
@@ -161,6 +212,24 @@ Database/Memory store updated
 ```
 
 ## State Scope Visual
+
+```mermaid
+graph TD
+    subgraph APP["app:config — shared by ALL users, ALL sessions"]
+        subgraph USER["user:preferences — shared across ALL sessions for this user"]
+            subgraph SESSION["count (session-scoped) — lives in THIS session only"]
+                TEMP["temp:scratch — THIS invocation only, never persisted"]
+            end
+        end
+    end
+
+    style APP fill:#ffebee,stroke:#c62828
+    style USER fill:#fff3e0,stroke:#ef6c00
+    style SESSION fill:#e8f5e9,stroke:#2e7d32
+    style TEMP fill:#e3f2fd,stroke:#1565c0
+```
+
+**ASCII version:**
 
 ```
 ┌─ app:config ──────────────────────────────────────────────────┐

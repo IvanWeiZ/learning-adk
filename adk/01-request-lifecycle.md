@@ -68,7 +68,64 @@ User message: **"What's the weather in Tokyo?"**
 
 ---
 
-## Layer Diagram
+## Layer Diagram (Mermaid)
+
+> GitHub renders this diagram automatically. If viewing in a plain text editor, see the ASCII version below.
+
+```mermaid
+flowchart TD
+    CALLER["Caller"]
+    CALLER -->|"runner.run_async(user_id, session_id, new_message)"| RUNNER
+
+    subgraph RUNNER["Runner · runners.py"]
+        R1["get_session()"] -->|"SESSION READ"| R2["append_event(user_msg)"]
+        R2 -->|"SESSION WRITE"| R3["plugin.before_run()"]
+        R3 --> R4["agent.run_async(ctx) → yields Events"]
+        R4 --> R5["compaction plugin (optional)"]
+    end
+
+    RUNNER --> BASE_AGENT
+
+    subgraph BASE_AGENT["BaseAgent · base_agent.py"]
+        BA1["before_agent_callback"]
+        BA1 -->|"None → continue"| BA2["_run_async_impl(ctx)"]
+        BA1 -->|"Content → skip agent"| BA3["short-circuit"]
+        BA2 --> BA4["after_agent_callback"]
+    end
+
+    BASE_AGENT --> LLM_AGENT
+
+    subgraph LLM_AGENT["LlmAgent · llm_agent.py"]
+        LA1["_llm_flow.run_async(ctx)"]
+        LA1 --> LA2["__maybe_save_output_to_state(event)"]
+    end
+
+    LLM_AGENT --> FLOW
+
+    subgraph FLOW["BaseLlmFlow · base_llm_flow.py"]
+        direction TB
+        F1["preprocess → build LlmRequest\n(SESSION READ: history)"]
+        F1 --> F2["before_model_callback"]
+        F2 -->|"None"| F3["LLM call"]
+        F2 -->|"LlmResponse"| F5
+        F3 --> F4["after_model_callback"]
+        F4 --> F5["postprocess → yield Events"]
+        F5 -->|"function call?"| F6{"Has tool calls?"}
+        F6 -->|"Yes"| F7["before_tool_callback → tool.run_async() → after_tool_callback"]
+        F7 -->|"loop back"| F1
+        F6 -->|"No"| F8["Yield final Event · EXIT"]
+    end
+
+    FLOW --> GEMINI["Gemini LLM · generate_content_async()"]
+
+    style RUNNER fill:#e1f5fe,stroke:#0288d1
+    style BASE_AGENT fill:#f3e5f5,stroke:#7b1fa2
+    style LLM_AGENT fill:#e8f5e9,stroke:#388e3c
+    style FLOW fill:#fff3e0,stroke:#f57c00
+    style GEMINI fill:#fce4ec,stroke:#c62828
+```
+
+## Layer Diagram (ASCII)
 
 ```
 CALLER
@@ -133,6 +190,50 @@ CALLER
 ```
 
 ---
+
+## Request Sequence (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant R as Runner
+    participant S as SessionService
+    participant A as LlmAgent
+    participant F as BaseLlmFlow
+    participant M as Gemini LLM
+    participant T as Tool (get_weather)
+
+    C->>R: run_async(user_id, session_id, new_message)
+    R->>S: get_session()
+    S-->>R: Session
+    R->>S: append_event(user_msg)
+
+    R->>A: run_async(ctx)
+    A->>A: before_agent_callback
+    A->>F: _llm_flow.run_async(ctx)
+
+    Note over F: Iteration 1
+    F->>F: preprocess (build LlmRequest)
+    F->>M: generate_content_async(request)
+    M-->>F: LlmResponse [FunctionCall: get_weather]
+    F->>R: yield Event (function_call)
+    R->>S: append_event
+
+    F->>T: tool.run_async(args={city: "Tokyo"})
+    T-->>F: {temp_c: 18, condition: "Partly cloudy"}
+    F->>R: yield Event (function_response)
+    R->>S: append_event
+
+    Note over F: Iteration 2
+    F->>F: preprocess (history + tool result)
+    F->>M: generate_content_async(request)
+    M-->>F: LlmResponse [text: "The weather in Tokyo..."]
+    F->>R: yield Event (final response)
+    R->>S: append_event
+
+    A->>A: after_agent_callback
+    R-->>C: Events streamed back
+```
 
 ## What the Caller Receives
 
