@@ -8,6 +8,24 @@ For new team members. No ADK knowledge assumed.
 
 ADK (Agent Development Kit) is Google's Python framework for building **multi-agent AI systems**. a runtime that connects LLMs, tools, and conversation state into a coherent pipeline.
 
+```mermaid
+flowchart LR
+    User["User:\n'Book a flight to Tokyo\nand find a hotel'"]
+    User --> Runner["Runner\n(engine)"]
+    Runner --> Root["Root Agent\n(dispatcher)"]
+    Root --> Flight["Flight Agent\ntools: search_flights,\nbook_flight"]
+    Root --> Hotel["Hotel Agent\ntools: search_hotels,\nbook_hotel"]
+    Runner -.-> Session["Session\n(memory)"]
+
+    style Runner fill:#e1f5fe,stroke:#0288d1
+    style Root fill:#fff3e0,stroke:#f57c00
+    style Flight fill:#e8f5e9,stroke:#388e3c
+    style Hotel fill:#e8f5e9,stroke:#388e3c
+    style Session fill:#f3e5f5,stroke:#7b1fa2
+```
+
+**ASCII version:**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ What You Build with ADK │

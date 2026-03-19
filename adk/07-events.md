@@ -49,6 +49,30 @@ A `Session` is an ordered list of Events.
 
 A tool-calling agent produces 4 events for one user turn:
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant R as Runner
+    participant A as weather_agent (LLM)
+    participant T as get_weather Tool
+
+    U->>R: "What's the weather in Tokyo?"
+    Note over R: evt-001 (user msg, not yielded)
+
+    R->>A: run_async(ctx)
+    A->>A: LLM decides to call tool
+    Note over A: evt-002 (FunctionCall)
+    A->>T: get_weather(city="Tokyo")
+    T-->>A: {temp_c: 18, condition: "Partly cloudy"}
+    Note over A: evt-003 (FunctionResponse)
+    A->>A: LLM synthesizes answer
+    Note over A: evt-004 (final text, is_final_response=true)
+    A-->>R: yield events
+    R-->>U: stream events
+```
+
+**ASCII version:**
+
 ```
 User sends: "What's the weather in Tokyo?"
 

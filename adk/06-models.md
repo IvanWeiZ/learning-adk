@@ -12,6 +12,49 @@ Thin adapter layer between ADK's internal types (`LlmRequest`, `LlmResponse`) an
 
 ## Class Hierarchy
 
+```mermaid
+classDiagram
+    class BaseLlm {
+        <<abstract>>
+        +model: str
+        +supported_models()* list~str~
+        +generate_content_async(request, stream)* AsyncGenerator
+        +connect(request) BaseLlmConnection
+    }
+    class Gemini {
+        Primary adapter
+        google-genai SDK
+    }
+    class AnthropicLlm {
+        Claude models
+        anthropic SDK
+    }
+    class LiteLlm {
+        100+ providers
+        litellm SDK
+    }
+
+    BaseLlm <|-- Gemini
+    BaseLlm <|-- AnthropicLlm
+    BaseLlm <|-- LiteLlm
+```
+
+```mermaid
+flowchart LR
+    INPUT["Model string"]
+    INPUT --> REG["LLMRegistry.resolve()"]
+    REG -->|"'gemini-2.5-flash'"| GEM["Gemini adapter"]
+    REG -->|"'claude-sonnet-4-5'"| ANT["AnthropicLlm adapter"]
+    REG -->|"'openai/gpt-4o'"| LIT["LiteLlm adapter"]
+
+    style REG fill:#fff3e0,stroke:#f57c00
+    style GEM fill:#e1f5fe,stroke:#0288d1
+    style ANT fill:#f3e5f5,stroke:#7b1fa2
+    style LIT fill:#e8f5e9,stroke:#388e3c
+```
+
+**ASCII version:**
+
 ```
 BaseLlm (base_llm.py) — abstract interface
  ├── Gemini — Gemini models via google-genai SDK (primary, in google_llm.py)

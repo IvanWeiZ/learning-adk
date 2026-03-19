@@ -6,6 +6,46 @@ Decision guide for every ADK extensibility point: **what**, **when**, **when not
 
 ## Quick Decision Flowchart
 
+```mermaid
+flowchart TD
+    Q["What are you trying to do?"]
+
+    Q --> CAP["Add a capability to an agent?"]
+    CAP --> CAP1["Simple function → FunctionTool"]
+    CAP --> CAP2["Needs lifecycle hooks → BaseTool subclass"]
+    CAP --> CAP3["Dynamic set of tools → BaseToolset"]
+    CAP --> CAP4["External API with auth → AuthenticatedFunctionTool"]
+    CAP --> CAP5["Long-running / async → LongRunningFunctionTool"]
+
+    Q --> COMP["Compose multiple agents?"]
+    COMP --> COMP1["LLM picks which → sub_agents + AutoFlow"]
+    COMP --> COMP2["Fixed sequence → SequentialAgent"]
+    COMP --> COMP3["Run in parallel → ParallelAgent"]
+    COMP --> COMP4["Repeat until done → LoopAgent"]
+    COMP --> COMP5["Call remote agent → RemoteA2aAgent"]
+
+    Q --> CROSS["Add cross-cutting behavior?"]
+    CROSS --> CROSS1["Guard all agents → BasePlugin"]
+    CROSS --> CROSS2["Guard one agent → agent callbacks"]
+    CROSS --> CROSS3["Intercept LLM calls → model callbacks"]
+    CROSS --> CROSS4["Intercept tool calls → tool callbacks"]
+
+    Q --> MODEL["Use a non-Gemini model?"]
+    MODEL --> MODEL1["OpenAI, Groq → LiteLlm"]
+    MODEL --> MODEL2["Claude → AnthropicLlm"]
+    MODEL --> MODEL3["Custom → BaseLlm subclass"]
+
+    Q --> STREAM["Stream to web UI? → RunConfig SSE"]
+    Q --> MEM["Remember past conversations? → MemoryService"]
+
+    style CAP fill:#e1f5fe,stroke:#0288d1
+    style COMP fill:#e8f5e9,stroke:#388e3c
+    style CROSS fill:#fff3e0,stroke:#f57c00
+    style MODEL fill:#f3e5f5,stroke:#7b1fa2
+```
+
+**ASCII version:**
+
 ```
 What are you trying to do?
 │

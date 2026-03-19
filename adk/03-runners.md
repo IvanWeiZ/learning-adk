@@ -108,6 +108,22 @@ Sync wrapper. Runs event loop in background thread. For scripts and CLIs.
 
 ## Internal Flow (run_async)
 
+```mermaid
+flowchart TD
+    ENTRY["Runner.run_async(user_id, session_id, new_message)"]
+    ENTRY --> S1["1. _get_or_create_session()"]
+    S1 --> S2["2. _setup_context_for_new_invocation()\n• Append user message Event\n• Create InvocationContext"]
+    S2 --> S3["3. agent.run_async(ctx)\n→ yields Events as they stream"]
+    S3 --> S4["4. For each event:\n• append_event(session, event)\n• yield event to caller"]
+    S4 --> S5["5. Post-invocation:\n• compaction (if configured)\n• close plugin contexts"]
+
+    style ENTRY fill:#e1f5fe,stroke:#0288d1
+    style S3 fill:#e8f5e9,stroke:#388e3c
+    style S4 fill:#fff3e0,stroke:#f57c00
+```
+
+**ASCII version:**
+
 ```
 Runner.run_async(user_id, session_id, new_message)
 │

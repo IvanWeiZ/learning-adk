@@ -34,6 +34,23 @@ BaseLlmFlow (base_llm_flow.py) — abstract, implements the loop
 
 ## Loop Iteration Flowchart
 
+```mermaid
+flowchart TD
+    START["preprocess\n(build LlmRequest from\nsession history + tools)"]
+    START --> LLM["call LLM"]
+    LLM --> DECIDE{"Has function\ncalls?"}
+    DECIDE -->|"No"| FINAL["yield final Event\nEXIT"]
+    DECIDE -->|"Yes"| EXEC["execute tool(s)"]
+    EXEC -->|"loop back"| START
+
+    style START fill:#e1f5fe,stroke:#0288d1
+    style LLM fill:#f3e5f5,stroke:#7b1fa2
+    style EXEC fill:#e8f5e9,stroke:#388e3c
+    style FINAL fill:#fff3e0,stroke:#f57c00
+```
+
+**ASCII version:**
+
 ```
 ┌─────────────────────────────────────────────┐
 │ BaseLlmFlow Loop │
