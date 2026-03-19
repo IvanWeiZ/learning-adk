@@ -299,6 +299,7 @@ agent = LlmAgent(
 - [`memory/base_memory_service.py`](../adk-python/src/google/adk/memory/base_memory_service.py) — abstract interface
 - [`memory/in_memory_memory_service.py`](../adk-python/src/google/adk/memory/in_memory_memory_service.py) — dev implementation
 - [`memory/vertex_ai_memory_bank_service.py`](../adk-python/src/google/adk/memory/vertex_ai_memory_bank_service.py) — production implementation
-- [`08-sessions.md`](./08-sessions.md) — session state (within-session persistence)
-- [`10-apps.md`](./10-apps.md) — App container that holds the memory service
-- [`03-runners.md`](./03-runners.md) — Runner that threads memory_service into context
+- [08-sessions.md](08-sessions.md) — session state (within-session persistence)
+- [09-tools.md](09-tools.md) — `ToolContext` provides `search_memory()` for tool-based memory access
+- [10-apps.md](10-apps.md) — App container that holds the memory service
+- [03-runners.md](03-runners.md) — Runner that threads memory_service into context

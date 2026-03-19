@@ -1,8 +1,10 @@
 # Advanced Patterns — Recipes from the ADK Samples
 
-Production patterns from `contributing/samples/`.
+Production patterns from `contributing/samples/`. Complements the decision tree in [02-when-to-build-what.md](02-when-to-build-what.md).
 
 **Source:** All code examples reference files in [adk-python](https://github.com/google/adk-python).
+
+**Related:** [04-agents.md](04-agents.md) (agent types and callbacks) · [09-tools.md](09-tools.md) (tool system) · [14-planners.md](14-planners.md) (planning patterns) · [10-apps.md](10-apps.md) (plugins)
 
 ---
 

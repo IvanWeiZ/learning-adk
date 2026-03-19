@@ -443,3 +443,12 @@ sa_credential = AuthCredential(
 2. If still not found, it auto-generates a key by hashing the auth scheme and raw credential: `"adk_{scheme_type}_{scheme_hash}_{cred_type}_{cred_hash}"`.
 
 Set `credential_key` explicitly for stability across code changes.
+
+---
+
+## Cross-References
+
+- [09-tools.md](09-tools.md) — tools call `request_credential` and `get_auth_response` via `ToolContext`
+- [05-flows.md](05-flows.md) — auth flow is triggered during tool execution in the flow's postprocess phase
+- [12-artifacts.md](12-artifacts.md) — artifacts, another service-level concern wired similarly to credentials
+- [03-runners.md](03-runners.md) — `Runner` accepts `credential_service` and threads it into context

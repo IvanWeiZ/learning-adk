@@ -122,6 +122,23 @@ Start with the big picture, then follow the execution path layer by layer.
 | 24 | [24-faq.md](adk/24-faq.md) | Tool versioning, state scoping, agent messaging |
 | 25 | [25-onboarding-guide.md](adk/25-onboarding-guide.md) | Zero-to-first-agent walkthrough |
 
+### Python for Java Developers
+
+| # | File | What It Covers |
+|---|------|---------------|
+| — | [python-for-adk-learning-plan.md](python-for-adk-learning-plan.md) | 2-week curriculum: Python fundamentals → ADK patterns |
+| — | [python-asyncio-deep-dive.md](python-asyncio-deep-dive.md) | async/await, event loop, AsyncGenerator (critical for ADK) |
+| — | [python-decorators-metaprogramming-deep-dive.md](python-decorators-metaprogramming-deep-dive.md) | Decorators, ABCs, descriptors, metaclasses |
+| — | [python-pydantic-deep-dive.md](python-pydantic-deep-dive.md) | Pydantic v2: BaseModel, validators, serialization |
+| — | [python-testing-and-mocking-guide.md](python-testing-and-mocking-guide.md) | pytest, AsyncMock, fixtures, mocking strategies |
+
+### Quick Reference
+
+| # | File | What It Covers |
+|---|------|---------------|
+| — | [glossary.md](glossary.md) | ADK terminology quick-reference with links |
+| — | [java-to-python-cheat-sheet.md](java-to-python-cheat-sheet.md) | Side-by-side Java → Python mappings |
+
 ---
 
 ## Example Agents
