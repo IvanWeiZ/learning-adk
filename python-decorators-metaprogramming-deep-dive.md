@@ -272,11 +272,9 @@ class LogPlugin(PluginBase, plugin_name="logging"): ...
 
 **Java parallel:** Like a static initializer + `ServiceLoader`-style registry, triggered at class definition time.
 
----
-
 ### ABCs and Abstract Methods (vs Java Interfaces)
 
-Python's `abc` module provides abstract base classes — the closest equivalent to Java interfaces and abstract classes.
+Python's `abc` module provides abstract base classes — the closest equivalent to Java interfaces:
 
 ```python
 from abc import ABC, abstractmethod
@@ -285,13 +283,8 @@ class BaseLlm(ABC):
     @abstractmethod
     async def generate_content_async(self, request: LlmRequest, ctx: LlmContext) -> LlmResponse: ...
 
-    @abstractmethod
-    def supported_models(self) -> list[str]: ...
-
 class GeminiLlm(BaseLlm):
     async def generate_content_async(self, request, ctx) -> LlmResponse: ...
-    def supported_models(self) -> list[str]:
-        return ["gemini-2.0-flash", "gemini-2.5-pro"]
 ```
 
 | Java | Python |
@@ -299,9 +292,7 @@ class GeminiLlm(BaseLlm):
 | `interface Foo` | `class Foo(ABC)` with all `@abstractmethod` |
 | `abstract class Foo` | `class Foo(ABC)` with some concrete methods |
 | `implements Foo, Bar` | `class Baz(Foo, Bar)` (multiple inheritance) |
-| Instantiate abstract class -> compile error | Instantiate ABC -> `TypeError` at runtime |
-
----
+| Instantiate abstract -> compile error | Instantiate ABC -> `TypeError` at runtime |
 
 ### Descriptors — \_\_get\_\_, \_\_set\_\_, \_\_delete\_\_
 
@@ -327,8 +318,6 @@ class TypeChecked:
 ```
 
 You rarely write descriptors directly in ADK code (Pydantic handles it), but understanding them explains how `@property` and validated fields work.
-
----
 
 ### \_\_class\_getitem\_\_ and Generic Types
 
