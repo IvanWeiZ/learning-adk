@@ -74,7 +74,15 @@ learning-adk/
 
 ## Pre-Commit Validation Checklist
 
-**Run these checks before every commit.** Each has a concrete command you can execute.
+**Run these checks before every commit.** You can run all checks at once:
+
+```bash
+bash scripts/validate.sh
+```
+
+**Agents MUST run `bash scripts/validate.sh` before every commit and fix any errors (non-zero exit) before committing.**
+
+Each check is also documented individually below.
 
 ### 1. Heading checkboxes (agents reintroduce these every time)
 
