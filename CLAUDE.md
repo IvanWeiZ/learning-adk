@@ -71,6 +71,97 @@ learning-adk/
 
 ---
 
+## Pre-Commit Validation Checklist
+
+**Run these checks before every commit.** Each has a concrete command you can execute.
+
+### 1. Heading checkboxes (agents reintroduce these every time)
+
+```bash
+grep -rn '^#.*\[ \]' adk/*.md python/*.md reference/*.md
+```
+
+Fix: `perl -pi -e 's/^(#{2,4}) \[ \] /$1 /g' adk/*.md python/*.md`
+
+### 2. Heading spacing (## must be followed by a space)
+
+```bash
+grep -rn '^##[A-Z]' adk/*.md python/*.md reference/*.md
+grep -rn '^####[A-Z]' adk/*.md python/*.md reference/*.md
+```
+
+**Known violations:** `adk/07-events.md` (7 headings), `adk/09-tools.md` (1 heading).
+
+### 3. Broken cross-references (stale "b-suffix" filenames)
+
+Files were renamed from `XXb-name.md` to `name.md` but some references weren't updated:
+
+```bash
+grep -rn '[0-9]\+b-' adk/*.md
+```
+
+**Known broken links** (12 total across 5 files):
+- `02b-custom-use-cases.md` → should be `custom-use-cases.md` (in `02-when-to-build-what.md`)
+- `19b-security-checklist.md` → should be `security-checklist.md` (in `19-session-security.md`)
+- `20b-debugging-guide.md` → should be `debugging-guide.md` (in `20-best-practices.md`)
+- `22b-testing-examples.md` → should be `testing-examples.md` (in `22-testing.md`)
+- `23b-plugins-and-a2a.md` → should be `plugins-and-a2a.md` (in `23-advanced-internals.md`)
+
+### 4. Relative source paths (should use GitHub URLs)
+
+```bash
+grep -rn '\.\./adk-python/' adk/*.md
+```
+
+5 files use `../adk-python/` relative paths instead of `https://github.com/google/adk-python/blob/main/...` URLs: `05-flows.md`, `06-models.md`, `11-memory.md`, `12-artifacts.md`, `13-auth.md`.
+
+### 5. Line-3 header format (`adk/*.md` only)
+
+```bash
+for f in adk/*.md; do h=$(sed -n '3p' "$f"); echo "$f: $h"; done | grep -v 'Official docs:'
+```
+
+Every `adk/*.md` file line 3 must follow: `> **Official docs:** [Link](URL) | **Source:** [...] | **Prereqs:** [...]`
+
+**Known violations:** `05-flows.md`, `06-models.md`, `11-memory.md`, `12-artifacts.md`, `13-auth.md`, `21-advanced-patterns.md` have partial or missing headers.
+
+### 6. File length limits
+
+```bash
+for f in adk/*.md; do l=$(wc -l < "$f"); [ "$l" -gt 600 ] && echo "OVER: $f ($l lines, limit 600)"; done
+for f in python/*.md; do l=$(wc -l < "$f"); [ "$l" -gt 1000 ] && echo "OVER: $f ($l lines, limit 1000)"; done
+l=$(wc -l < adk/00-onboarding-guide.md); [ "$l" -gt 250 ] && echo "OVER: onboarding ($l lines, limit 250)"
+```
+
+Limits: ADK docs **600**, Python guides **1000**, Onboarding **250**.
+
+**Files currently over limit:**
+- `adk/01-request-lifecycle.md`: 621 (limit 600)
+- `adk/18-session-lifecycle.md`: 603 (limit 600)
+- `adk/24-faq.md`: 648 (limit 600)
+- `adk/25-adk-2.0-preview.md`: 933 (limit 600)
+- `adk/testing-examples.md`: 633 (limit 600)
+- `python/python-metaprogramming-deep-dive.md`: 1350 (limit 1000)
+- `python/python-pydantic-advanced.md`: 1418 (limit 1000)
+
+### 7. Reserved agent name `"user"`
+
+```bash
+grep -rn 'name="user"' adk/*.md python/*.md
+```
+
+`"user"` is reserved by ADK for the user role in events. Agent examples must use a different name. Currently violated in `adk/20-best-practices.md` (intentional anti-pattern example — verify it's clearly marked as **wrong**).
+
+### 8. Links inside code blocks (not clickable)
+
+```bash
+grep -B5 'https://' adk/*.md | grep -A1 '```'
+```
+
+URLs inside `` ``` `` blocks aren't clickable. Use markdown tables or inline links outside code blocks.
+
+---
+
 ## Lessons Learned (Do NOT Repeat These Mistakes)
 
 **Content accuracy:**
@@ -85,7 +176,7 @@ learning-adk/
 **Diagram quality:**
 8. **No cramped one-liners** — `None → X | Y → Z` is unreadable. Use `if returns None:` on separate lines.
 9. **No stacked box separators** (`├───┤`) — use tree style.
-10. **No side-by-side boxes** — always vertical tree.
+10. **No side-by-side boxes** — always vertical tree. (Violated in `00-onboarding-guide.md` lines 160-184.)
 11. **Descriptions on NEXT line** — not on same line as tree node.
 12. **Links in code blocks aren't clickable** — use markdown tables.
 13. **At a Glance must be compact** (5-10 lines) — not a full architecture walkthrough.
@@ -100,30 +191,19 @@ learning-adk/
 20. **Ask about section order** — user changed mind about Examples vs How It Works.
 
 **Process:**
-21. **Agents reintroduce checkboxes** — run `perl -pi -e 's/^(#{2,4}) \[ \] /$1 /g'` after every agent.
-22. **Agents reintroduce removed content** — verify after every agent completes.
+21. **Agents reintroduce checkboxes** — run the check in §1 above after every agent completes.
+22. **Agents reintroduce removed content** — diff the file before/after every agent.
 23. **Agents overwrite each other** — never run multiple agents on same file.
-24. **Verify content, not just formatting** — read the rendered output, don't just grep.
-25. **Verify official doc URLs** — WebFetch every URL before using.
-26. **Header format: `Official docs | Source | Prereqs`** — always this order, always on line 3.
-27. **When removing content, verify it exists elsewhere** — move before delete.
-28. **Fix the pattern, not the instance** — search ALL files for same issue.
-29. **Test CI locally before pushing** — broken regex in CI caused multiple failures.
-30. **Introduce concepts before using them** — key terms must be defined before the trace.
-
-**File length limits (enforced by CI):**
-- ADK docs (`adk/*.md`): **600 lines max** — split into focused files if longer
-- Python guides (`python/*.md`): **1000 lines max** — split tutorial vs reference if longer
-- Onboarding (`adk/00-onboarding-guide.md`): **250 lines max** — stay motivational
-
-**Files currently exceeding CI limits (need splitting):**
-- `adk/01-request-lifecycle.md`: 621 lines (limit 600)
-- `adk/18-session-lifecycle.md`: 603 lines (limit 600)
-- `adk/24-faq.md`: 648 lines (limit 600)
-- `adk/25-adk-2.0-preview.md`: 933 lines (limit 600)
-- `adk/testing-examples.md`: 633 lines (limit 600)
-- `python/python-metaprogramming-deep-dive.md`: 1350 lines (limit 1000)
-- `python/python-pydantic-advanced.md`: 1418 lines (limit 1000)
+24. **Agents drop heading spaces** — run the check in §2 above after every agent.
+25. **Verify content, not just formatting** — read the rendered output, don't just grep.
+26. **Verify official doc URLs** — WebFetch every URL before using.
+27. **Header format: `Official docs | Source | Prereqs`** — always this order, always on line 3 of `adk/*.md`.
+28. **When removing content, verify it exists elsewhere** — move before delete.
+29. **Fix the pattern, not the instance** — search ALL files for same issue.
+30. **Test CI locally before pushing** — broken regex in CI caused multiple failures.
+31. **Introduce concepts before using them** — key terms must be defined before the trace.
+32. **After renaming/splitting files, grep ALL files for old filename** — stale "b-suffix" links persisted across 5 files (see §3 above).
+33. **Use GitHub URLs for source references** — not `../adk-python/` relative paths (see §4 above).
 
 ---
 
