@@ -74,6 +74,7 @@ Six patterns that appear throughout ADK:
 |---|------|---------------|
 | 1 | [01-request-lifecycle.md](adk/01-request-lifecycle.md) | Full traced request through every layer — the mental model |
 | 2 | [02-when-to-build-what.md](adk/02-when-to-build-what.md) | Decision guide: scenario → ADK component |
+| | [custom-use-cases.md](adk/custom-use-cases.md) | Component code examples |
 
 ### Part 2: Core Layers
 
@@ -106,15 +107,19 @@ Six patterns that appear throughout ADK:
 | 17 | [17-concurrency.md](adk/17-concurrency.md) | Thread safety, parallel tools, session locking |
 | 18 | [18-session-lifecycle.md](adk/18-session-lifecycle.md) | Session service call timeline, latency optimization |
 | 19 | [19-session-security.md](adk/19-session-security.md) | Security considerations for session/event data |
+| | [security-checklist.md](adk/security-checklist.md) | Audit checklist, threat model, deployment hardening |
 
 ### Part 5: Patterns & Practices
 
 | # | File | What It Covers |
 |---|------|---------------|
 | 20 | [20-best-practices.md](adk/20-best-practices.md) | Anti-patterns, common mistakes, rules |
+| | [debugging-guide.md](adk/debugging-guide.md) | Debugging checklist, latency optimization |
 | 21 | [21-advanced-patterns.md](adk/21-advanced-patterns.md) | YAML configs, ReflectAndRetry, triage gates |
 | 22 | [22-testing.md](adk/22-testing.md) | MockModel, deterministic testing, pytest patterns |
-| 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, plugins, A2A internals |
+| | [testing-examples.md](adk/testing-examples.md) | Test examples for callbacks, plugins, tools |
+| 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, reason-act loop |
+| | [plugins-and-a2a.md](adk/plugins-and-a2a.md) | Custom tools, A2A, code executors |
 
 ### Part 6: Reference
 
@@ -131,9 +136,13 @@ For developers coming from Java or other languages:
 |------|-------|
 | [python-for-adk-learning-plan.md](python/python-for-adk-learning-plan.md) | 2-week curriculum: Python fundamentals → ADK patterns |
 | [python-asyncio-deep-dive.md](python/python-asyncio-deep-dive.md) | async/await, event loop, AsyncGenerator |
-| [python-decorators-deep-dive.md](python/python-decorators-metaprogramming-deep-dive.md) | Decorators, ABCs, descriptors, metaclasses |
+| [python-asyncio-advanced.md](python/python-asyncio-advanced.md) | Sync primitives, queues, error handling, debugging |
+| [python-decorators-deep-dive.md](python/python-decorators-deep-dive.md) | Decorators, closures, class-based decorators |
+| [python-metaprogramming-deep-dive.md](python/python-metaprogramming-deep-dive.md) | Descriptors, metaclasses, registry pattern |
 | [python-pydantic-deep-dive.md](python/python-pydantic-deep-dive.md) | Pydantic v2: BaseModel, validators, serialization |
-| [python-testing-guide.md](python/python-testing-and-mocking-guide.md) | pytest, AsyncMock, fixtures, mocking strategies |
+| [python-pydantic-advanced.md](python/python-pydantic-advanced.md) | Generics, JSON schema, custom types, performance |
+| [python-testing-and-mocking-guide.md](python/python-testing-and-mocking-guide.md) | pytest, Mock, fixtures, mocking strategies |
+| [python-testing-advanced.md](python/python-testing-advanced.md) | Async testing, parametrize, ADK patterns |
 
 ### Quick Reference
 

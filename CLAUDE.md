@@ -18,6 +18,7 @@ A curated documentation and learning resource for **Google ADK (Agent Developmen
 learning-adk/
 ├── README.md                                      # Architecture overview and reading order
 ├── adk/
+│   ├── 00-onboarding-guide.md                     # Zero to first agent — motivation
 │   ├── 01-request-lifecycle.md                    # Full traced request — the mental model
 │   ├── 02-when-to-build-what.md                   # Decision guide: scenario → ADK component
 │   ├── 03-runners.md                              # Runner lifecycle (fetch → build → run → persist)
@@ -40,15 +41,24 @@ learning-adk/
 │   ├── 20-best-practices.md                       # Anti-patterns, common mistakes
 │   ├── 21-advanced-patterns.md                    # YAML configs, ReflectAndRetry, triage gates
 │   ├── 22-testing.md                              # MockModel, deterministic testing
-│   ├── 23-advanced-internals.md                   # Processor pipeline, plugins, A2A internals
+│   ├── 23-advanced-internals.md                   # Processor pipeline, reason-act loop
 │   ├── 24-faq.md                                  # Tool versioning, state scoping
-│   └── 25-adk-2.0-preview.md                      # ADK 2.0: graph workflows, collaborative agents
+│   ├── 25-adk-2.0-preview.md                      # ADK 2.0: graph workflows, collaborative agents
+│   ├── custom-use-cases.md                        # Component code examples (split from 02)
+│   ├── debugging-guide.md                         # Debugging checklist, performance (split from 20)
+│   ├── plugins-and-a2a.md                         # Custom tools, A2A, code executors (split from 23)
+│   ├── security-checklist.md                      # Audit checklist, threat model (split from 19)
+│   └── testing-examples.md                        # Test examples for callbacks, plugins (split from 22)
 ├── python/
 │   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
-│   ├── python-asyncio-deep-dive.md                # Async/await patterns
-│   ├── python-decorators-metaprogramming-deep-dive.md # Decorators and metaprogramming
-│   ├── python-pydantic-deep-dive.md               # Pydantic v2 reference
-│   └── python-testing-and-mocking-guide.md        # pytest, AsyncMock, mocking strategies
+│   ├── python-asyncio-deep-dive.md                # Async/await core patterns
+│   ├── python-asyncio-advanced.md                 # Sync primitives, queues, debugging (split)
+│   ├── python-decorators-deep-dive.md             # Decorators, closures, inspect
+│   ├── python-metaprogramming-deep-dive.md        # Descriptors, metaclasses, registry (split)
+│   ├── python-pydantic-deep-dive.md               # Pydantic v2 core reference
+│   ├── python-pydantic-advanced.md                # Generics, JSON schema, custom types (split)
+│   ├── python-testing-and-mocking-guide.md        # pytest, Mock, fixtures core
+│   └── python-testing-advanced.md                 # Async testing, parametrize, ADK patterns (split)
 └── reference/
     ├── glossary.md                                # ADK terminology quick-reference
     └── java-to-python-cheat-sheet.md              # Side-by-side Java → Python mappings
