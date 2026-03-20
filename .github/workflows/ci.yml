@@ -16,12 +16,15 @@ jobs:
       - name: Check for broken relative links
         run: |
           echo "Checking for broken relative links..."
+          errfile="/tmp/ci_link_errors_$$"
+          rm -f "$errfile"
           for f in adk/*.md python/*.md reference/*.md README.md CONTRIBUTING.md; do
             [ -f "$f" ] || continue
-            grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | \
-              sed 's/^\]//' | sed 's/)$//' | sed 's/^\(//' | \
+            grep -oP '\]\(\K[^)]+' "$f" 2>/dev/null | \
               grep -v '^https\?://' | \
               grep -v '^#' | \
+              grep -v '\[' | \
+              grep '\.md\|\.png\|\.jpg\|\.svg' | \
               sed 's/#.*//' | \
               while read -r link; do
                 [ -z "$link" ] && continue
@@ -29,27 +32,69 @@ jobs:
                 target="$dir/$link"
                 if [ ! -f "$target" ]; then
                   echo "::error file=$f::Broken link: $link (resolved: $target)"
+                  echo "BROKEN" >> "$errfile"
                 fi
               done
           done
-          echo "Link check complete"
+          if [ -f "$errfile" ]; then
+            count=$(wc -l < "$errfile")
+            rm -f "$errfile"
+            echo "::error::Found $count broken link(s)"
+            exit 1
+          fi
+          echo "Link check complete — no broken links"
 
       - name: Check for heading checkboxes
         run: |
           if grep -rn '^#.*\[ \]' adk/*.md python/*.md reference/*.md README.md 2>/dev/null; then
-            echo "::error::Found [ ] checkboxes in headings"
+            echo "::error::Found [ ] checkboxes in headings — agents reintroduce these"
             exit 1
           fi
           echo "No heading checkboxes found"
 
+      - name: Check heading spacing
+        run: |
+          # §2: Headings like ##Title or ####Title (missing space after #)
+          errors=0
+          for pattern in '^##[A-Z]' '^###[A-Z]' '^####[A-Z]'; do
+            while IFS=: read -r file line content; do
+              echo "::error file=$file,line=$line::Missing space after # in heading: $content"
+              errors=$((errors + 1))
+            done < <(grep -rn "$pattern" adk/*.md python/*.md reference/*.md 2>/dev/null || true)
+          done
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::Found $errors heading(s) missing space after #"
+            exit 1
+          fi
+          echo "All headings have correct spacing"
+
+      - name: Check for stale b-suffix cross-references
+        run: |
+          # §3: Files were renamed from XXb-name.md — references should be updated
+          if grep -rn '[0-9]\+b-[a-z].*\.md' adk/*.md python/*.md reference/*.md 2>/dev/null; then
+            echo "::error::Found stale b-suffix file references (files were renamed)"
+            exit 1
+          fi
+          echo "No stale b-suffix references found"
+
+      - name: Check for relative source paths
+        run: |
+          # §4: Should use GitHub URLs instead of ../adk-python/ relative paths
+          if grep -rn '\.\./adk-python/' adk/*.md python/*.md reference/*.md 2>/dev/null; then
+            echo "::error::Found relative ../adk-python/ paths — use GitHub URLs instead"
+            exit 1
+          fi
+          echo "No relative source paths found"
+
       - name: Check header format consistency
         run: |
+          # §5: adk/*.md line 3 must contain 'Official docs:' if it starts with '>'
           failed=false
           for f in adk/*.md; do
             header=$(sed -n '3p' "$f")
             if echo "$header" | grep -q '^>' ; then
               if ! echo "$header" | grep -q 'Official docs:'; then
-                echo "::error file=$f::Missing 'Official docs:' in header"
+                echo "::error file=$f::Line 3 starts with '>' but missing 'Official docs:' — expected format: Official docs | Source | Prereqs"
                 failed=true
               fi
             fi
@@ -59,14 +104,14 @@ jobs:
 
       - name: Check file length limits
         run: |
-          failed=false
+          over_limit=false
 
           # ADK docs: 600 lines max
           for f in adk/*.md; do
             lines=$(wc -l < "$f")
             if [ "$lines" -gt 600 ]; then
               echo "::warning file=$f::$lines lines (limit: 600) — consider splitting"
-              failed=true
+              over_limit=true
             fi
           done
 
@@ -76,7 +121,7 @@ jobs:
             lines=$(wc -l < "$f")
             if [ "$lines" -gt 1000 ]; then
               echo "::warning file=$f::$lines lines (limit: 1000) — consider splitting"
-              failed=true
+              over_limit=true
             fi
           done
 
@@ -85,14 +130,77 @@ jobs:
             lines=$(wc -l < "adk/00-onboarding-guide.md")
             if [ "$lines" -gt 250 ]; then
               echo "::warning file=adk/00-onboarding-guide.md::$lines lines (limit: 250) — keep it motivational"
-              failed=true
+              over_limit=true
             fi
           fi
 
-          if [ "$failed" = true ]; then
+          if [ "$over_limit" = true ]; then
             echo ""
             echo "Files over limit (warnings, not blocking):"
             echo "  ADK docs: 600 lines | Python guides: 1000 lines | Onboarding: 250 lines"
           else
             echo "All files within limits"
+          fi
+
+      - name: Check for reserved agent name
+        run: |
+          # §7: "user" is reserved by ADK for the user role in events
+          matches=$(grep -rn 'name="user"' adk/*.md python/*.md 2>/dev/null || true)
+          if [ -n "$matches" ]; then
+            # Filter out lines that are clearly marked as anti-pattern/wrong examples
+            real_violations=0
+            while IFS= read -r match; do
+              [ -z "$match" ] && continue
+              file=$(echo "$match" | cut -d: -f1)
+              lineno=$(echo "$match" | cut -d: -f2)
+              # Check surrounding context (5 lines before) for anti-pattern markers
+              context=$(sed -n "$((lineno > 5 ? lineno - 5 : 1)),${lineno}p" "$file")
+              if echo "$context" | grep -qi 'anti-pattern\|wrong\|bad\|don.t\|avoid\|never\|incorrect\|reserved\|error'; then
+                echo "::notice file=$file,line=$lineno::name=\"user\" found but appears in anti-pattern example — OK"
+              else
+                echo "::error file=$file,line=$lineno::name=\"user\" is reserved by ADK — use a different agent name"
+                real_violations=$((real_violations + 1))
+              fi
+            done <<< "$matches"
+            if [ "$real_violations" -gt 0 ]; then
+              echo "::error::Found $real_violations use(s) of reserved agent name 'user'"
+              exit 1
+            fi
+          fi
+          echo "No invalid uses of reserved agent name"
+
+      - name: Check for links inside code blocks
+        run: |
+          # §8: URLs inside ``` blocks aren't clickable — warn about them
+          warnings=0
+          for f in adk/*.md python/*.md reference/*.md; do
+            [ -f "$f" ] || continue
+            in_code_block=false
+            lineno=0
+            while IFS= read -r line; do
+              lineno=$((lineno + 1))
+              if echo "$line" | grep -q '^```'; then
+                if [ "$in_code_block" = true ]; then
+                  in_code_block=false
+                else
+                  in_code_block=true
+                fi
+                continue
+              fi
+              if [ "$in_code_block" = true ] && echo "$line" | grep -q 'https://'; then
+                # Skip GitHub source URLs (common in comments, acceptable)
+                if echo "$line" | grep -q '# Source:'; then
+                  continue
+                fi
+                echo "::warning file=$f,line=$lineno::URL inside code block is not clickable: $(echo "$line" | grep -o 'https://[^ )"]*' | head -1)"
+                warnings=$((warnings + 1))
+              fi
+            done < "$f"
+          done
+          if [ "$warnings" -gt 0 ]; then
+            echo ""
+            echo "Found $warnings URL(s) inside code blocks (warnings, not blocking)"
+            echo "Consider using markdown tables or inline links outside code blocks"
+          else
+            echo "No URLs found inside code blocks"
           fi
