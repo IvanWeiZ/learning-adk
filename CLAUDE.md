@@ -10,6 +10,8 @@ A curated documentation and learning resource for **Google ADK (Agent Developmen
 
 **Reference codebase:** `~/Documents/adk-python` (Google ADK source, not included here).
 
+**ADK version traced:** v1.27.2 ([commit `15ddf2d`](https://github.com/google/adk-python/commit/15ddf2d50d9cca31d641c1c2aa572a2415198454)).
+
 ---
 
 ## Repository Structure
@@ -17,6 +19,7 @@ A curated documentation and learning resource for **Google ADK (Agent Developmen
 ```
 learning-adk/
 ├── README.md                                      # Architecture overview and reading order
+├── CONTRIBUTING.md                                # Contribution guidelines, diagram style
 ├── adk/
 │   ├── 00-onboarding-guide.md                     # Zero to first agent — motivation
 │   ├── 01-request-lifecycle.md                    # Full traced request — the mental model
@@ -64,7 +67,7 @@ learning-adk/
     └── java-to-python-cheat-sheet.md              # Side-by-side Java → Python mappings
 ```
 
-**Total:** ~14,000+ lines across 33 Markdown files.
+**Total:** ~21,000+ lines across 45 Markdown files.
 
 ---
 
@@ -113,6 +116,15 @@ learning-adk/
 - Python guides (`python/*.md`): **1000 lines max** — split tutorial vs reference if longer
 - Onboarding (`adk/00-onboarding-guide.md`): **250 lines max** — stay motivational
 
+**Files currently exceeding CI limits (need splitting):**
+- `adk/01-request-lifecycle.md`: 621 lines (limit 600)
+- `adk/18-session-lifecycle.md`: 603 lines (limit 600)
+- `adk/24-faq.md`: 648 lines (limit 600)
+- `adk/25-adk-2.0-preview.md`: 933 lines (limit 600)
+- `adk/testing-examples.md`: 633 lines (limit 600)
+- `python/python-metaprogramming-deep-dive.md`: 1350 lines (limit 1000)
+- `python/python-pydantic-advanced.md`: 1418 lines (limit 1000)
+
 ---
 
 ## Core ADK Architecture
@@ -138,7 +150,7 @@ Understanding these layers is essential for adding or updating documentation:
 
 ## Document Conventions
 
-Every deep-dive file (01–08) follows this structure:
+Every numbered deep-dive file (01–25) follows this structure:
 
 1. **What It Is** — one-paragraph summary
 2. **Class Hierarchy** — ASCII diagram of inheritance
@@ -203,7 +215,7 @@ Code examples in documentation should follow these conventions:
 
 ## Content Decision Guide
 
-Use `10-when-to-build-what.md` as the authoritative source for mapping scenarios to ADK components. When describing a new use case, follow its decision tree format:
+Use `02-when-to-build-what.md` as the authoritative source for mapping scenarios to ADK components. When describing a new use case, follow its decision tree format:
 
 ```
 Need to add a capability to an agent?
@@ -218,10 +230,10 @@ Need to add a capability to an agent?
 ## What to Add / What to Avoid
 
 **Add:**
-- Deep dives on any ADK component not yet covered (e.g., `memory`, `artifacts`, `auth`, `a2a`, `code_executors`, `evaluation`)
 - Additional Python guides (e.g., `python-generators-deep-dive.md`, `python-context-managers-deep-dive.md`)
 - Real-world scenario walkthroughs following the `01-request-lifecycle.md` format
 - Java-to-Python comparison tables where helpful
+- Deep dives on any ADK component not yet covered (most core components are now documented in files 00–25)
 
 **Avoid:**
 - Adding runnable code or build artifacts — this is a docs-only repo
@@ -233,15 +245,13 @@ Need to add a capability to an agent?
 
 ## Git Workflow
 
-**Active branch:** `claude/document-project-contents-n0J8I`
-
 ```bash
 # Stage and commit new documentation
 git add <file>.md
 git commit -m "docs: <short description>"
 
-# Push to remote
-git push -u origin claude/document-project-contents-n0J8I
+# Push to the current working branch
+git push -u origin <current-branch>
 ```
 
 **Commit message conventions:**
@@ -252,11 +262,24 @@ git push -u origin claude/document-project-contents-n0J8I
 
 ---
 
+## CI Checks
+
+CI runs on push/PR to `main` via `.github/workflows/ci.yml`. It checks:
+
+1. **Broken relative links** — scans all markdown for `](path)` and verifies targets exist
+2. **Heading checkboxes** — rejects `## [ ] Title` patterns (agents reintroduce these)
+3. **Header format** — `adk/*.md` line 3 must contain `Official docs:` if it starts with `>`
+4. **File length limits** — warnings (non-blocking) for files over limits
+
+File length violations are warnings, not failures. But they signal a file should be split.
+
+---
+
 ## Reading Order for New Contributors
 
 1. `README.md` — big picture architecture
 2. `01-request-lifecycle.md` — full traced request through every layer
 3. `03-runners.md` through `09-tools.md` — core layers in execution order
-4. `10-when-to-build-what.md` — practical decision guide
+4. `02-when-to-build-what.md` — practical decision guide
 5. `python-for-adk-learning-plan.md` — if you need Python fundamentals
 6. Python deep dives as needed (asyncio, Pydantic, decorators, testing)
