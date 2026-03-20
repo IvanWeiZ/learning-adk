@@ -31,45 +31,22 @@
 
 ## Architecture
 
+| Layer | What It Does |
+|-------|-------------|
+| **User / CLI / API** | Entry point — web UI, command line, or REST API |
+| **Runner** | Session bookkeeping, event streaming, compaction |
+| **Agents** | LlmAgent, LoopAgent, ParallelAgent, SequentialAgent |
+| **Sessions** | InMemory, SQLite, Database, Vertex AI |
+| **Flow** | Reason-act loop: preprocess → LLM → tools → repeat |
+| **Models** | Gemini, Anthropic, LiteLLM (100+ providers) |
+| **Tools** | FunctionTool, MCP, OpenAPI, LangChain, CrewAI, 50+ more |
+| **Events** | The universal data type flowing through everything |
+| **Memory / Artifacts / Auth / Telemetry** | Cross-cutting services |
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      USER / CLI / API                           │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  RUNNER ─── session bookkeeping, event streaming, compaction    │
-└──────────────┬──────────────────────────────┬───────────────────┘
-               │                              │
-               ▼                              ▼
-┌──────────────────────────┐    ┌─────────────────────────────────┐
-│  AGENTS                  │    │  SESSIONS                       │
-│  LlmAgent, LoopAgent,   │◄──►│  InMemory, SQLite, Database,    │
-│  ParallelAgent,          │    │  Vertex AI                      │
-│  SequentialAgent         │    │                                 │
-└──────────────┬───────────┘    └─────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  FLOW ─── reason-act loop: preprocess → LLM → tools → repeat   │
-└──────────────┬─────────────────────────────┬────────────────────┘
-               │                             │
-               ▼                             ▼
-┌──────────────────────────┐    ┌────────────────────────────────┐
-│  MODELS                  │    │  TOOLS                         │
-│  Gemini, Anthropic,      │    │  FunctionTool, MCP, OpenAPI,   │
-│  LiteLLM (100+)          │    │  LangChain, CrewAI, 50+ more  │
-└──────────────────────────┘    └────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  EVENTS ─── the universal data type flowing through everything  │
-└─────────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌──────────────┬──────────────┬──────────────┬────────────────────┐
-│  MEMORY      │  ARTIFACTS   │  AUTH        │  TELEMETRY         │
-└──────────────┴──────────────┴──────────────┴────────────────────┘
+User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ──► Events
+              │                                           │
+              └──── Session (state + history) ◄────────────┘
 ```
 
 ## Key Architectural Patterns
