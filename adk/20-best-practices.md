@@ -4,7 +4,7 @@
 
 ## At a Glance
 
-Full debugging checklist: see [20b-debugging-guide.md](20b-debugging-guide.md).
+Full debugging checklist: see [debugging-guide.md](debugging-guide.md).
 
 This document collects the most common ADK mistakes, anti-patterns, and rules. Each section covers one category of error with wrong/correct examples and the reasoning behind the rule.
 
@@ -293,13 +293,13 @@ sub_agents=[Agent(
 - **Blocking I/O in tools blocks the entire event loop.** Use `async` HTTP clients or `asyncio.to_thread`.
 - **Global mutable state shared across tool functions is a race condition.** Use `tool_context.state`.
 
-*Continued in [20b-debugging-guide.md](20b-debugging-guide.md) — debugging checklist, latency optimization, and performance tips.*
+*Continued in [debugging-guide.md](debugging-guide.md) — debugging checklist, latency optimization, and performance tips.*
 
 ---
 
 ## Related
 
-- [20b-debugging-guide.md](20b-debugging-guide.md) — Debugging checklist and performance optimization
+- [debugging-guide.md](debugging-guide.md) — Debugging checklist and performance optimization
 - [00-onboarding-guide.md](00-onboarding-guide.md) — Start here if you're new
 - [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
 - [04-agents.md](04-agents.md) — Agent types deep dive

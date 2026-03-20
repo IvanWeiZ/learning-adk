@@ -90,7 +90,7 @@ grep -rn '^##[A-Z]' adk/*.md python/*.md reference/*.md
 grep -rn '^####[A-Z]' adk/*.md python/*.md reference/*.md
 ```
 
-**Known violations:** `adk/07-events.md` (7 headings), `adk/09-tools.md` (1 heading).
+**Previously violated by:** `adk/07-events.md` (7 headings), `adk/09-tools.md` (1 heading) — fixed.
 
 ### 3. Broken cross-references (stale "b-suffix" filenames)
 
@@ -100,12 +100,7 @@ Files were renamed from `XXb-name.md` to `name.md` but some references weren't u
 grep -rn '[0-9]\+b-' adk/*.md
 ```
 
-**Known broken links** (12 total across 5 files):
-- `02b-custom-use-cases.md` → should be `custom-use-cases.md` (in `02-when-to-build-what.md`)
-- `19b-security-checklist.md` → should be `security-checklist.md` (in `19-session-security.md`)
-- `20b-debugging-guide.md` → should be `debugging-guide.md` (in `20-best-practices.md`)
-- `22b-testing-examples.md` → should be `testing-examples.md` (in `22-testing.md`)
-- `23b-plugins-and-a2a.md` → should be `plugins-and-a2a.md` (in `23-advanced-internals.md`)
+All 12 broken b-suffix links have been fixed. Run the check above to ensure no regressions.
 
 ### 4. Relative source paths (should use GitHub URLs)
 
@@ -113,7 +108,7 @@ grep -rn '[0-9]\+b-' adk/*.md
 grep -rn '\.\./adk-python/' adk/*.md
 ```
 
-5 files use `../adk-python/` relative paths instead of `https://github.com/google/adk-python/blob/main/...` URLs: `05-flows.md`, `06-models.md`, `11-memory.md`, `12-artifacts.md`, `13-auth.md`.
+All relative paths have been converted to GitHub URLs. Run the check above to ensure no regressions.
 
 ### 5. Line-3 header format (`adk/*.md` only)
 
@@ -123,7 +118,7 @@ for f in adk/*.md; do h=$(sed -n '3p' "$f"); echo "$f: $h"; done | grep -v 'Offi
 
 Every `adk/*.md` file line 3 must follow: `> **Official docs:** [Link](URL) | **Source:** [...] | **Prereqs:** [...]`
 
-**Known violations:** `05-flows.md`, `06-models.md`, `11-memory.md`, `12-artifacts.md`, `13-auth.md`, `21-advanced-patterns.md` have partial or missing headers.
+All 6 previously missing headers have been fixed. Run the check above to ensure no regressions.
 
 ### 6. File length limits
 

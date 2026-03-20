@@ -1,6 +1,6 @@
 # Models — LLM Adapters
 
-**Source:** [`models/base_llm.py`](../adk-python/src/google/adk/models/base_llm.py) · [`models/registry.py`](../adk-python/src/google/adk/models/registry.py) · [`models/llm_request.py`](../adk-python/src/google/adk/models/llm_request.py) · [`models/llm_response.py`](../adk-python/src/google/adk/models/llm_response.py)
+> **Official docs:** [Models](https://google.github.io/adk-docs/runtime/models/) | **Source:** [`base_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/base_llm.py) · [`registry.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/registry.py) · [`llm_request.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_request.py) · [`llm_response.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_response.py) | **Prereqs:** [05-flows.md](05-flows.md)
 
 ---
 
@@ -219,10 +219,10 @@ LLMRegistry.register(MyLlm)
 
 ## Related
 
-- [`models/base_llm.py`](../adk-python/src/google/adk/models/base_llm.py) — abstract interface
-- [`models/registry.py`](../adk-python/src/google/adk/models/registry.py) — model dispatch
-- [`models/llm_request.py`](../adk-python/src/google/adk/models/llm_request.py) — request object
-- [`models/llm_response.py`](../adk-python/src/google/adk/models/llm_response.py) — response object
-- [`models/google_llm.py`](../adk-python/src/google/adk/models/google_llm.py) — Gemini adapter (`class Gemini`)
-- [`models/anthropic_llm.py`](../adk-python/src/google/adk/models/anthropic_llm.py) — Anthropic adapter
-- [`models/lite_llm.py`](../adk-python/src/google/adk/models/lite_llm.py) — LiteLLM adapter
+- [`models/base_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/base_llm.py) — abstract interface
+- [`models/registry.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/registry.py) — model dispatch
+- [`models/llm_request.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_request.py) — request object
+- [`models/llm_response.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_response.py) — response object
+- [`models/google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py) — Gemini adapter (`class Gemini`)
+- [`models/anthropic_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/anthropic_llm.py) — Anthropic adapter
+- [`models/lite_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/lite_llm.py) — LiteLLM adapter

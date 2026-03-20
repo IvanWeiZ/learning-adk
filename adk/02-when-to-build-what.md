@@ -177,7 +177,7 @@ Common scenarios mapped to ADK components.
 
 ### 1–8: Component Examples
 
-See inline code for each component: plain function tools, BaseTool subclass, BaseToolset, agent callbacks, plugins, custom agents, composition agents, and LLM-controlled transfer in [02b-custom-use-cases.md](02b-custom-use-cases.md).
+See inline code for each component: plain function tools, BaseTool subclass, BaseToolset, agent callbacks, plugins, custom agents, composition agents, and LLM-controlled transfer in [custom-use-cases.md](custom-use-cases.md).
 
 ---
 
@@ -216,7 +216,7 @@ See inline code for each component: plain function tools, BaseTool subclass, Bas
 
 ## Related
 
-- [02b-custom-use-cases.md](02b-custom-use-cases.md) — Custom use cases: parse-enrich-respond patterns with three implementation options
+- [custom-use-cases.md](custom-use-cases.md) — Custom use cases: parse-enrich-respond patterns with three implementation options
 - [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request
 - [09-tools.md](09-tools.md) — Tool system reference
 - [04-agents.md](04-agents.md) — Agent types deep dive

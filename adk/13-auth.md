@@ -1,6 +1,6 @@
 # Authentication Deep Dive
 
-**Source:** [`auth/auth_credential.py`](../adk-python/src/google/adk/auth/auth_credential.py) · [`auth/auth_schemes.py`](../adk-python/src/google/adk/auth/auth_schemes.py) · [`auth/auth_tool.py`](../adk-python/src/google/adk/auth/auth_tool.py) · [`auth/auth_handler.py`](../adk-python/src/google/adk/auth/auth_handler.py)
+> **Official docs:** [Authentication](https://google.github.io/adk-docs/tools/authentication/) | **Source:** [`auth_credential.py`](https://github.com/google/adk-python/blob/main/src/google/adk/auth/auth_credential.py) · [`auth_schemes.py`](https://github.com/google/adk-python/blob/main/src/google/adk/auth/auth_schemes.py) · [`auth_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/auth/auth_tool.py) · [`auth_handler.py`](https://github.com/google/adk-python/blob/main/src/google/adk/auth/auth_handler.py) | **Prereqs:** [09-tools.md](09-tools.md)
 
 ---
 
