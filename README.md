@@ -4,11 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ADK Version](https://img.shields.io/badge/ADK-v1.27.2-blue)](https://github.com/google/adk-python)
 
-> **Not the official docs.** For API reference and tutorials, see [google.github.io/adk-docs](https://google.github.io/adk-docs/).
->
-> These notes go deeper: every claim is traced to a specific line in the [ADK source code](https://github.com/google/adk-python). They cover the internals, gotchas, and patterns that the official docs don't.
->
-> **What's NOT here:** runnable code, build artifacts, or package configs. This is a docs-only repo. For working examples, see [ADK samples](https://github.com/google/adk-python/tree/main/contributing/samples/).
+The official ADK docs show you the API surface — this repo shows you what happens underneath. Every claim is traced to a specific line in the [ADK source code](https://github.com/google/adk-python), covering internals, gotchas, and patterns that the official docs don't. Built from a Java developer's perspective learning Python and ADK from the ground up.
+
+> **Not the official docs.** For API reference and tutorials, see [google.github.io/adk-docs](https://google.github.io/adk-docs/). For working examples, see [ADK samples](https://github.com/google/adk-python/tree/main/contributing/samples/). This repo contains no runnable code — only documentation.
 
 ## What's Inside
 
