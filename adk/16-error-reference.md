@@ -1,34 +1,63 @@
-# Error Reference
+# 16 — Error Reference: Every Error Path
 
-Exceptions, silent failures, and recovery points in ADK.
-
-**Source:** [`base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py) · [`runners.py`](../adk-python/src/google/adk/runners.py) · [`run_config.py`](../adk-python/src/google/adk/agents/run_config.py)
+> **Source:** [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`agents/run_config.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/run_config.py) | **Prereqs:** [01-request-lifecycle.md](./01-request-lifecycle.md), [03-runners.md](./03-runners.md) | **Official docs:** <https://google.github.io/adk-docs/runtime/>
 
 ---
 
-## Error Architecture
-
-ADK errors fall into three tiers:
-
-- **Tier 1 — Recoverable**: errors that fire a callback, giving your code a chance to intercept and continue.
-- **Tier 2 — Fatal**: errors that propagate uncaught to the `run_async()` caller.
-- **Tier 3 — Silent**: errors that produce no exception and no callback -- data is silently lost or skipped.
+## At a Glance
 
 ```
- Error occurs
- │
- ┌───────────┼───────────┐
- ▼ ▼ ▼
- ┌──────────┐ ┌──────────┐ ┌──────────┐
- │ Tier 1 │ │ Tier 2 │ │ Tier 3 │
- │RECOVERABLE│ │ FATAL │ │ SILENT │
- └────┬─────┘ └────┬─────┘ └────┬─────┘
- │ │ │
- callback propagates no exception
- can intercept to caller no callback
- │ │ │
- on_model_error try/except data silently
- on_tool_error in your code lost or skipped
+                    Error occurs
+                        │
+          ┌─────────────┼─────────────┐
+          ▼             ▼             ▼
+   ┌────────────┐ ┌──────────┐ ┌──────────┐
+   │  Tier 1    │ │ Tier 2   │ │ Tier 3   │
+   │ RECOVERABLE│ │  FATAL   │ │  SILENT  │
+   └─────┬──────┘ └────┬─────┘ └────┬─────┘
+         │              │            │
+   callback fires  propagates    no exception
+   you can         to caller     no callback
+   intercept       uncaught      data lost
+         │              │            │
+   on_model_error  try/except    check logs
+   on_tool_error   in your code  only clue
+```
+
+ADK errors fall into three tiers. **Tier 1 (Recoverable):** errors that fire a callback (`on_model_error_callback`, `on_tool_error_callback`), giving your code a chance to intercept and continue. **Tier 2 (Fatal):** errors that propagate uncaught to the `run_async()` caller with no callback opportunity. **Tier 3 (Silent):** errors that produce no exception and no callback -- data is silently lost or skipped, and only log output reveals the problem.
+
+---
+
+## Class Hierarchy
+
+| Class | Source File | Inherits From | Purpose |
+|---|---|---|---|
+| `LlmCallsLimitExceededError` | [`agents/invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py) | `Exception` | `RunConfig.max_llm_calls` exceeded |
+| `SessionNotFoundError` | [`errors/session_not_found_error.py`](https://github.com/google/adk-python/blob/main/src/google/adk/errors/session_not_found_error.py) | `ValueError` | Session lookup failed, `auto_create_session=False` |
+| `AlreadyExistsError` | [`errors/already_exists_error.py`](https://github.com/google/adk-python/blob/main/src/google/adk/errors/already_exists_error.py) | `Exception` | Duplicate `session_id` on `create_session()` |
+| `ToolExecutionError` | [`errors/tool_execution_error.py`](https://github.com/google/adk-python/blob/main/src/google/adk/errors/tool_execution_error.py) | `Exception` | Tool authors raise with optional `error_type` |
+| `_ResourceExhaustedError` | [`models/google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py) | `ClientError` | Gemini HTTP 429, adds mitigation link |
+
+---
+
+## Key API
+
+### [ ] Error Flow Detail
+
+```
+run_async() invocation
+│
+├─ LLM call ──→ exception ──→ on_model_error_callback ──→ handled? ──→ continue
+│                              └─ not handled ──→ re-raise (fatal)
+│
+├─ Tool call ──→ exception ──→ on_tool_error_callback ──→ handled? ──→ continue
+│                              └─ not handled ──→ re-raise (fatal)
+│
+├─ LlmCallsLimitExceededError ──→ (no callback) ──→ fatal, propagates directly
+│
+├─ SessionNotFoundError ──→ (no callback) ──→ fatal, propagates directly
+│
+└─ Callback exception ──→ (no callback) ──→ fatal, propagates directly
 ```
 
 ### [ ] Minimum Error Handling (Copy-Paste Starter)
@@ -58,43 +87,15 @@ except SessionNotFoundError:
 # InMemorySessionService can silently drop events (see docs)
 ```
 
-### [ ] Previous Detailed View
-
-```
-run_async() invocation
-│
-├─ LLM call ──→ exception ──→ on_model_error_callback ──→ handled? ──→ continue
-│ └─ not handled ──→ re-raise (fatal)
-│
-├─ Tool call ──→ exception ──→ on_tool_error_callback ──→ handled? ──→ continue
-│ └─ not handled ──→ re-raise (fatal)
-│
-├─ LlmCallsLimitExceededError ──→ (no callback) ──→ fatal, propagates directly
-│
-├─ SessionNotFoundError ──→ (no callback) ──→ fatal, propagates directly
-│
-└─ Callback exception ──→ (no callback) ──→ fatal, propagates directly
-```
-
 ---
 
-## Custom Exception Classes
+## How It Works
 
-| Class | Source File | Inherits From | Purpose |
-|---|---|---|---|
-| `LlmCallsLimitExceededError` | [`run_config.py`](../adk-python/src/google/adk/agents/run_config.py) | `Exception` | `RunConfig.max_llm_calls` exceeded |
-| `SessionNotFoundError` | [`runners.py`](../adk-python/src/google/adk/runners.py) | `ValueError` | Session lookup failed, `auto_create_session=False` |
-| `AlreadyExistsError` | [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) | `Exception` | Duplicate `session_id` on `create_session()` |
-| `ToolExecutionError` | [`errors/tool_execution_error.py`](../adk-python/src/google/adk/errors/tool_execution_error.py) | `Exception` | Tool authors raise with optional `error_type` |
-| `_ResourceExhaustedError` | [`models/google_llm.py`](../adk-python/src/google/adk/models/google_llm.py) | `ClientError` | Gemini HTTP 429, adds mitigation link |
+### [ ] Recoverable Errors (Callback-Interceptable)
 
----
+#### [ ] LLM API Errors
 
-## Recoverable Errors (Callback-Interceptable)
-
-### [ ] LLM API Errors
-
-Any exception from `llm.generate_content_async()` is caught by `_run_and_handle_error()` in [`base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py).
+Any exception from `llm.generate_content_async()` is caught by `_run_and_handle_error()` in [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py).
 
 **Recovery pipeline:**
 
@@ -107,9 +108,9 @@ Any exception from `llm.generate_content_async()` is caught by `_run_and_handle_
 - `ClientError` — Gemini 400/403/500 responses
 - `_ResourceExhaustedError` — Gemini 429 (rate limit). Includes a link to quota increase docs in the error message.
 
-### [ ] Tool Execution Errors
+#### [ ] Tool Execution Errors
 
-Any exception from `tool.run_async()` is caught in [`functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py).
+Any exception from `tool.run_async()` is caught in [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py).
 
 **Recovery pipeline:**
 
@@ -119,26 +120,24 @@ Any exception from `tool.run_async()` is caught in [`functions.py`](../adk-pytho
 
 **Also handles tool-not-found:** when the LLM hallucinates a tool name that does not exist in the agent's tool registry, this is caught and reported as a tool error.
 
----
+### [ ] Fatal Errors (No Callback Recovery)
 
-## Fatal Errors (No Callback Recovery)
-
-### [ ] `LlmCallsLimitExceededError`
+#### [ ] `LlmCallsLimitExceededError`
 
 All allowed LLM calls exhausted.
 
 - **Critical gotcha**: this fires BEFORE the API call is made, so `on_model_error_callback` never sees it.
 - Must catch in application code wrapping `run_async()`.
 - Default limit: **500** (`RunConfig.max_llm_calls`).
-- Typical cause: agent loops (tool → LLM → tool → LLM ...) that never reach a termination condition.
+- Typical cause: agent loops (tool -> LLM -> tool -> LLM ...) that never reach a termination condition.
 
-### [ ] `SessionNotFoundError`
+#### [ ] `SessionNotFoundError`
 
 `get_session()` returns `None` and `auto_create_session=False`.
 
 - Fix: pre-create sessions before calling `run_async()`, or set `auto_create_session=True` on the `Runner`.
 
-### [ ] Callback Exceptions
+#### [ ] Callback Exceptions
 
 Any callback exception crashes the entire invocation.
 
@@ -146,7 +145,7 @@ Any callback exception crashes the entire invocation.
 - Only `on_model_error_callback` and `on_tool_error_callback` exist, and only for model/tool errors.
 - Code callbacks defensively.
 
-### [ ] Agent Transfer Errors
+#### [ ] Agent Transfer Errors
 
 When the LLM issues a transfer to an agent name that does not exist in the agent tree:
 
@@ -156,25 +155,23 @@ ValueError("Agent 'X' not found")
 
 Propagates uncaught. Ensure `sub_agents` names match the instruction.
 
-### [ ] Constructor Validation Errors
+#### [ ] Constructor Validation Errors
 
 These fire at agent construction time (before any `run_async()` call):
 
-- Agent `name` must be a valid Python identifier — `"user"` is reserved by ADK.
+- Agent `name` must be a valid Python identifier -- `"user"` is reserved by ADK.
 - The same agent instance cannot appear as a sub-agent of two different parents. Use `clone()` to reuse.
-- `generate_content_config` must **not** contain `tools`, `system_instruction`, or `response_schema` — these are managed by ADK internally.
+- `generate_content_config` must **not** contain `tools`, `system_instruction`, or `response_schema` -- these are managed by ADK internally.
 
----
+### [ ] Silent Failures
 
-## Silent Failures
-
-### [ ] `InMemorySessionService.append_event()`
+#### [ ] `InMemorySessionService.append_event()`
 
 If the session is missing (e.g., deleted), events log `WARNING` but are not persisted. No exception.
 
 Most dangerous silent failure: events appear to succeed but vanish on reload.
 
-### [ ] Toolset Auth Resolution
+#### [ ] Toolset Auth Resolution
 
 `ValueError` from `get_auth_credential()` is swallowed with a warning. Toolset proceeds unauthenticated.
 
@@ -182,7 +179,7 @@ Tool fails later on the API call (caught by `on_tool_error_callback`), but root 
 
 ---
 
-## Error Handling Patterns
+## Examples
 
 ### [ ] Recommended Pattern
 
@@ -224,7 +221,17 @@ agent = LlmAgent(
 
 ---
 
-## Cross-References
+## Gotchas
+
+- `LlmCallsLimitExceededError` fires **before** the API call, so `on_model_error_callback` never sees it. You must catch it in your `try/except` around `run_async()`.
+- `InMemorySessionService` silently drops events when the session is missing -- no exception, no callback. Use `DatabaseSessionService` in production.
+- Toolset auth failures are swallowed with a warning log. The tool proceeds unauthenticated and fails later, making root cause hard to trace.
+- There is no `on_agent_error_callback` -- callback exceptions are always fatal.
+- Agent `name="user"` is reserved and will raise at construction time.
+
+---
+
+## Related
 
 - [Request Lifecycle](01-request-lifecycle.md) — full traced request showing where errors can occur at each stage
 - [Runners](03-runners.md) — `Runner.run_async()` orchestration and session lookup

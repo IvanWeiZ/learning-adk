@@ -1,60 +1,56 @@
-# Runner — The Stateless Orchestrator
+# 03 — Runner: The Stateless Orchestrator
 
-**Source:** [`runners.py`](../adk-python/src/google/adk/runners.py)
+> **Official docs:** [Runner](https://google.github.io/adk-docs/runtime/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) | **Prereqs:** 01, 02
+
+## At a Glance
+
+```
+┌──────────────────────────────────────────┐
+│          Runner.run_async()               │
+│  1. fetch/create Session                  │
+│  2. build InvocationContext               │
+│  3. call agent.run_async()                │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│          Agent.run_async()                │
+│  yields Event stream                      │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│          Event Handling                   │
+│  persist each event to session            │
+│  yield each event to caller               │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│          Post-Invocation                  │
+│  compaction (optional)                    │
+│  close plugin contexts                    │
+└──────────────────────────────────────────┘
+```
+
+`Runner` owns the lifecycle of a single user request: fetch or create a session, build an invocation context, call the root agent, stream events back to the caller, persist them, and optionally compact old events. Runner is stateless — all state lives in `Session` — so one Runner handles many concurrent invocations safely.
 
 ---
 
-## What It Is
-
-`Runner` owns the lifecycle of a single user request:
-
-1. Fetch or create a `Session`
-2. Build an `InvocationContext`
-3. Call the root agent's `run_async()`
-4. Stream `Event`s back to the caller
-5. Persist events to the session service
-6. Optionally compact old events (summarize history)
-
-`Runner` is stateless. All state lives in `Session`. One Runner handles many concurrent invocations safely.
-
-### [ ] Who Owns What
+## Class Hierarchy
 
 ```
-Runner (stateless) Agent (stateless) Session (stateful)
-───────────────── ───────────────── ──────────────────
-Owns: request lifecycle Owns: behavior Owns: conversation history
-Holds: service refs Holds: config Holds: state + events
-Creates: InvocationCtx Creates: LlmRequest Created by: SessionService
-Dies after: run_async() Lives forever Lives across invocations
-```
-
----
-
-## Construction
-
-```python
-runner = Runner(
-    agent=root_agent, # the root agent to run
-    app_name='my_app',
-    session_service=InMemorySessionService(),
-
-    # optional:
-    artifact_service=...,
-    memory_service=...,
-    credential_service=...,
-    auto_create_session=False, # raise if session not found
-)
-
-# For production: pass an App instead (adds plugins, compaction, caching — see 10-apps.md)
-runner = Runner(
-    app=my_app, # App bundles agent + plugins + config
-    session_service=...,
-)
+Runner (stateless)              Agent (stateless)              Session (stateful)
+─────────────────               ─────────────────              ──────────────────
+Owns: request lifecycle         Owns: behavior                 Owns: conversation history
+Holds: service refs             Holds: config                  Holds: state + events
+Creates: InvocationCtx          Creates: LlmRequest            Created by: SessionService
+Dies after: run_async()         Lives forever                  Lives across invocations
 ```
 
 ---
 
-## Key Methods
+## Key API
 
 ### [ ] `run_async` — Text/Chat Mode
 
@@ -77,10 +73,10 @@ The main entry point. Yields Events as they are produced:
 
 ```
 user message event
- → agent reasoning events (partial=True streaming chunks)
- → function call events
- → function response events
- → final agent response event (partial=False)
+ ► agent reasoning events (partial=True streaming chunks)
+   ► function call events
+     ► function response events
+       ► final agent response event (partial=False)
 ```
 
 ### [ ] `run_live` — Audio/Video Mode
@@ -106,58 +102,77 @@ Sync wrapper. Runs event loop in background thread. For scripts and CLIs.
 
 ---
 
-## Internal Flow (run_async)
+## How It Works
+
+### [ ] Construction
+
+```python
+runner = Runner(
+    agent=root_agent, # the root agent to run
+    app_name='my_app',
+    session_service=InMemorySessionService(),
+
+    # optional:
+    artifact_service=...,
+    memory_service=...,
+    credential_service=...,
+    auto_create_session=False, # raise if session not found
+)
+
+# For production: pass an App instead (adds plugins, compaction, caching — see 10-apps.md)
+runner = Runner(
+    app=my_app, # App bundles agent + plugins + config
+    session_service=...,
+)
+```
+
+### [ ] Internal Flow (run_async)
 
 ```
 Runner.run_async(user_id, session_id, new_message)
 │
 ├─ 1. _get_or_create_session(user_id, session_id)
-│ → session_service.get_session(...)
-│ → auto-creates if auto_create_session=True, else raises
+│     ► session_service.get_session(...)
+│     ► auto-creates if auto_create_session=True, else raises
 │
 ├─ 2. _setup_context_for_new_invocation(session, new_message, run_config)
-│ → Appends user message Event to session
-│ → Creates InvocationContext with invocation_id, branch, services
+│     ► Appends user message Event to session
+│     ► Creates InvocationContext with invocation_id, branch, services
 │
 ├─ 3. agent.run_async(invocation_context)
-│ → Delegate to the root agent
-│ → Yields Events as they stream out
+│     ► Delegate to the root agent
+│     ► Yields Events as they stream out
 │
 ├─ 4. For each event:
-│ → session_service.append_event(session, event) (persist)
-│ → yield event (stream to caller)
+│     ► session_service.append_event(session, event) (persist)
+│     ► yield event (stream to caller)
 │
 └─ 5. Post-invocation:
- → _run_compaction_for_sliding_window(...) (if App has compaction config)
- → Close plugin contexts
+      ► _run_compaction_for_sliding_window(...) (if App has compaction config)
+      ► Close plugin contexts
 ```
 
----
-
-## Session Auto-Creation
+### [ ] Session Auto-Creation
 
 Default `auto_create_session=False` raises `SessionNotFoundError` for unknown sessions.
 
 `auto_create_session=True` silently creates sessions on first use (demos, scripts).
 
----
-
-## RunConfig
+### [ ] RunConfig
 
 `RunConfig` is an optional per-invocation configuration:
 
 ```python
 class RunConfig:
-    streaming_mode: StreamingMode # SSE, NONE
-    max_llm_calls: int # safety cap on LLM calls per invocation
-    save_input_blobs_as_artifacts: bool
+    streaming_mode: StreamingMode # NONE, SSE, BIDI
+    max_llm_calls: int = 500 # safety cap; <= 0 disables. Raises LlmCallsLimitExceededError
+    get_session_config: Optional[GetSessionConfig] = None # partial session loading
     support_cfc: bool # client function calling
     custom_metadata: dict # attached to all events from this run
+    # save_input_blobs_as_artifacts: bool  # DEPRECATED — use SaveFilesAsArtifactsPlugin
 ```
 
----
-
-## Plugins
+### [ ] Plugins
 
 Runner initializes `PluginManager`. Plugins hook into:
 - `before_agent_callback` / `after_agent_callback` (at the Runner level, runs for every agent)
@@ -165,9 +180,27 @@ Runner initializes `PluginManager`. Plugins hook into:
 
 Provide via `App` (preferred) or deprecated `plugins=` on Runner.
 
----
+### [ ] Event Compaction
 
-## Event Compaction
+```
+┌──────────────────────────────────────────┐
+│       Sliding Window Compaction           │
+│  inv 1, inv 2, inv 3, inv 4, inv 5       │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│       Old Invocations (inv 1, inv 2)      │
+│  summarized into a single compacted Event │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│       Recent Invocations                  │
+│  inv 3, inv 4, inv 5 kept verbatim        │
+│  (overlap_size controls how many)         │
+└──────────────────────────────────────────┘
+```
 
 Post-invocation **sliding window compaction** (if configured):
 
@@ -179,12 +212,49 @@ Prevents unbounded event growth.
 
 ---
 
-## Related Files
+## Examples
 
-- [`runners.py`](../adk-python/src/google/adk/runners.py) — `Runner` class
-- [`apps/app.py`](../adk-python/src/google/adk/apps/app.py) — `App` (preferred way to configure Runner)
-- [`agents/invocation_context.py`](../adk-python/src/google/adk/agents/invocation_context.py) — context object Runner creates
-- [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) — session persistence
-- [`apps/compaction.py`](../adk-python/src/google/adk/apps/compaction.py) — event compaction logic
+```python
+runner = Runner(
+    agent=root_agent,
+    app_name='my_app',
+    session_service=InMemorySessionService(),
+    auto_create_session=True,
+)
+
+# Text/chat mode
+async for event in runner.run_async(
+    user_id='user1',
+    session_id='session1',
+    new_message=types.Content(parts=[types.Part(text='Hello')]),
+):
+    print(event)
+
+# Sync wrapper for scripts
+for event in runner.run(
+    user_id='user1',
+    session_id='session1',
+    new_message=types.Content(parts=[types.Part(text='Hello')]),
+):
+    print(event)
+```
+
+---
+
+## Gotchas
+
+- `auto_create_session` defaults to `False` — you will get `SessionNotFoundError` if you forget to create a session first or set this flag.
+- `run_async` parameters are all **keyword-only** — positional args will raise `TypeError`.
+- Runner is stateless but not thread-safe for a single invocation — each call to `run_async` should use its own `session_id`.
+
+---
+
+## Related
+
+- [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) — `Runner` class
+- [`apps/app.py`](https://github.com/google/adk-python/blob/main/src/google/adk/apps/app.py) — `App` (preferred way to configure Runner)
+- [`agents/invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py) — context object Runner creates
+- [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) — session persistence
+- [`apps/compaction.py`](https://github.com/google/adk-python/blob/main/src/google/adk/apps/compaction.py) — event compaction logic
 - [18-session-lifecycle.md](18-session-lifecycle.md) — Session service call timeline and latency optimization
 - [16-error-reference.md](16-error-reference.md) — Error reference (SessionNotFoundError, LlmCallsLimitExceededError)

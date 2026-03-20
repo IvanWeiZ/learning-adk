@@ -1,23 +1,44 @@
-# Python Decorators & Metaprogramming: A Deep Dive for ADK Developers
+# Python Decorators & Metaprogramming — Deep Dive
 
-## Introduction
+## At a Glance
 
-Welcome, Wei! This guide bridges your Java expertise with Python's metaprogramming paradigm. If you've worked with Java annotations, method reflection, and the ServiceLoader pattern, you already understand the *intent* behind Python's decorators and metaprogramming. But Python's implementation is more direct, more functional, and more flexible.
+```
++------------------------------------------------------------------+
+|          Decorators & Metaprogramming Landscape                    |
+|                                                                    |
+|  Functions ──► Closures ──► Decorators ──► Class Decorators        |
+|      |              |            |               |                 |
+|  first-class     capture      @syntax        @dataclass            |
+|  objects         scope        = wrapping     = class transform     |
+|                                                                    |
+|  inspect module ──► Read signatures ──► Generate tool schemas      |
+|  __init_subclass__ ──► Auto-register ──► Plugin/agent registries   |
+|  Descriptors ──► @property ──► Attribute validation                |
+|  functools ──► wraps, partial, lru_cache, singledispatch           |
+|                                                                    |
+|  ADK uses ALL of these for tool registration, callback hooks,      |
+|  schema generation, and plugin systems.                            |
++------------------------------------------------------------------+
+```
 
-The Google ADK (Agent Development Kit) heavily relies on decorators for:
-- **Tool registration**: `@tool` or `@register_tool` decorators to expose functions as agent tools
-- **Callbacks**: `@before_callback`, `@after_callback` for lifecycle hooks
-- **Schema generation**: The `inspect` module to read function signatures and type hints, automatically building tool schemas
+> **ADK relevance:** Tool registration, callback hooks, schema generation from type hints, plugin systems | **Estimated time:** 3-4 hours
 
-Understanding decorators and metaprogramming isn't optional in Python—it's foundational to using ADK effectively.
+This guide bridges your Java expertise with Python's metaprogramming paradigm. If you have worked with Java annotations, method reflection, and the ServiceLoader pattern, you already understand the *intent* behind Python's decorators and metaprogramming. But Python's implementation is more direct, more functional, and more flexible.
 
----
+The Google ADK (Agent Development Kit) relies on decorator and metaprogramming *concepts* (though it does not ship decorators like `@tool` or `@register_tool`):
+- **Tool wrapping**: ADK's [`FunctionTool`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py) wraps a plain function -- it reads the function's signature and docstring via `inspect` to auto-generate the tool schema
+- **Callbacks**: lifecycle hooks (`before_agent_callback`, `before_model_callback`, etc.) are plain callables passed as constructor arguments -- no decorator syntax required
+- **Schema generation**: The `inspect` module to read function signatures and `typing.get_type_hints()` to resolve annotations, automatically building tool schemas
 
-## 1. Functions Are Objects
+Understanding decorators and metaprogramming is foundational to using ADK effectively.
+
+## Core Concepts
+
+### [ ] 1. Functions Are Objects
 
 In Java, methods are tightly bound to classes. You have limited functional freedom. In Python, **functions are first-class objects**—they have attributes, you can assign them to variables, pass them around, and store them in collections.
 
-### [ ] Function Attributes
+#### [ ] Function Attributes
 
 Every function has introspectable attributes:
 
@@ -42,16 +63,16 @@ greet_es = lambda name, greeting="Hola": f"{greeting}, {name}!"
 # Store in collections
 greetings = [greet_en, greet_es]
 for g in greetings:
-    print(g("Wei"))
+    print(g("you"))
 
 # Pass as arguments
 def apply_greeting(greeting_func, name):
     return greeting_func(name)
 
-result = apply_greeting(greet, "Wei")
+result = apply_greeting(greet, "you")
 ```
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 In Java, you'd need:
 ```java
@@ -69,7 +90,7 @@ Greeter greetEn = name -> String.format("Hello, %s!", name);
 
 Python's functions are more directly introspectable. You can read a function's signature without wrapping it in an interface.
 
-### [ ] Key Takeaway
+#### [ ] Key Takeaway
 
 Functions are data. This enables:
 - Passing behavior (functions) to higher-order functions
@@ -79,11 +100,11 @@ Functions are data. This enables:
 
 ---
 
-## 2. Closures
+### [ ] 2. Closures
 
 A **closure** is an inner function that captures variables from its enclosing scope. This is foundational to decorators.
 
-### [ ] Basic Closure
+#### [ ] Basic Closure
 
 ```python
 def make_adder(x):
@@ -103,7 +124,7 @@ print(add_5.__closure__)  # (<cell at 0x...: int object at 0x...>,)
 print(add_5.__closure__[0].cell_contents)  # 5
 ```
 
-### [ ] The `nonlocal` Keyword
+#### [ ] The `nonlocal` Keyword
 
 If you want an inner function to *modify* a captured variable, use `nonlocal`:
 
@@ -127,7 +148,7 @@ print(counter())  # 3
 # UnboundLocalError: local variable 'count' referenced before assignment
 ```
 
-### [ ] Closures Enable Decorators
+#### [ ] Closures Enable Decorators
 
 Decorators are functions that return functions. The returned function "remembers" the original function:
 
@@ -152,7 +173,7 @@ def slow_function(n):
 slow_function(5)  # Prints: slow_function took 0.1001 seconds
 ```
 
-### [ ] Closure Pitfall: Late Binding
+#### [ ] Closure Pitfall: Late Binding
 
 ```python
 # ⚠️ COMMON MISTAKE
@@ -174,7 +195,7 @@ for i in range(3):
 print([f() for f in functions])  # [0, 1, 2] ✓
 ```
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 Java's anonymous inner classes have a similar concept:
 
@@ -191,7 +212,7 @@ for (int i = 0; i < 3; i++) {
 
 ---
 
-## 3. Basic Decorators
+### [ ] 3. Basic Decorators
 
 The `@decorator` syntax is syntactic sugar:
 
@@ -206,7 +227,7 @@ def func():
 func = decorator(func)
 ```
 
-### [ ] A Simple Decorator
+#### [ ] A Simple Decorator
 
 ```python
 def log_decorator(func):
@@ -228,7 +249,7 @@ add(2, 3)
 # add returned 5
 ```
 
-### [ ] The Problem: Lost Metadata
+#### [ ] The Problem: Lost Metadata
 
 When you decorate a function, you *replace* it with `wrapper`. The original metadata is lost:
 
@@ -245,7 +266,7 @@ print(multiply.__annotations__)  # {} — WRONG!
 
 This breaks introspection—critical for ADK, which reads function metadata!
 
-### [ ] Solution: `functools.wraps`
+#### [ ] Solution: `functools.wraps`
 
 ```python
 import functools
@@ -270,11 +291,11 @@ print(multiply.__annotations__) # {} (no type hints in this example)
 
 **Always use `functools.wraps`!** ADK's tool registration depends on it.
 
-### [ ] Built-In Decorators
+#### [ ] Built-In Decorators
 
 Python has common decorators in the standard library:
 
-#### [ ] `@staticmethod`
+##### `@staticmethod`
 
 ```python
 class MathUtils:
@@ -292,7 +313,7 @@ result = MathUtils.add(5, 3)  # 8
 # }
 ```
 
-#### [ ] `@classmethod`
+##### `@classmethod`
 
 ```python
 class Counter:
@@ -318,7 +339,7 @@ print(Counter.get_instance_count())  # 2
 // }
 ```
 
-#### [ ] `@property`
+##### `@property`
 
 ```python
 class Circle:
@@ -358,7 +379,7 @@ circle.radius = -1        # Raises ValueError
 
 ---
 
-## 4. Decorators with Arguments
+### [ ] 4. Decorators with Arguments
 
 Sometimes you want to *configure* a decorator. This requires a third level of nesting:
 
@@ -375,7 +396,7 @@ func = decorator(arg1, arg2)(func)
 
 The pattern is: **decorator factory → decorated function → wrapper**
 
-### [ ] Pattern: Retry Decorator
+#### [ ] Pattern: Retry Decorator
 
 ```python
 import functools
@@ -407,7 +428,7 @@ def flaky_api_call():
 result = flaky_api_call()  # May retry, then succeeds
 ```
 
-### [ ] Pattern: Rate Limiting
+#### [ ] Pattern: Rate Limiting
 
 ```python
 import functools
@@ -441,7 +462,7 @@ for _ in range(5):
     api_endpoint()
 ```
 
-### [ ] Pattern: Timeout Decorator
+#### [ ] Pattern: Timeout Decorator
 
 ```python
 import functools
@@ -473,7 +494,7 @@ def long_operation():
 # long_operation()  # Raises TimeoutError
 ```
 
-### [ ] Pattern: Caching Decorator
+#### [ ] Pattern: Caching Decorator
 
 ```python
 import functools
@@ -513,7 +534,7 @@ time.sleep(6)
 print(expensive_computation(5))  # TTL expired, recomputes
 ```
 
-### [ ] Built-In: `functools.lru_cache`
+#### [ ] Built-In: `functools.lru_cache`
 
 Python provides `functools.lru_cache` for production caching:
 
@@ -531,7 +552,7 @@ print(fibonacci.cache_info())  # CacheInfo(hits=98, misses=101, ...)
 fibonacci.cache_clear()  # Clear the cache
 ```
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 Java doesn't have true decorator arguments; you'd use annotations with parameters:
 
@@ -546,7 +567,7 @@ public String flakeyApiCall() { ... }
 
 ---
 
-## 5. Class-Based Decorators
+### [ ] 5. Class-Based Decorators
 
 Instead of nested functions, you can use a class with `__call__`:
 
@@ -570,10 +591,10 @@ class LogDecorator:
 def greet(name):
     return f"Hello, {name}!"
 
-print(greet("Wei"))
+print(greet("you"))
 ```
 
-### [ ] Stateful Class Decorators
+#### [ ] Stateful Class Decorators
 
 Class decorators shine when you need to maintain state:
 
@@ -607,7 +628,7 @@ process.reset()
 process([])         # Call #1
 ```
 
-### [ ] Class Decorators with Arguments
+#### [ ] Class Decorators with Arguments
 
 Combine `__init__` (setup) and `__call__` (invocation):
 
@@ -642,7 +663,7 @@ for _ in range(3):
     api_call()
 ```
 
-### [ ] When to Use Class Decorators
+#### [ ] When to Use Class Decorators
 
 - **Stateful**: Need to maintain state between calls
 - **Clearer**: Complex logic reads better as methods
@@ -650,11 +671,11 @@ for _ in range(3):
 
 ---
 
-## 6. Decorating Classes
+### [ ] 6. Decorating Classes
 
 Decorators aren't just for functions—you can decorate classes too!
 
-### [ ] Basic Class Decorator
+#### [ ] Basic Class Decorator
 
 ```python
 def add_repr(cls):
@@ -674,11 +695,11 @@ class Person:
         self.name = name
         self.age = age
 
-p = Person("Wei", 30)
-print(repr(p))  # Person(name='Wei', age=30)
+p = Person("you", 30)
+print(repr(p))  # Person(name='you', age=30)
 ```
 
-### [ ] `@dataclass` — The Canonical Example
+#### [ ] `@dataclass` — The Canonical Example
 
 ```python
 from dataclasses import dataclass
@@ -708,7 +729,7 @@ print(tool.name)  # 'search'
 #         ...
 ```
 
-### [ ] Custom Class Decorator: Registration
+#### [ ] Custom Class Decorator: Registration
 
 ```python
 # Global registry
@@ -735,11 +756,11 @@ model = MODELS["GPTModel"]()  # Instantiate by name
 
 ---
 
-## 7. The `inspect` Module — Reading Function Metadata
+### [ ] 7. The `inspect` Module — Reading Function Metadata
 
 The `inspect` module is **critical** for ADK. It lets you read a function's signature, type hints, and parameter details—exactly what ADK needs to auto-generate tool schemas.
 
-### [ ] Getting a Function Signature
+#### [ ] Getting a Function Signature
 
 ```python
 import inspect
@@ -761,7 +782,7 @@ for param_name, param in sig.parameters.items():
 #   age: <class 'int'>, default=18
 ```
 
-### [ ] Parameter Objects
+#### [ ] Parameter Objects
 
 ```python
 import inspect
@@ -775,7 +796,7 @@ print(param.default)        # 18
 print(param.kind)           # ParameterKind.POSITIONAL_OR_KEYWORD
 ```
 
-### [ ] Parameter Kinds
+#### [ ] Parameter Kinds
 
 ```python
 import inspect
@@ -801,37 +822,38 @@ for name, param in sig.parameters.items():
 # kwargs: VAR_KEYWORD
 ```
 
-### [ ] Type Hints with `get_type_hints`
+#### [ ] Type Hints with `get_type_hints`
 
 ```python
 import inspect
+import typing
 from typing import Optional
 
 def send_message(user_id: int, message: str, urgency: Optional[str] = None) -> bool:
     """Send a message to a user."""
     return True
 
-hints = inspect.get_type_hints(send_message)
+hints = typing.get_type_hints(send_message)
 print(hints)
-# {'user_id': <class 'int'>, 'message': <class 'str'>, 'urgency': <class 'str'>, 'return': <class 'bool'>}
+# {'user_id': <class 'int'>, 'message': <class 'str'>, 'urgency': typing.Optional[str], 'return': <class 'bool'>}
 
 # Note: get_type_hints resolves forward references and Union types
 # inspect.signature().parameters don't—they show the raw string
 ```
 
-### [ ] Complete Example: Generating a JSON Schema from a Function
+#### [ ] Complete Example: Generating a JSON Schema from a Function
 
 This is **exactly** how ADK generates tool schemas:
 
 ```python
 import inspect
 import json
-from typing import get_origin, get_args
+from typing import get_type_hints, get_origin, get_args
 
 def function_to_schema(func) -> dict:
     """Convert a function signature into a JSON schema for a tool."""
     sig = inspect.signature(func)
-    hints = inspect.get_type_hints(func)
+    hints = get_type_hints(func)
 
     properties = {}
     required = []
@@ -906,7 +928,7 @@ print(json.dumps(schema, indent=2))
 # }
 ```
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 ```java
 // Java requires reflection at runtime:
@@ -917,11 +939,11 @@ Parameter[] params = method.getParameters();
 
 ---
 
-## 8. Descriptors
+### [ ] 8. Descriptors
 
 A **descriptor** is an object that implements `__get__`, `__set__`, or `__delete__`. They allow you to customize attribute access.
 
-### [ ] Basic Descriptor
+#### [ ] Basic Descriptor
 
 ```python
 class PositiveInt:
@@ -955,7 +977,7 @@ print(p.price)  # 999
 p.price = -50   # Raises ValueError
 ```
 
-### [ ] How `@property` Works
+#### [ ] How `@property` Works
 
 `@property` is a built-in descriptor:
 
@@ -982,7 +1004,7 @@ print(t._celsius)       # 100.0
 
 Under the hood, `property` is a descriptor that intercepts `.` access.
 
-### [ ] Validation Descriptor
+#### [ ] Validation Descriptor
 
 ```python
 class ValidatedString:
@@ -1022,11 +1044,11 @@ u.username = "a"   # Raises ValueError
 
 ---
 
-## 9. `__init_subclass__` — Auto-Registration on Subclassing
+### [ ] 9. `__init_subclass__` — Auto-Registration on Subclassing
 
 When a class is subclassed, `__init_subclass__` is called. This is perfect for auto-registration patterns.
 
-### [ ] Basic Registry Pattern
+#### [ ] Basic Registry Pattern
 
 ```python
 class ToolRegistry:
@@ -1059,7 +1081,7 @@ tool = tool_class()
 print(tool.execute("Python decorators"))
 ```
 
-### [ ] Registry with Configuration
+#### [ ] Registry with Configuration
 
 ```python
 class Plugin:
@@ -1082,7 +1104,7 @@ class SlackPlugin(Plugin, name="slack"):
 print(Plugin.plugins)  # {'email': <class EmailPlugin>, 'slack': <class SlackPlugin>}
 ```
 
-### [ ] ADK-Like Agent Registry
+#### [ ] ADK-Like Agent Registry
 
 ```python
 class Agent:
@@ -1111,7 +1133,7 @@ agent_class = Agent.agents['ReasoningAgent']
 agent = agent_class()
 ```
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 ```java
 // Java: ServiceLoader pattern (similar intent)
@@ -1136,11 +1158,11 @@ for (Tool tool : loader) {
 
 ---
 
-## 10. Metaclasses
+### [ ] 10. Metaclasses
 
 A **metaclass** is a "class of a class"—it defines how a class behaves. `type` is Python's default metaclass.
 
-### [ ] Understanding `type`
+#### [ ] Understanding `type`
 
 ```python
 class Dog:
@@ -1160,7 +1182,7 @@ dog = Dog()
 print(dog.bark())       # 'Woof!'
 ```
 
-### [ ] Custom Metaclass
+#### [ ] Custom Metaclass
 
 ```python
 class SingletonMeta(type):
@@ -1182,7 +1204,7 @@ print(db1 is db2)  # True
 print(db1.url)     # "localhost" (original instance)
 ```
 
-### [ ] Metaclass `__new__` vs `__init__`
+#### [ ] Metaclass `__new__` vs `__init__`
 
 ```python
 class TrackedMeta(type):
@@ -1207,7 +1229,7 @@ class MyClass(metaclass=TrackedMeta):
 # __init__ is called on the newly created class object
 ```
 
-### [ ] Combining Metaclass with `__init_subclass__`
+#### [ ] Combining Metaclass with `__init_subclass__`
 
 Often, `__init_subclass__` is simpler and more modern:
 
@@ -1234,17 +1256,17 @@ class Base:
 
 **Use `__init_subclass__` unless you have a specific metaclass need.**
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 Java doesn't have metaclasses; the closest analogy is compile-time annotations with annotation processors.
 
 ---
 
-## 11. The Registry Pattern — Complete Implementation
+### [ ] 11. The Registry Pattern — Complete Implementation
 
 A registry is a central repository that maps names to classes/functions. ADK uses this for tools, callbacks, etc.
 
-### [ ] Simple Function Registry
+#### [ ] Simple Function Registry
 
 ```python
 class FunctionRegistry:
@@ -1287,10 +1309,11 @@ tool = TOOLS.get('search')
 print(tool("Python"))  # ['Result for Python']
 ```
 
-### [ ] Class Registry with Introspection
+#### [ ] Class Registry with Introspection
 
 ```python
 import inspect
+import typing
 
 class ToolRegistry:
     """Registry that auto-generates schemas from functions."""
@@ -1302,7 +1325,7 @@ class ToolRegistry:
         """Decorator to register a tool function."""
         def decorator(func):
             sig = inspect.signature(func)
-            hints = inspect.get_type_hints(func)
+            hints = typing.get_type_hints(func)
 
             # Build schema
             schema = {
@@ -1371,7 +1394,7 @@ results = REGISTRY.call("web_search", query="Python", limit=5)
 print(results)
 ```
 
-### [ ] Auto-Discovery Registry
+#### [ ] Auto-Discovery Registry
 
 ```python
 import pkgutil
@@ -1414,7 +1437,7 @@ def plugin(cls):
 # registry.discover('my_plugins')
 ```
 
-### [ ] Java Comparison
+#### [ ] Java Comparison
 
 ```java
 // Java: Similar pattern with reflection
@@ -1437,9 +1460,9 @@ public class ToolRegistry {
 
 ---
 
-## 12. `functools` Toolkit
+### [ ] 12. `functools` Toolkit
 
-### [ ] `functools.wraps`
+#### [ ] `functools.wraps`
 
 Already covered, but essential:
 
@@ -1453,7 +1476,7 @@ def my_decorator(func):
     return wrapper
 ```
 
-### [ ] `functools.partial`
+#### [ ] `functools.partial`
 
 Create a new function with some arguments pre-filled:
 
@@ -1477,7 +1500,7 @@ double = functools.partial(multiply, b=2, c=1)
 print(double(5))  # 10 (5 * 2 * 1)
 ```
 
-### [ ] `functools.lru_cache`
+#### [ ] `functools.lru_cache`
 
 Memoize function results with an LRU (Least Recently Used) eviction policy:
 
@@ -1499,7 +1522,7 @@ print(expensive_function.cache_info())
 expensive_function.cache_clear()  # Clear the cache
 ```
 
-### [ ] `functools.cache` (Python 3.9+)
+#### [ ] `functools.cache` (Python 3.9+)
 
 Simpler version of `lru_cache` with no size limit:
 
@@ -1515,7 +1538,7 @@ def fibonacci(n):
 print(fibonacci(30))  # Fast with caching
 ```
 
-### [ ] `functools.singledispatch`
+#### [ ] `functools.singledispatch`
 
 Method overloading based on type:
 
@@ -1544,7 +1567,7 @@ process([1, 2, 3])  # Handling list with 3 items
 process(3.14)       # Default handler: 3.14
 ```
 
-### [ ] `functools.singledispatchmethod`
+#### [ ] `functools.singledispatchmethod`
 
 Like `singledispatch` but for class methods:
 
@@ -1569,7 +1592,7 @@ c.convert(42)      # Convert int to string: '42'
 c.convert("100")   # Convert string to int: 100
 ```
 
-### [ ] `functools.reduce`
+#### [ ] `functools.reduce`
 
 Apply a function cumulatively to items:
 
@@ -1585,7 +1608,7 @@ product = functools.reduce(lambda a, b: a * b, numbers, 10)
 print(product)  # 1200 (10*1*2*3*4*5)
 ```
 
-### [ ] `functools.total_ordering`
+#### [ ] `functools.total_ordering`
 
 Reduce repetition when implementing comparison methods:
 
@@ -1613,9 +1636,9 @@ print(v1 > v2)   # False (auto-generated)
 
 ---
 
-## 13. ADK-Specific Patterns
+### [ ] 13. ADK-Specific Patterns
 
-### [ ] Building a `@register_tool` Decorator
+#### [ ] Building a `@register_tool` Decorator
 
 This decorator reads a function's signature, generates a schema, and registers it:
 
@@ -1623,6 +1646,7 @@ This decorator reads a function's signature, generates a schema, and registers i
 import functools
 import inspect
 import json
+import typing
 
 class ToolRegistry:
     def __init__(self):
@@ -1639,7 +1663,7 @@ class ToolRegistry:
 
             # Extract schema
             sig = inspect.signature(func)
-            hints = inspect.get_type_hints(func)
+            hints = typing.get_type_hints(func)
 
             properties = {}
             required = []
@@ -1726,7 +1750,7 @@ results = registry.call_tool("web_search", query="Python", num_results=5)
 print(results)
 ```
 
-### [ ] Building a Callback Registration System
+#### [ ] Building a Callback Registration System
 
 ```python
 import functools
@@ -1776,7 +1800,7 @@ callbacks.trigger("agent_created", agent_name="ReasoningAgent")
 callbacks.trigger("agent_destroyed", agent_name="ReasoningAgent")
 ```
 
-### [ ] Building a Plugin System
+#### [ ] Building a Plugin System
 
 ```python
 import functools
@@ -1844,9 +1868,31 @@ plugins.run_hook("after_inference", result="Response")
 
 ---
 
-## 14. Stacking Decorators
+### [ ] 14. Stacking Decorators
 
-When multiple decorators are applied, they execute in a specific order:
+When multiple decorators are applied, they execute in a specific order.
+
+#### [ ] Decorator Stacking — Onion Diagram
+
+```
+@decorator_a          Execution order (call):
+@decorator_b          ┌─────────────────────────────────┐
+def greet(name):      │ decorator_a (outer)              │
+                      │   ┌─────────────────────────┐    │
+Definition order:     │   │ decorator_b (inner)      │    │
+greet =               │   │   ┌─────────────────┐    │    │
+  decorator_a(        │   │   │ greet(name)      │    │    │
+    decorator_b(      │   │   │  "Hello, you!"   │    │    │
+      greet           │   │   └─────────────────┘    │    │
+    )                 │   │  B: after                 │    │
+  )                   │   └─────────────────────────┘    │
+                      │  A: after                        │
+                      └─────────────────────────────────┘
+
+Bottom decorator (B) wraps first, so it is closest to the
+original function.  Outermost decorator (A) runs first on
+call, like peeling an onion from the outside in.
+```
 
 ```python
 def decorator_a(func):
@@ -1870,12 +1916,12 @@ def decorator_b(func):
 def greet(name):
     print(f"Hello, {name}!")
 
-greet("Wei")
+greet("you")
 
 # Output:
 # A: before
 # B: before
-# Hello, Wei!
+# Hello, you!
 # B: after
 # A: after
 
@@ -1884,7 +1930,7 @@ greet("Wei")
 # greet = decorator_a(decorator_b(greet))
 ```
 
-### [ ] Order Matters
+#### [ ] Order Matters
 
 ```python
 import functools
@@ -1935,7 +1981,7 @@ process_2([1, 2, 3])
 # Choose the order that matches your intent.
 ```
 
-### [ ] Real-World ADK Stacking
+#### [ ] Real-World ADK Stacking
 
 ```python
 import functools
@@ -2005,9 +2051,9 @@ result = fetch_user(2)
 
 ---
 
-## 15. Common Pitfalls
+### [ ] 15. Common Pitfalls
 
-### [ ] Pitfall 1: Forgetting `@functools.wraps`
+#### [ ] Pitfall 1: Forgetting `@functools.wraps`
 
 ```python
 # ❌ WRONG
@@ -2044,7 +2090,7 @@ print(greet.__name__)  # 'greet' ✓
 print(greet.__doc__)   # 'Greet someone.' ✓
 ```
 
-### [ ] Pitfall 2: Decorator Argument Confusion
+#### [ ] Pitfall 2: Decorator Argument Confusion
 
 ```python
 # ❌ WRONG — You'll get "1 positional argument" error
@@ -2076,7 +2122,7 @@ def flaky_function():
     pass
 ```
 
-### [ ] Pitfall 3: Late Binding in Closures
+#### [ ] Pitfall 3: Late Binding in Closures
 
 ```python
 # ❌ WRONG
@@ -2108,7 +2154,7 @@ for i in range(3):
     decorators.append(my_decorator)
 ```
 
-### [ ] Pitfall 4: Decorating Async Functions
+#### [ ] Pitfall 4: Decorating Async Functions
 
 ```python
 # ❌ WRONG — Loses async nature
@@ -2146,7 +2192,7 @@ async def async_function():
 # asyncio.run(async_function())  # "Before", then "Done"
 ```
 
-### [ ] Pitfall 5: Mutable Default Arguments
+#### [ ] Pitfall 5: Mutable Default Arguments
 
 ```python
 # ❌ WRONG — Default argument is shared across calls
@@ -2170,12 +2216,12 @@ print(register("tool2"))  # ['tool2'] ✓
 
 ---
 
-## Java → Python Metaprogramming Reference
+## Java to Python Metaprogramming Reference
 
 | Java Concept | Python Equivalent | Notes |
 |---|---|---|
 | **Annotations** | Decorators | `@decorator` vs `@Annotation`; Python decorators are functions, not metadata |
-| **Reflection** | `inspect` module | `inspect.signature()`, `inspect.get_type_hints()` read function/class metadata |
+| **Reflection** | `inspect` module | `inspect.signature()`, `typing.get_type_hints()` read function/class metadata |
 | **Functional Interface** | First-class functions | Functions are objects; no interface wrapper needed |
 | **Method Overloading** | `functools.singledispatch` | Single function with multiple implementations based on type |
 | **Abstract Classes** | Abstract base classes (`abc`) | `@abstractmethod` decorator |
@@ -2193,44 +2239,47 @@ print(register("tool2"))  # ['tool2'] ✓
 
 ---
 
-## Summary: Key Takeaways for ADK Developers
+## ADK in Practice
 
-1. **Functions are objects**: Pass them around, store them, inspect them. This is foundational.
+ADK uses every metaprogramming concept in this guide:
 
-2. **Closures + decorators**: The `@decorator` syntax is syntactic sugar for function wrapping. Always use `@functools.wraps`.
+| Concept | ADK Usage |
+|---|---|
+| `inspect.signature()` | Auto-generates tool schemas from function type hints |
+| `functools.wraps` | Preserves function metadata through decorator chains |
+| `__init_subclass__` | LLM registry auto-registers model adapters |
+| Closures | Callback factories that capture configuration |
+| Class decorators | `@dataclass` for lightweight data objects |
+| `functools.partial` | Pre-configuring tool functions with fixed arguments |
+| `functools.singledispatch` | Type-based dispatch for different event handling |
+| Descriptor protocol | `@property` for computed agent attributes |
 
-3. **Decorators with arguments**: Use the nested function pattern (decorator factory):
-   ```python
-   @decorator(arg)
-   def func(): pass
+## Common Mistakes
 
-   # Desugars to:
-   func = decorator(arg)(func)
-   ```
+| Mistake | Consequence | Fix |
+|---|---|---|
+| Forgetting `@functools.wraps` | ADK can't read `__name__`/`__doc__` for tool schemas | Always use `@functools.wraps(func)` |
+| Decorator argument confusion | `TypeError: missing positional argument` | Use three-level nesting (factory -> decorator -> wrapper) |
+| Late binding in closures | All closures capture final loop value | Use default argument `def f(i=i):` |
+| Decorating async with sync wrapper | Returns coroutine object instead of result | Use `async def wrapper` for async functions |
+| Mutable default arguments | Shared state across calls | Use `None` default, create inside function |
 
-4. **`inspect` module is your friend**: Use `inspect.signature()` and `inspect.get_type_hints()` to read function metadata—exactly what ADK does to generate tool schemas.
+## Quick Reference Card
 
-5. **Registries via `__init_subclass__`**: Auto-register classes when they're subclassed. Simpler than metaclasses.
+```
+Key Takeaways:
 
-6. **Descriptors for validation**: Use `__get__` / `__set__` to intercept attribute access. `@property` is the canonical example.
-
-7. **`functools` toolkit**: `wraps`, `partial`, `lru_cache`, `singledispatch`—master these utilities.
-
-8. **Class decorators**: `@dataclass` is powerful. You can build custom class decorators to modify class behavior at definition time.
-
-9. **Order matters**: Decorator stacking order affects behavior. Think about which decorator should wrap which.
-
-10. **Async aware**: Use `async def wrapper` when decorating async functions.
+1. Functions are objects — pass them, store them, inspect them
+2. @decorator = func = decorator(func) — syntactic sugar
+3. Always use @functools.wraps — ADK reads function metadata
+4. Decorator with args: @dec(arg) = func = dec(arg)(func)
+5. inspect.signature() + get_type_hints() = tool schema generation
+6. __init_subclass__ = auto-registration (simpler than metaclasses)
+7. Descriptors = custom attribute access (@property is the canonical example)
+8. functools toolkit: wraps, partial, lru_cache, singledispatch
+9. @dataclass = powerful class decorator for data objects
+10. Decorator stacking order matters — bottom decorator wraps first
+```
 
 ---
 
-## Next Steps
-
-- Build your own `@register_tool` decorator for ADK
-- Experiment with `inspect` on your function signatures
-- Practice with `functools.singledispatch` for type-based dispatch
-- Write a small plugin system using `__init_subclass__`
-
----
-
-*Part of the Python for ADK learning series — March 2026*

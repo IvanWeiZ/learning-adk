@@ -1,6 +1,39 @@
 # ADK Python — Learning Notes
 
-Codebase: [`~/Documents/adk-python`](../adk-python)
+> **Official docs:** [google.github.io/adk-docs](https://google.github.io/adk-docs/) — API reference, tutorials, samples
+> **Source code:** [google/adk-python](https://github.com/google/adk-python) (v1.27.2)
+> **Traced against:** commit `15ddf2d` (2026-03-19) — content may drift as ADK evolves
+
+---
+
+## How These Notes Relate to Official Docs
+
+```
+Official docs (google.github.io/adk-docs/)
+├── WHO: any developer, any background
+├── WHAT: how to USE ADK (API surface, tutorials, samples)
+├── DEPTH: "call this method to do X"
+└── Trust: always up-to-date, canonical API reference
+
+These notes (learning-adk)
+├── WHO: Java dev learning Python+ADK internals
+├── WHAT: how ADK WORKS INSIDE (source-traced, layer by layer)
+├── DEPTH: "this method calls that method at line 458 because..."
+└── Trust: point-in-time snapshot, may drift from source
+```
+
+These notes are strongest where official docs are weakest:
+
+| This repo covers | Official docs typically don't |
+|---|---|
+| Full request lifecycle traced through source | Just shows the API call |
+| `append_event` internals, state delta mechanics | Just says "state is persisted" |
+| Flow selection logic (3 conditions for SingleFlow) | Just says "ADK handles routing" |
+| Branch filtering rules for multi-agent history | Not documented |
+| `_get_transfer_targets` transfer rules | Just says "agents can transfer" |
+| Processor pipeline ordering | Not exposed |
+| Error paths, silent failures | Only happy path |
+| Concurrency gotchas (last-writer-wins) | Not covered |
 
 ---
 
@@ -121,6 +154,9 @@ Start with the big picture, then follow the execution path layer by layer.
 |---|------|---------------|
 | 24 | [24-faq.md](adk/24-faq.md) | Tool versioning, state scoping, agent messaging |
 | 25 | [25-onboarding-guide.md](adk/25-onboarding-guide.md) | Zero-to-first-agent walkthrough |
+| 26 | [26-adk-2.0-preview.md](adk/26-adk-2.0-preview.md) | ADK 2.0: graph workflows, collaborative agents, dynamic workflows |
+
+> **New here?** Start with [25-onboarding-guide.md](adk/25-onboarding-guide.md) for a hands-on walkthrough before diving into the full series.
 
 ### Python for Java Developers
 
@@ -143,4 +179,4 @@ Start with the big picture, then follow the execution path layer by layer.
 
 ## Example Agents
 
-100+ examples live in [`contributing/samples/`](../adk-python/contributing/samples/).
+100+ examples live in [`contributing/samples/`](https://github.com/google/adk-python/tree/main/contributing/samples/).

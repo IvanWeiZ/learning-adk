@@ -1,21 +1,65 @@
-# Tools — Pluggable Capabilities
+# 09 — Tools: Pluggable Capabilities
 
-**Source:** [`tools/base_tool.py`](../adk-python/src/google/adk/tools/base_tool.py) · [`tools/base_toolset.py`](../adk-python/src/google/adk/tools/base_toolset.py) · [`tools/tool_context.py`](../adk-python/src/google/adk/tools/tool_context.py)
+> **Official docs:** [Tools](https://google.github.io/adk-docs/tools-custom/) | **Source:** [`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py), [`tools/base_toolset.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_toolset.py), [`tools/tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py), [`tools/function_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py) | **Prereqs:** 04, 05, 07
 
----
+## At a Glance
 
-## What It Is
+```
+┌─────────────────────────────────────────────────────────┐
+│                      LlmAgent                           │
+│  tools=[func, BaseTool(), BaseToolset()]                │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                 Tool Resolution                         │
+│  func        → auto-wrapped as FunctionTool             │
+│  BaseTool()  → used as-is                               │
+│  BaseToolset → get_tools() called per LLM turn          │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│              FunctionDeclaration                        │
+│  schema sent to LLM → LLM emits FunctionCall           │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│              Tool Execution Pipeline                    │
+│  before_tool_cb → tool.run_async() → after_tool_cb     │
+│  (ToolContext injected)                                 │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│         FunctionResponse → back to LLM                  │
+└─────────────────────────────────────────────────────────┘
+```
 
-Tools let agents take actions beyond text generation. The LLM requests a tool call; ADK dispatches, runs, and feeds results back.
+Tools let agents take actions beyond text generation. The LLM requests a tool call; ADK dispatches, runs, and feeds results back. Tools attach to an agent via `LlmAgent(tools=[...])`. They can be Python callables (auto-wrapped in `FunctionTool`), `BaseTool` instances, or `BaseToolset` instances (dynamic collections of tools).
 
-Tools attach to an agent via `LlmAgent(tools=[...])`. They can be:
-- Python callables (auto-wrapped in `FunctionTool`)
-- `BaseTool` instances
-- `BaseToolset` instances (dynamic collections of tools)
+## Class Hierarchy
 
----
+```
+BaseTool (ABC)
+├── FunctionTool        — wraps plain Python functions
+├── AgentTool           — wraps a sub-agent as a tool
+├── LongRunningFunctionTool — async operations with polling
+├── GoogleSearchTool    — Google Search grounding
+└── VertexAiSearchTool  — Vertex AI Search
 
-## BaseTool — The Interface
+BaseToolset (ABC)
+├── MCPToolset          — Model Context Protocol
+├── OpenAPIToolset      — REST APIs via OpenAPI spec
+├── LangchainTool       — LangChain tool wrapper
+├── CrewaiTool          — CrewAI tool wrapper
+└── BigQueryToolset     — BigQuery operations
+```
+
+## Key API
+
+### [ ] BaseTool — The Interface
 
 ```python
 class BaseTool(ABC):
@@ -39,9 +83,190 @@ class BaseTool(ABC):
         # Override for tools that need special request manipulation (e.g. grounding).
 ```
 
----
+### [ ] BaseToolset — Dynamic Tool Collections
 
-## FunctionTool — Wrapping Python Functions
+```python
+class BaseToolset(ABC):
+    async def get_tools(
+        self, readonly_context: Optional[ReadonlyContext] = None
+    ) -> list[BaseTool]:
+        # Return the list of tools available in the current context.
+        # Can vary based on user, session state, etc.
+
+    async def close(self) -> None:
+        # Clean up resources (connections, etc.)
+
+```
+
+The flow calls `toolset.get_tools(ctx)` before each LLM call. MCP, OpenAPI, LangChain, and CrewAI toolsets use this for dynamic discovery.
+
+### [ ] ToolContext — What Tools Can Do
+
+`ToolContext` is passed to every `run_async`. Provides access to state and services:
+
+```python
+class ToolContext:
+    # Read/write session state:
+    state: State # tool_context.state['key'] = value
+
+    # Store files:
+    async def save_artifact(filename, artifact) -> int # returns version
+    async def load_artifact(filename, version=None) # returns artifact
+
+    # Request OAuth credentials:
+    def request_credential(auth_config: AuthConfig) -> None
+
+    # Interact with memory:
+    async def search_memory(query: str) -> SearchMemoryResponse
+
+    # Agent transfer (from within a tool):
+    actions.transfer_to_agent = 'agent_name'
+```
+
+### [ ] Built-in Tools
+
+| Tool | Import | What it does |
+|------|--------|-------------|
+| `google_search` | `google.adk.tools` | Google Search grounding |
+| `VertexAiSearchTool` | `google.adk.tools` | Vertex AI Search |
+| `BuiltInCodeExecutor` | `google.adk.code_executors` | Model-native code execution |
+| `MCPToolset` | `google.adk.tools.mcp_tool` | Model Context Protocol tools |
+| `OpenAPIToolset` | `google.adk.tools.openapi_tool` | Any REST API via OpenAPI spec |
+| `LangchainTool` | `google.adk.tools.langchain_tool` | Wrap any LangChain tool |
+| `CrewaiTool` | `google.adk.tools.crewai_tool` | Wrap any CrewAI tool |
+| `BigQueryToolset` | `google.adk.tools` | BigQuery operations |
+
+## How It Works
+
+### [ ] Tool Invocation Lifecycle
+
+```
+LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
+│
+├── before_tool_callback(tool, args, tool_context)
+│   ├── returns dict? → use as result, skip tool execution
+│   └── returns None? → continue
+│
+├── tool.run_async(args=args, tool_context=tool_context)
+│   ├── get_weather("Tokyo") → {temp: 18}
+│   └── on error: on_tool_error_callback (if set)
+│
+├── after_tool_callback(tool, args, tool_context, result)
+│   ├── returns dict? → replace result
+│   └── returns None? → keep original result
+│
+└── FunctionResponse event yielded
+    └── back to LLM in next loop iteration
+```
+
+### [ ] Default Error Behavior
+
+If your tool function raises an exception and no `on_tool_error_callback` is set:
+- The exception **propagates up** and terminates the entire invocation
+- The LLM does **not** get a chance to retry — the `run_async()` generator raises the exception to your code
+- To handle gracefully: set `on_tool_error_callback` on the agent, or wrap your tool in try/except and return an error dict
+
+### [ ] Tool Resolution in LlmAgent
+
+```
+LlmAgent(tools=[...]) — resolution at each LLM turn
+│
+├── my_function (callable)
+│   └── auto-wrapped as FunctionTool(func=my_function)
+│
+├── GoogleSearchTool() (BaseTool instance)
+│   └── used as-is
+│
+└── my_toolset (BaseToolset instance)
+    └── BaseToolset.get_tools() called per LLM turn
+```
+
+```python
+agent = LlmAgent(tools=[
+    my_function, # → FunctionTool(func=my_function)
+    GoogleSearchTool(), # → used as-is (BaseTool)
+    my_toolset, # → BaseToolset.get_tools() called per LLM turn
+])
+```
+
+`GoogleSearchTool` and `VertexAiSearchTool` cannot mix with function tools in one API call. ADK auto-creates a hidden sub-agent for isolation.
+
+### [ ] Long-Running Tools
+
+```
+LongRunningFunctionTool execution
+│
+├── 1. Tool returns operation ID
+│   └── signals this is a long-running operation
+│
+├── 2. Runner yields "paused" event
+│   └── event.long_running_tool_ids is set
+│       └── is_final_response() returns True
+│
+├── 3. Client polls for completion
+│   └── uses the operation ID to check status
+│
+└── 4. Next invocation: result provided as FunctionResponse
+    └── agent resumes with the completed result
+```
+
+When `is_long_running=True`, the tool returns an operation ID. ADK:
+1. Yields a "paused" event with `long_running_tool_ids`
+2. The client polls for completion using the operation ID
+3. On the next invocation, the result is provided as a function response and the agent resumes
+
+#### [ ] Long-Running Tool Lifecycle Across 2 Invocations
+
+```
+INVOCATION 1 — tool starts, runner pauses
+├── User: "Export my report as PDF"
+├── LLM: FunctionCall(name="export_report", args={"report_id": "r-42"})
+├── export_report.run_async() executes
+│   └── returns {"job_id": "job-r-42-pdf", "status": "started"}
+├── Flow detects is_long_running=True
+│   └── sets event.long_running_tool_ids = {"fc-001"}
+├── Event yielded:
+│   ├── content: FunctionResponse(name="export_report", response={"job_id": "..."})
+│   ├── long_running_tool_ids: {"fc-001"}
+│   └── is_final_response() = True  ← runner pauses here
+└── Runner yields this event to caller, invocation ends
+    └── Client receives job_id, starts polling external system
+
+--- time passes, client polls, job completes ---
+
+INVOCATION 2 — client sends result, agent resumes
+├── Client calls runner.run_async() with:
+│   └── new_message containing FunctionResponse(
+│         id="fc-001",  ← matches the original function call ID
+│         name="export_report",
+│         response={"job_id": "job-r-42-pdf", "status": "done", "url": "https://..."}
+│       )
+├── LLM receives the completed result in its context
+├── LLM: "Your report is ready! Download it at https://..."
+└── is_final_response() = True ← normal completion
+```
+
+### [ ] Tool Confirmation (Human-in-the-Loop)
+
+Tools can request human confirmation before executing:
+
+```python
+class MyTool(BaseTool):
+    async def run_async(self, args, tool_context):
+        # Request confirmation via the clean API
+        tool_context.request_confirmation(
+            hint='Delete file?',
+            payload={'filename': args['filename']}
+        )
+        # Tool execution pauses; client shows confirmation dialog
+        # On next invocation, if confirmed, the tool runs for real
+```
+
+`ToolConfirmation` uses `hint` and `payload` fields (not `title`/`message`).
+
+## Examples
+
+### [ ] FunctionTool — Wrapping Python Functions
 
 Pass a Python function:
 
@@ -65,102 +290,7 @@ def save_note(text: str, tool_context: ToolContext) -> str:
     return 'Note saved.'
 ```
 
----
-
-## BaseToolset — Dynamic Tool Collections
-
-Variable tool set determined at runtime:
-
-```python
-class BaseToolset(ABC):
-    async def get_tools(
-        self, readonly_context: Optional[ReadonlyContext] = None
-    ) -> list[BaseTool]:
-        # Return the list of tools available in the current context.
-        # Can vary based on user, session state, etc.
-
-    async def close(self) -> None:
-        # Clean up resources (connections, etc.)
-
-```
-
-The flow calls `toolset.get_tools(ctx)` before each LLM call. MCP, OpenAPI, LangChain, and CrewAI toolsets use this for dynamic discovery.
-
----
-
-## ToolContext — What Tools Can Do
-
-`ToolContext` is passed to every `run_async`. Provides access to state and services:
-
-```python
-class ToolContext:
-    # Read/write session state:
-    state: State # tool_context.state['key'] = value
-
-    # Store files:
-    async def save_artifact(filename, artifact) -> int # returns version
-    async def load_artifact(filename, version=None) # returns artifact
-
-    # Request OAuth credentials:
-    def request_credential(auth_config: AuthConfig) -> None
-
-    # Interact with memory:
-    async def search_memory(query: str) -> SearchMemoryResponse
-
-    # Agent transfer (from within a tool):
-    actions.transfer_to_agent = 'agent_name'
-```
-
----
-
-## Built-in Tools
-
-| Tool | Import | What it does |
-|------|--------|-------------|
-| `google_search` | `google.adk.tools` | Google Search grounding |
-| `VertexAiSearchTool` | `google.adk.tools` | Vertex AI Search |
-| `BuiltInCodeExecutor` | `google.adk.code_executors` | Model-native code execution |
-| `MCPToolset` | `google.adk.tools.mcp_tool` | Model Context Protocol tools |
-| `OpenAPIToolset` | `google.adk.tools.openapi_tool` | Any REST API via OpenAPI spec |
-| `LangchainTool` | `google.adk.tools.langchain_tool` | Wrap any LangChain tool |
-| `CrewaiTool` | `google.adk.tools.crewai_tool` | Wrap any CrewAI tool |
-| `BigQueryToolset` | `google.adk.tools` | BigQuery operations |
-
----
-
-## Tool Invocation Lifecycle
-
-```
-LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
- │
- ▼
- ┌─ before_tool_callback ─┐
- │ Return dict? ──Yes──► use dict as result (skip tool)
- │ Return None? │
- └────────┬───────────────┘
- ▼
- ┌─ tool.run_async() ─────┐
- │ get_weather("Tokyo") │
- │ → {temp: 18} │
- │ on error: │
- │ on_tool_error_cb │
- └────────┬───────────────┘
- ▼
- ┌─ after_tool_callback ──┐
- │ Return dict? ──Yes──► replace result
- │ Return None? │
- └────────┬───────────────┘
- ▼
- FunctionResponse event yielded
- → back to LLM in next loop iteration
-```
-
-### [ ] Default Error Behavior
-
-If your tool function raises an exception and no `on_tool_error_callback` is set:
-- The exception **propagates up** and terminates the entire invocation
-- The LLM does **not** get a chance to retry — the `run_async()` generator raises the exception to your code
-- To handle gracefully: set `on_tool_error_callback` on the agent, or wrap your tool in try/except and return an error dict
+### [ ] Error Handling
 
 ```python
 # Option 1: Handle inside the tool (recommended for simple cases)
@@ -177,59 +307,22 @@ agent = LlmAgent(
 )
 ```
 
----
+## Gotchas
 
-## Tool Resolution in LlmAgent
+- `GoogleSearchTool` and `VertexAiSearchTool` cannot mix with function tools in one API call — ADK auto-creates a hidden sub-agent for isolation
+- If your tool raises an exception and no `on_tool_error_callback` is set, the exception **propagates up** and terminates the entire invocation — the LLM does **not** get a chance to retry
+- `ToolConfirmation` uses `hint` and `payload` fields, not `title`/`message`
+- Tool `name` must match exactly what the LLM will call
+- A parameter named `tool_context: ToolContext` is auto-injected and hidden from the LLM schema
 
-```python
-agent = LlmAgent(tools=[
-    my_function, # → FunctionTool(func=my_function)
-    GoogleSearchTool(), # → used as-is (BaseTool)
-    my_toolset, # → BaseToolset.get_tools() called per LLM turn
-])
-```
+## Related
 
-`GoogleSearchTool` and `VertexAiSearchTool` cannot mix with function tools in one API call. ADK auto-creates a hidden sub-agent for isolation.
-
----
-
-## Long-Running Tools
-
-When `is_long_running=True`, the tool returns an operation ID. ADK:
-1. Yields a "paused" event with `long_running_tool_ids`
-2. The client polls for completion using the operation ID
-3. On the next invocation, the result is provided as a function response and the agent resumes
-
----
-
-## Tool Confirmation (Human-in-the-Loop)
-
-Tools can request human confirmation before executing:
-
-```python
-class MyTool(BaseTool):
-    async def run_async(self, args, tool_context):
-        # Request confirmation via the clean API
-        tool_context.request_confirmation(
-            hint='Delete file?',
-            payload={'filename': args['filename']}
-        )
-        # Tool execution pauses; client shows confirmation dialog
-        # On next invocation, if confirmed, the tool runs for real
-```
-
-`ToolConfirmation` uses `hint` and `payload` fields (not `title`/`message`).
-
----
-
-## Related Files
-
-- [`tools/base_tool.py`](../adk-python/src/google/adk/tools/base_tool.py) — abstract base
-- [`tools/base_toolset.py`](../adk-python/src/google/adk/tools/base_toolset.py) — dynamic tool collections
-- [`tools/tool_context.py`](../adk-python/src/google/adk/tools/tool_context.py) — tool runtime context
-- [`tools/function_tool.py`](../adk-python/src/google/adk/tools/function_tool.py) — Python function wrapper
-- [`tools/mcp_tool/`](../adk-python/src/google/adk/tools/mcp_tool/) — MCP protocol support
-- [`tools/openapi_tool/`](../adk-python/src/google/adk/tools/openapi_tool/) — OpenAPI/REST tools
-- [`tools/google_search_tool.py`](../adk-python/src/google/adk/tools/google_search_tool.py) — Google Search
+- [`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py) — abstract base
+- [`tools/base_toolset.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_toolset.py) — dynamic tool collections
+- [`tools/tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) — tool runtime context
+- [`tools/function_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py) — Python function wrapper
+- [`tools/mcp_tool/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/mcp_tool/) — MCP protocol support
+- [`tools/openapi_tool/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/openapi_tool/) — OpenAPI/REST tools
+- [`tools/google_search_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/google_search_tool.py) — Google Search
 - [12-artifacts.md](12-artifacts.md) — Artifact service deep dive (save_artifact, load_artifact)
 - [13-auth.md](13-auth.md) — Authentication deep dive (OAuth, credential service)

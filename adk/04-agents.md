@@ -1,12 +1,34 @@
-# Agents — Blueprints for Behavior
+# 04 — Agents: Blueprints for Behavior
 
-**Source:** [`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py) · [`agents/llm_agent.py`](../adk-python/src/google/adk/agents/llm_agent.py) · [`agents/invocation_context.py`](../adk-python/src/google/adk/agents/invocation_context.py)
+> **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py), [`agents/llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py), [`agents/invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py) | **Prereqs:** 01, 03
 
----
+## At a Glance
 
-## What It Is
+```
+┌──────────────────────────────────────────┐
+│             BaseAgent                     │
+│  abstract contract:                       │
+│    name, sub_agents, callbacks            │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│             Concrete Agents               │
+│  LlmAgent        — calls an LLM in loop  │
+│  LoopAgent        — repeat until done     │
+│  ParallelAgent    — concurrent sub-agents │
+│  SequentialAgent  — one after another     │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│             LlmAgent Flows                │
+│  SingleFlow  — no sub-agents              │
+│  AutoFlow    — has sub-agents (routing)   │
+└──────────────────────────────────────────┘
+```
 
-Agents define AI behavior: model, tools, system prompt, sub-agents. They hold no conversation state (that lives in `Session`).
+Agents define AI behavior — model, tools, system prompt, sub-agents — but hold no conversation state (that lives in `Session`). `BaseAgent` provides the abstract contract; `LlmAgent` (aliased as `Agent`) is the primary implementation that calls an LLM in a reason-act loop. Composition agents (`LoopAgent`, `ParallelAgent`, `SequentialAgent`) orchestrate sub-agents without calling an LLM themselves.
 
 ---
 
@@ -24,7 +46,9 @@ BaseAgent (base_agent.py) — abstract, common contract
 
 ---
 
-## BaseAgent — The Contract
+## Key API
+
+### [ ] BaseAgent — The Contract
 
 Every agent must implement one method:
 
@@ -64,9 +88,39 @@ after_agent_callback: ... # runs after _run_async_impl; can append events
 
 **Agent name constraint:** Cannot be `"user"` (reserved for end-user messages). Must be a valid Python identifier. Names must be unique within the tree.
 
+### [ ] LlmAgent Key Methods
+
+```python
+@classmethod
+LlmAgent.set_default_model(model: str | BaseLlm) -> None
+# Override the global default model (class variable DEFAULT_MODEL).
+# Affects all LlmAgent instances that don't set their own model and have no
+# ancestor with a model set. Default is 'gemini-2.5-flash'.
+
+@property
+LlmAgent.canonical_model -> BaseLlm
+# Resolves the effective model for this agent by walking up parent agents
+# until one has a model set. Falls back to DEFAULT_MODEL. Returns a BaseLlm
+# instance (wraps a string model name via LLMRegistry if needed).
+```
+
 ---
 
-## LlmAgent — The Primary Agent
+## How It Works
+
+### [ ] LlmAgent — The Primary Agent
+
+```
+LlmAgent._run_async_impl(ctx)
+│
+├── self._llm_flow.run_async(ctx)
+│   └── yields events from the reason-act loop
+│
+├── __maybe_save_output_to_state(event)
+│   └── if output_key set → event.actions.state_delta[key] = text
+│
+└── yield event
+```
 
 `LlmAgent` implements `_run_async_impl` by delegating to an `LlmFlow`:
 
@@ -77,11 +131,25 @@ async def _run_async_impl(ctx):
         yield event
 ```
 
-### [ ] Which flow does it use?
+### [ ] Which Flow Does It Use?
 
-ADK auto-selects AutoFlow (agent routing) when sub-agents exist, SingleFlow otherwise.
+ADK auto-selects the flow based on three conditions:
 
-### [ ] Key Fields
+```
+Which flow does LlmAgent use?
+│
+├─ disallow_transfer_to_parent = True?
+│   └─ AND disallow_transfer_to_peers = True?
+│       └─ AND sub_agents is empty?
+│           ├── Yes to ALL three ──► SingleFlow (pure tool-use loop, no routing)
+│           └── No to ANY ─────────► AutoFlow  (adds transfer_to_agent support)
+│
+└─ Default (no flags set, no sub_agents) ──► AutoFlow
+```
+
+`AutoFlow` extends `SingleFlow` — it adds agent transfer/delegation on top of the basic reason-act loop.
+
+### [ ] LlmAgent Key Fields
 
 ```python
 model: Union[str, BaseLlm] # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
@@ -158,25 +226,26 @@ def on_tool_error_callback(
 ) -> Optional[dict]: ...
 ```
 
-### [ ] Key Methods
+### [ ] InvocationContext — The Shared Thread
 
-```python
-@classmethod
-LlmAgent.set_default_model(model: str | BaseLlm) -> None
-# Override the global default model (class variable DEFAULT_MODEL).
-# Affects all LlmAgent instances that don't set their own model and have no
-# ancestor with a model set. Default is 'gemini-2.5-flash'.
-
-@property
-LlmAgent.canonical_model -> BaseLlm
-# Resolves the effective model for this agent by walking up parent agents
-# until one has a model set. Falls back to DEFAULT_MODEL. Returns a BaseLlm
-# instance (wraps a string model name via LLMRegistry if needed).
 ```
-
----
-
-## InvocationContext — The Shared Thread
+┌──────────────────────────────────────────┐
+│          InvocationContext                │
+│  agent          → current BaseAgent       │
+│  session        → Session (history+state) │
+│  invocation_id  → unique ID for this run  │
+│  branch         → routing path            │
+│  end_invocation → bool: stop invocation   │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│          Injected Services                │
+│  session_service    artifact_service      │
+│  memory_service     credential_service    │
+│  plugin_manager                           │
+└──────────────────────────────────────────┘
+```
 
 Created by `Runner`, flows through every layer:
 
@@ -185,7 +254,7 @@ class InvocationContext:
     agent: BaseAgent # current agent being run
     session: Session # the full conversation history + state
     invocation_id: str # unique ID for this run_async() call
-    branch: str # routing path (e.g. 'root.sub.leaf')
+    branch: Optional[str] = None # routing path (e.g. 'root.sub.leaf')
     end_invocation: bool # set to True to stop the entire invocation
 
     # Services injected by Runner:
@@ -198,11 +267,7 @@ class InvocationContext:
 
 Sub-agent calls create a child context via `model_copy()`. Branch and session are shared.
 
----
-
-## Agent Trees and Transfer
-
-Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_to_agent`.
+### [ ] Agent Trees and Transfer
 
 ```
 root_agent (LlmAgent)
@@ -210,44 +275,125 @@ root_agent (LlmAgent)
 └── write_agent (LlmAgent, no tools)
 ```
 
+Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_to_agent`.
+
 The LLM in `root_agent` can say "transfer to search_agent", which triggers `EventActions.transfer_to_agent = 'search_agent'`.
 
 ### [ ] How Agent Transfer Works
 
 ```
 User: "Book me a flight to Tokyo"
+│
+└── router_agent (AutoFlow)
+    │
+    ├── BEFORE LLM CALL: AutoFlow injects transfer_to_agent tool
+    │   └── agent_transfer.py adds FunctionDeclaration + instructions
+    │       listing available targets: [travel_agent, weather_agent]
+    │
+    ├── LLM calls: transfer_to_agent("travel_agent")
+    │   └── sets EventActions.transfer_to_agent = "travel_agent"
+    │
+    ├── DISPATCH: base_llm_flow.py intercepts the flag
+    │   ├── finds travel_agent via root_agent.find_agent("travel_agent")
+    │   ├── calls travel_agent.run_async(invocation_context)
+    │   │   └── _create_invocation_context: model_copy(update={'agent': travel_agent})
+    │   │       only 'agent' changes — everything else is shared
+    │   │
+    │   └── travel_agent runs with its OWN tools, instruction, model
+    │       ├── search_flights(destination="Tokyo") → [{flight: "JL001"}]
+    │       └── "I found flight JL001 for $450..."
+    │
+    └── Events from travel_agent bubble back to caller
+```
 
-┌─ router_agent (AutoFlow) ─────────────────────────────────────┐
-│ │
-│ LLM thinks: "This is a travel request" │
-│ LLM calls: transfer_to_agent("travel_agent") │
-│ │
-│ ┌─ travel_agent ───────────────────────────────────────────┐ │
-│ │ │ │
-│ │ LLM receives: full conversation history │ │
-│ │ LLM calls: search_flights(destination="Tokyo") │ │
-│ │ Tool returns: [{flight: "JL001", price: "$450"}, ...] │ │
-│ │ LLM responds: "I found flight JL001 for $450..." │ │
-│ │ │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│ │
-│ Events flow back to caller with author="travel_agent" │
-└────────────────────────────────────────────────────────────────┘
+### [ ] What Gets Shared vs Isolated
+
+```
+SHARED (same object reference via model_copy):
+├── session            ← same Session object
+├── session.state      ← writes by agent A visible to agent B immediately
+├── session.events     ← same event list
+├── invocation_id      ← same invocation
+├── branch             ← NOT changed by transfer (only ParallelAgent changes it)
+├── session_service    ← same service
+├── artifact_service   ← same service
+└── run_config         ← same config
+
+NOT SHARED (unique to each agent):
+├── agent.tools        ← target uses its OWN tools, source's tools are gone
+├── agent.instruction  ← target uses its OWN system prompt
+├── agent.model        ← target uses its OWN model (or inherits via canonical_model)
+├── agent.callbacks    ← target's before/after callbacks, not source's
+└── agent.sub_agents   ← target's own children
+```
+
+### [ ] What the Target Agent Sees in History
+
+```
+contents.py builds the target agent's LLM prompt:
+│
+├── Events with branch=None (root-level) → VISIBLE to everyone
+├── Events with matching branch → VISIBLE
+├── Events from OTHER agents → re-presented as user-role text:
+│   └── "[source_agent] called tool X with parameters: ..."
+│       "[source_agent] X tool returned result: ..."
+│       (thoughts are stripped, role flattened to 'user')
+│
+├── ALWAYS EXCLUDED (regardless of branch):
+│   ├── auth events (adk_request_credential)
+│   ├── confirmation events (adk_request_confirmation)
+│   ├── framework events (adk_framework)
+│   └── events with empty content or only thoughts
+│
+└── Key: transfer_to_agent does NOT change branch
+    → target sees the SAME events as source (no additional filtering)
+    → contrast with ParallelAgent which sets unique branches for isolation
+```
+
+### [ ] How Control Returns and Persists
+
+```
+WITHIN an invocation:
+├── Target agent finishes (final text response)
+│   └── Events bubble back up to source agent's flow
+│       └── Source agent's loop also exits (last event is final)
+│
+├── Target can transfer BACK to source (recursive delegation)
+│   └── transfer_to_agent("router_agent") works — same mechanism
+│
+└── Target can transfer to a PEER
+    └── transfer_to_agent("weather_agent") — found via root_agent.find_agent()
+
+ACROSS invocations (next user message):
+├── Runner._find_agent_to_run() walks session.events backwards
+│   └── finds last event's author agent
+│       └── if that agent is transferable (disallow_transfer_to_parent=False up the tree)
+│           → THAT agent handles the next message (control "sticks")
+│
+└── escalate is NOT transfer — it signals LoopAgent to break its loop
+    └── tool_context.actions.escalate = True → consumed by LoopAgent only
 ```
 
 ### [ ] Branch in Events
 
-As agents nest, the `branch` field on each event tracks which agent produced it. This lets each agent see only its own lineage when building LLM context:
+`branch` tracks which agent produced each event. This lets each agent see only its own lineage:
 
 ```
 Event stream with branches:
 
- evt-001 author="user" branch=None
- evt-002 author="router_agent" branch=None ← transfer_to_agent
- evt-003 author="travel_agent" branch="travel_agent" ← child branch
- evt-004 author="travel_agent" branch="travel_agent" ← tool call
- evt-005 author="travel_agent" branch="travel_agent" ← final answer
+ evt-001  author="user"          branch=None
+ evt-002  author="router_agent"  branch=None           ← transfer_to_agent call
+ evt-003  author="travel_agent"  branch=None           ← same branch (transfer doesn't change it)
+ evt-004  author="travel_agent"  branch=None           ← tool call
+ evt-005  author="travel_agent"  branch=None           ← final answer
+
+Note: branch stays None because transfer_to_agent does NOT set a new branch.
+ParallelAgent is the only agent type that creates new branches for isolation.
 ```
+
+---
+
+## Examples
 
 ### [ ] Minimal Multi-Agent Example
 
@@ -266,15 +412,118 @@ router = LlmAgent(name="router", model="gemini-2.5-flash",
 
 The router LLM sees sub-agents as transfer targets (injected by AutoFlow) and calls `transfer_to_agent()` to route.
 
+### [ ] 3-Layer Agent Tree with Transfer Back
+
+```python
+# Layer 3: leaf specialists
+flight_search = LlmAgent(name="flight_search", model="gemini-2.5-flash",
+    instruction="Search flights. When done, transfer back to travel_agent.",
+    tools=[search_flights_api])
+
+hotel_search = LlmAgent(name="hotel_search", model="gemini-2.5-flash",
+    instruction="Search hotels. When done, transfer back to travel_agent.",
+    tools=[search_hotels_api])
+
+# Layer 2: domain agent (has sub-agents)
+travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",
+    instruction="""You handle travel requests.
+    - For flights, transfer to flight_search
+    - For hotels, transfer to hotel_search
+    - When fully done, transfer back to router""",
+    sub_agents=[flight_search, hotel_search])
+
+# Layer 1: root router
+router = LlmAgent(name="router", model="gemini-2.5-flash",
+    instruction="Route to travel_agent for travel, weather_agent for weather.",
+    sub_agents=[travel_agent, weather_agent])
+```
+
+Transfer flow for "Book a flight and hotel in Tokyo":
+
+```
+User: "Book a flight and hotel in Tokyo"
+│
+├── router (Layer 1)
+│   └── LLM calls transfer_to_agent("travel_agent")
+│
+├── travel_agent (Layer 2)
+│   └── LLM calls transfer_to_agent("flight_search")
+│
+├── flight_search (Layer 3)
+│   ├── search_flights_api("Tokyo") → [{flight: "JL001"}]
+│   └── LLM calls transfer_to_agent("travel_agent")  ← BACK TO PARENT
+│
+├── travel_agent (Layer 2, resumed)
+│   └── LLM calls transfer_to_agent("hotel_search")
+│
+├── hotel_search (Layer 3)
+│   ├── search_hotels_api("Tokyo") → [{hotel: "Park Hyatt"}]
+│   └── LLM calls transfer_to_agent("travel_agent")  ← BACK TO PARENT
+│
+├── travel_agent (Layer 2, resumed)
+│   └── LLM calls transfer_to_agent("router")  ← BACK TO GRANDPARENT
+│
+└── router (Layer 1, resumed)
+    └── "I've booked flight JL001 and Park Hyatt in Tokyo!"
+```
+
+**How transfer back works** — by default `disallow_transfer_to_parent=False`, so AutoFlow automatically includes the parent agent in the transfer target list. The LLM's system prompt says: *"If neither you nor the other agents are best for the question, transfer to your parent agent travel_agent."*
+
+**What each agent can transfer to** (computed by `_get_transfer_targets`):
+
+```
+router can transfer to:
+├── travel_agent     (sub_agent)
+└── weather_agent    (sub_agent)
+    (no parent — router is root)
+
+travel_agent can transfer to:
+├── flight_search    (sub_agent)
+├── hotel_search     (sub_agent)
+├── router           (parent, because disallow_transfer_to_parent=False)
+└── weather_agent    (peer, because disallow_transfer_to_peers=False)
+
+flight_search can transfer to:
+├── travel_agent     (parent)
+└── hotel_search     (peer)
+    (no sub_agents)
+```
+
+**To PREVENT transfer back**, set `disallow_transfer_to_parent=True`:
+
+```python
+# This agent can only go deeper, never back up
+one_way_agent = LlmAgent(name="one_way",
+    disallow_transfer_to_parent=True,  # can't transfer to parent
+    disallow_transfer_to_peers=True,   # can't transfer to siblings
+    sub_agents=[...])
+
+# WARNING: if this agent also has no sub_agents, it gets SingleFlow
+# (no transfer at all) and the user may get "stuck" with this agent.
+# ADK mitigates this: on the NEXT user turn, Runner automatically
+# transfers control back to the parent if the current agent can't
+# transfer anywhere.
+```
+
 ---
 
-## Related Files
+## Gotchas
 
-- [`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py) — abstract base
-- [`agents/llm_agent.py`](../adk-python/src/google/adk/agents/llm_agent.py) — primary implementation
-- [`agents/invocation_context.py`](../adk-python/src/google/adk/agents/invocation_context.py) — shared context
-- [`agents/loop_agent.py`](../adk-python/src/google/adk/agents/loop_agent.py) — loop composition
-- [`agents/parallel_agent.py`](../adk-python/src/google/adk/agents/parallel_agent.py) — parallel composition
-- [`agents/sequential_agent.py`](../adk-python/src/google/adk/agents/sequential_agent.py) — sequential composition
-- [`agents/callback_context.py`](../adk-python/src/google/adk/agents/callback_context.py) — context passed to callbacks
+- Agent names must be valid Python identifiers and unique within the tree; `"user"` is reserved.
+- `output_schema` and `tools` are mutually exclusive — when `output_schema` is set, the agent cannot use tools. Workaround: use `output_key` to capture text then parse, or use a 2-agent pipeline.
+- `@final` on `run_async` means you must override `_run_async_impl`, never `run_async` itself.
+- `model` defaults to `''` (empty string); resolution walks up the parent chain and falls back to `DEFAULT_MODEL` (`'gemini-2.5-flash'`) only if no ancestor sets a model.
+- `include_contents='none'` makes the agent stateless — it receives no conversation history.
+
+---
+
+## Related
+
+- [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py) — abstract base
+- [`agents/llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py) — primary implementation
+- [`agents/invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py) — shared context
+- [`agents/loop_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/loop_agent.py) — loop composition
+- [`agents/parallel_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/parallel_agent.py) — parallel composition
+- [`agents/sequential_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/sequential_agent.py) — sequential composition
+- [`agents/callback_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/callback_context.py) — context passed to callbacks
 - [14-planners.md](14-planners.md) — BuiltInPlanner and PlanReActPlanner deep dive

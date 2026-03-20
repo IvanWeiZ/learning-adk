@@ -1,53 +1,100 @@
-# When to Build What in ADK
+# 02 — When to Build What in ADK
 
-Decision guide for every ADK extensibility point: **what**, **when**, **when not**, and **how**.
+> **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/), [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/), [`plugins/`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/), [`flows/`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/) | **Prereqs:** 01
 
----
-
-## Quick Decision Flowchart
+## At a Glance (big-picture diagram first, then one paragraph)
 
 ```
 What are you trying to do?
 │
 ├─ Add a capability to an agent?
-│ ├─ Simple function → FunctionTool (auto-wrapped)
-│ ├─ Needs lifecycle hooks → BaseTool subclass
-│ ├─ Dynamic set of tools → BaseToolset
-│ ├─ External API with auth → AuthenticatedFunctionTool
-│ └─ Long-running / async → LongRunningFunctionTool
+│  ├─ Simple function               ► FunctionTool (auto-wrapped)
+│  ├─ Needs lifecycle hooks          ► BaseTool subclass
+│  ├─ Dynamic set of tools           ► BaseToolset
+│  ├─ External API with auth         ► AuthenticatedFunctionTool
+│  └─ Long-running / async           ► LongRunningFunctionTool
 │
 ├─ Compose multiple agents?
-│ ├─ LLM picks which agent → LlmAgent(sub_agents=[...]) (AutoFlow)
-│ ├─ Fixed sequence → SequentialAgent
-│ ├─ Run in parallel → ParallelAgent
-│ ├─ Repeat until done → LoopAgent
-│ └─ Call a remote agent → RemoteA2aAgent (as sub_agent)
+│  ├─ LLM picks which agent          ► LlmAgent(sub_agents=[...]) (AutoFlow)
+│  ├─ Fixed sequence                 ► SequentialAgent
+│  ├─ Run in parallel                ► ParallelAgent
+│  ├─ Repeat until done              ► LoopAgent
+│  └─ Call a remote agent            ► RemoteA2aAgent (as sub_agent)
 │
 ├─ Add cross-cutting behavior?
-│ ├─ Guard all agents → BasePlugin (on App)
-│ ├─ Guard one agent → before/after_agent_callback
-│ ├─ Intercept LLM calls → before/after_model_callback
-│ └─ Intercept tool calls → before/after_tool_callback
+│  ├─ Guard all agents               ► BasePlugin (on App)
+│  ├─ Guard one agent                ► before/after_agent_callback
+│  ├─ Intercept LLM calls            ► before/after_model_callback
+│  └─ Intercept tool calls           ► before/after_tool_callback
 │
 ├─ Use a non-Gemini model?
-│ ├─ OpenAI, Groq, etc. → LiteLlm ("provider/model")
-│ ├─ Claude → AnthropicLlm ("claude-*")
-│ └─ Custom model → BaseLlm subclass + LLMRegistry
+│  ├─ OpenAI, Groq, etc.             ► LiteLlm ("provider/model")
+│  ├─ Claude                         ► AnthropicLlm ("claude-*")
+│  └─ Custom model                   ► BaseLlm subclass + LLMRegistry
 │
 ├─ Stream to a web UI?
-│ └─ RunConfig(streaming_mode=StreamingMode.SSE)
+│  └─ RunConfig(streaming_mode=StreamingMode.SSE)
 │
 └─ Remember past conversations?
- └─ BaseMemoryService + load_memory_tool
+   └─ BaseMemoryService + load_memory_tool
+```
+
+Decision guide for every ADK extensibility point: **what**, **when**, **when not**, and **how**. This file maps real-world scenarios to the right ADK component and shows how to build each one.
+
+---
+
+## Key API
+
+### [ ] Quick Decision Tree
+
+```
+I need to...
+│
+├─ Do something the LLM can request (call an API, query a DB, run code)
+│  ├─ Single function, no setup/teardown          ► Plain function tool
+│  ├─ Needs state, complex logic, or is_long_running ► Custom BaseTool subclass
+│  └─ Many tools from one source (REST API, MCP)  ► Custom BaseToolset subclass
+│
+├─ Control HOW a single agent behaves
+│  ├─ Before/after the agent runs                 ► before/after_agent_callback
+│  ├─ Before/after each LLM call                  ► before/after_model_callback
+│  ├─ Before/after each tool call                  ► before/after_tool_callback
+│  └─ On LLM or tool errors                       ► on_model/tool_error_callback
+│
+├─ Control HOW ALL agents behave (app-wide)        ► Plugin
+│
+├─ Compose multiple agents
+│  ├─ Run A, then B, then C in order              ► SequentialAgent
+│  ├─ Run A, B, C at the same time                ► ParallelAgent
+│  ├─ Repeat until done or N times                ► LoopAgent
+│  └─ LLM decides which sub-agent to use          ► LlmAgent with sub_agents
+│
+├─ Change how an agent THINKS or RESPONDS
+│  ├─ Custom reasoning / planning                 ► Custom BasePlanner subclass
+│  └─ Run code the LLM generates                  ► BaseCodeExecutor subclass
+│
+├─ Use a non-Gemini model                          ► LiteLlm adapter or custom BaseLlm
+│
+├─ Remember past conversations / search knowledge  ► BaseMemoryService + load_memory_tool
+│
+├─ Stream tokens to a web UI in real-time          ► RunConfig(streaming_mode=SSE) or BIDI
+│
+├─ Expose / consume agents across services         ► A2A protocol (to_a2a / RemoteA2aAgent)
+│
+├─ Require user OAuth tokens for a tool            ► AuthenticatedFunctionTool
+│
+└─ Change where sessions/memory/artifacts are stored ► Custom service backend
 ```
 
 ---
 
-## Real-World Use Cases → What to Build
+## How It Works (diagram before prose)
+
+### [ ] Real-World Use Cases → What to Build
 
 Common scenarios mapped to ADK components.
 
-### [ ] Tools
+#### [ ] Tools
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -68,7 +115,7 @@ Common scenarios mapped to ADK components.
 | Tool needs user OAuth tokens (e.g. Google Drive, GitHub) | `AuthenticatedFunctionTool` wraps any callable with the full OAuth flow. When credentials are missing, the invocation pauses for user authorization. See [13-auth.md](13-auth.md). |
 | Multiple independent API calls in one turn | Automatic. When the LLM returns multiple function calls in a single response, ADK runs them concurrently via `asyncio.gather`. No configuration needed. Don't confuse with `ParallelAgent` (concurrent sub-agents across invocations). |
 
-### [ ] Agent Callbacks (single-agent hooks)
+#### [ ] Agent Callbacks (single-agent hooks)
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -85,7 +132,7 @@ Common scenarios mapped to ADK components.
 | Normalize/clean a tool's return value before the LLM sees it | `after_tool_callback` → return transformed dict |
 | Alert on-call when a tool raises an exception | `on_tool_error_callback` → send alert, return fallback dict |
 
-### [ ] Plugins (app-wide hooks)
+#### [ ] Plugins (app-wide hooks)
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -96,7 +143,7 @@ Common scenarios mapped to ADK components.
 | Enforce a global system prompt added to every LLM call | `BasePlugin` with `before_model_callback` |
 | Clean up DB connections when the server shuts down | `BasePlugin.close()` |
 
-### [ ] Agent Composition
+#### [ ] Agent Composition
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -109,7 +156,7 @@ Common scenarios mapped to ADK components.
 | Expose an ADK agent as a remote service for other systems | `to_a2a(agent)` creates a Starlette ASGI app implementing the A2A protocol. |
 | Consume a remote agent as a sub-agent | `RemoteA2aAgent(agent_card=...)` as a drop-in `sub_agent`. |
 
-### [ ] Custom Agents
+#### [ ] Custom Agents
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -118,7 +165,7 @@ Common scenarios mapped to ADK components.
 | An agent that calls an external orchestration API and streams its events back | `BaseAgent` subclass |
 | Use a non-Gemini model (OpenAI, Anthropic, etc.) | `LiteLlm` adapter supports 100+ providers via `'provider/model-name'` format (e.g., `'openai/gpt-4o'`). For fully custom models, subclass `BaseLlm`, implement `generate_content_async()`, and register via `LLMRegistry.register(MyLlm)`. See [06-models.md](06-models.md). |
 
-### [ ] Runtime & Configuration
+#### [ ] Runtime & Configuration
 
 | Real-world scenario | What to build |
 |---------------------|---------------|
@@ -126,65 +173,24 @@ Common scenarios mapped to ADK components.
 
 ---
 
-## Quick Decision Tree
+## Examples
 
-```
-I need to...
-│
-├─ Do something the LLM can request (call an API, query a DB, run code)
-│ ├─ Single function, no setup/teardown → Plain function tool
-│ ├─ Needs state, complex logic, or is_long_running → Custom BaseTool subclass
-│ └─ Many tools from one source (REST API, MCP) → Custom BaseToolset subclass
-│
-├─ Control HOW a single agent behaves
-│ ├─ Before/after the agent runs → before/after_agent_callback
-│ ├─ Before/after each LLM call → before/after_model_callback
-│ ├─ Before/after each tool call → before/after_tool_callback
-│ └─ On LLM or tool errors → on_model/tool_error_callback
-│
-├─ Control HOW ALL agents behave (app-wide) → Plugin
-│
-├─ Compose multiple agents
-│ ├─ Run A, then B, then C in order → SequentialAgent
-│ ├─ Run A, B, C at the same time → ParallelAgent
-│ ├─ Repeat until done or N times → LoopAgent
-│ └─ LLM decides which sub-agent to use → LlmAgent with sub_agents
-│
-├─ Change how an agent THINKS or RESPONDS
-│ ├─ Custom reasoning / planning → Custom BasePlanner subclass
-│ └─ Run code the LLM generates → BaseCodeExecutor subclass
-│
-├─ Use a non-Gemini model → LiteLlm adapter or custom BaseLlm
-│
-├─ Remember past conversations / search knowledge → BaseMemoryService + load_memory_tool
-│
-├─ Stream tokens to a web UI in real-time → RunConfig(streaming_mode=SSE) or BIDI
-│
-├─ Expose / consume agents across services → A2A protocol (to_a2a / RemoteA2aAgent)
-│
-├─ Require user OAuth tokens for a tool → AuthenticatedFunctionTool
-│
-└─ Change where sessions/memory/artifacts are stored → Custom service backend
-```
-
----
-
-## 1. Plain Function Tool
+### [ ] 1. Plain Function Tool
 
 Wrap any Python function. ADK auto-generates the schema from type hints and docstrings.
 
-### [ ] When to use
+**When to use:**
 - The tool is a simple, stateless function
 - No cleanup, no connection pooling, no long-running behavior
 - You want zero boilerplate
 
-### [ ] When NOT to use
+**When NOT to use:**
 - You need custom LLM schema (`_get_declaration`) not derivable from type hints
 - The tool is long-running (`is_long_running=True`)
 - The tool needs to modify the `LlmRequest` before it reaches the model
 - You're grouping many tools together dynamically
 
-### [ ] How to build
+**How to build:**
 
 ```python
 # Sync function — ADK wraps it in FunctionTool automatically
@@ -224,25 +230,25 @@ agent = LlmAgent(
 )
 ```
 
-**Source:** [`tools/function_tool.py`](../adk-python/src/google/adk/tools/function_tool.py)
+**Source:** [`tools/function_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py)
 
 ---
 
-## 2. Custom BaseTool Subclass
+### [ ] 2. Custom BaseTool Subclass
 
 Full control: custom schema, long-running behavior, or request-level mutation.
 
-### [ ] When to use
+**When to use:**
 - Need `is_long_running=True` (returns operation ID, finishes asynchronously) — prefer `LongRunningFunctionTool` for simple cases; use `BaseTool` subclass only when you also need a custom schema. The same pause mechanism supports human-in-the-loop approval (invocation pauses, user's next message carries the approval).
 - Need a hand-crafted `FunctionDeclaration` (e.g. complex nested schema, optional fields, enums)
 - Need to modify the `LlmRequest` before it's sent (e.g. inject a special header or flag into the request)
 - Need `custom_metadata` for manifest or tool discovery
 - The tool is a built-in model capability (like `google_search`) that doesn't need `run_async`
 
-### [ ] When NOT to use
+**When NOT to use:**
 - A plain function works — don't subclass just for the sake of it
 
-### [ ] How to build
+**How to build:**
 
 ```python
 from google.adk.tools.base_tool import BaseTool
@@ -281,24 +287,24 @@ class ExportReportTool(BaseTool):
         return {"job_id": job_id, "status": "started"}
 ```
 
-**Source:** [`tools/base_tool.py`](../adk-python/src/google/adk/tools/base_tool.py)
+**Source:** [`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py)
 
 ---
 
-## 3. Custom BaseToolset Subclass
+### [ ] 3. Custom BaseToolset Subclass
 
 Dynamic, context-dependent, or externally-sourced tool collections (REST API, MCP server, database schema).
 
-### [ ] When to use
+**When to use:**
 - Tools are discovered at runtime (OpenAPI spec, database tables, MCP manifest)
 - The set of tools changes based on user/session/permissions
 - You need a single `close()` for cleanup (HTTP connection pool, subprocess)
 - You want a `tool_filter` or `tool_name_prefix` applied across all tools
 
-### [ ] When NOT to use
+**When NOT to use:**
 - You have a fixed, known list of tools — just pass them as `tools=[...]` on the agent
 
-### [ ] How to build
+**How to build:**
 
 ```python
 from google.adk.tools.base_toolset import BaseToolset
@@ -332,61 +338,66 @@ agent = LlmAgent(
 )
 ```
 
-**Source:** [`tools/base_toolset.py`](../adk-python/src/google/adk/tools/base_toolset.py)
+**Source:** [`tools/base_toolset.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_toolset.py)
 
 ---
 
-## 4. Agent Callbacks
+### [ ] 4. Agent Callbacks
 
 Per-agent hooks. Defined inline, not reusable across agents.
 
-### [ ] Callback map
+#### [ ] Callback map
 
 ```
-before_agent_callback(callback_context)
- → runs before _run_async_impl
- → return Content → skip the agent entirely, use returned content
- → return None → proceed normally
-
-after_agent_callback(callback_context)
- → runs after _run_async_impl
- → return Content → append an extra event with this content
- → return None → nothing added
-
-before_model_callback(callback_context, llm_request)
- → runs before each LLM call within this agent
- → return LlmResponse → skip LLM call entirely, use returned response
- → mutate llm_request → modify prompt/tools before sending
- → return None → proceed normally
-
-after_model_callback(callback_context, llm_response)
- → runs after each LLM call
- → return LlmResponse → replace the model's actual response
- → return None → use the original response
-
-on_model_error_callback(callback_context, llm_request, error)
- → runs when the LLM raises an exception
- → return LlmResponse → recover gracefully with a fallback response
- → return None → re-raise the error
-
-before_tool_callback(tool, args, tool_context)
- → runs before each tool execution
- → return dict → skip tool execution, use returned dict as result
- → mutate args → modify tool arguments before the call
- → return None → proceed normally
-
-after_tool_callback(tool, args, tool_context, tool_response)
- → runs after each tool execution
- → return dict → replace the tool's actual result
- → return None → use the original result
-
-on_tool_error_callback(tool, args, tool_context, error)
- → runs when a tool raises an exception
- → return dict → recover with a fallback result
- → return None → re-raise the error
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Agent Callback Flow                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  before_agent_callback(callback_context)                           │
+│   ► runs before _run_async_impl                                    │
+│   ► return Content → skip the agent entirely, use returned content │
+│   ► return None → proceed normally                                 │
+│                                                                     │
+│  after_agent_callback(callback_context)                            │
+│   ► runs after _run_async_impl                                     │
+│   ► return Content → append an extra event with this content       │
+│   ► return None → nothing added                                    │
+│                                                                     │
+│  before_model_callback(callback_context, llm_request)              │
+│   ► runs before each LLM call within this agent                   │
+│   ► return LlmResponse → skip LLM call entirely                   │
+│   ► mutate llm_request → modify prompt/tools before sending       │
+│   ► return None → proceed normally                                 │
+│                                                                     │
+│  after_model_callback(callback_context, llm_response)              │
+│   ► runs after each LLM call                                      │
+│   ► return LlmResponse → replace the model's actual response      │
+│   ► return None → use the original response                       │
+│                                                                     │
+│  on_model_error_callback(callback_context, llm_request, error)     │
+│   ► runs when the LLM raises an exception                         │
+│   ► return LlmResponse → recover gracefully with a fallback       │
+│   ► return None → re-raise the error                              │
+│                                                                     │
+│  before_tool_callback(tool, args, tool_context)                    │
+│   ► runs before each tool execution                               │
+│   ► return dict → skip tool execution, use returned dict           │
+│   ► mutate args → modify tool arguments before the call           │
+│   ► return None → proceed normally                                 │
+│                                                                     │
+│  after_tool_callback(tool, args, tool_context, tool_response)      │
+│   ► runs after each tool execution                                │
+│   ► return dict → replace the tool's actual result                │
+│   ► return None → use the original result                         │
+│                                                                     │
+│  on_tool_error_callback(tool, args, tool_context, error)           │
+│   ► runs when a tool raises an exception                          │
+│   ► return dict → recover with a fallback result                  │
+│   ► return None → re-raise the error                              │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] When to use each
+#### [ ] When to use each
 
 | Callback | Use for |
 |----------|---------|
@@ -399,11 +410,11 @@ on_tool_error_callback(tool, args, tool_context, error)
 | `after_tool_callback` | Result transformation, logging, caching tool results |
 | `on_tool_error_callback` | Graceful degradation, fallback data, error alerting |
 
-### [ ] When NOT to use agent callbacks
+#### [ ] When NOT to use agent callbacks
 - You need the same behavior on **all** agents → use a Plugin instead
 - You want to observe events at the Runner level → use a Plugin's `on_event_callback`
 
-### [ ] How to build
+#### [ ] How to build
 
 ```python
 from google.adk.agents import LlmAgent
@@ -447,24 +458,24 @@ agent = LlmAgent(
 )
 ```
 
-**Source:** [`agents/llm_agent.py`](../adk-python/src/google/adk/agents/llm_agent.py) · [`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py)
+**Source:** [`agents/llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py) · [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py)
 
 ---
 
-## 5. Plugin
+### [ ] 5. Plugin
 
 Like agent callbacks but **app-wide**: runs for every agent in the tree. Defined once, applied everywhere.
 
-### [ ] When to use
+**When to use:**
 - Cross-cutting concerns: logging, tracing, rate limiting, safety guardrails
 - You want the same `before_model_callback` behavior on every agent without repeating it
 - You need Runner-level hooks (`before_run_callback`, `after_run_callback`, `on_event_callback`)
 
-### [ ] When NOT to use
+**When NOT to use:**
 - Behavior is specific to one agent → use agent callbacks instead (scoped, no coupling)
 - Very simple single-agent app → callbacks are simpler
 
-### [ ] Plugin hooks (superset of agent callbacks)
+#### [ ] Plugin hooks (superset of agent callbacks)
 
 ```python
 class BasePlugin(ABC):
@@ -493,7 +504,7 @@ class BasePlugin(ABC):
 
 **Execution order:** Plugins run **before** agent callbacks. If a plugin returns a non-`None` value, all subsequent plugins and agent callbacks are skipped.
 
-### [ ] How to build
+#### [ ] How to build
 
 ```python
 import logging
@@ -550,24 +561,24 @@ app = App(name="my_app", agent=root_agent, plugins=[ObservabilityPlugin()])
 runner = Runner(app=app, session_service=session_service)
 ```
 
-**Source:** [`plugins/base_plugin.py`](../adk-python/src/google/adk/plugins/base_plugin.py)
+**Source:** [`plugins/base_plugin.py`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/base_plugin.py)
 
 ---
 
-## 6. Custom Agent (BaseAgent Subclass)
+### [ ] 6. Custom Agent (BaseAgent Subclass)
 
 Build a fully custom execution loop when none of the built-in agent types fit.
 
-### [ ] When to use
+**When to use:**
 - You need control flow that `LlmAgent`, `SequentialAgent`, `LoopAgent`, `ParallelAgent` can't express
 - You are building a non-LLM agent (rules engine, deterministic pipeline, external orchestrator)
 - You want to wrap an external agent framework (LangGraph, CrewAI, etc.) as an ADK agent
 
-### [ ] When NOT to use
+**When NOT to use:**
 - An `LlmAgent` with the right tools and instruction handles it → don't over-engineer
 - You only need composition → use `SequentialAgent` / `LoopAgent` / `ParallelAgent`
 
-### [ ] How to build
+**How to build:**
 
 ```python
 from google.adk.agents.base_agent import BaseAgent
@@ -612,27 +623,27 @@ rules_agent = RulesAgent(
     description="Handles FAQs with deterministic rules.",
     routing_table={
         "refund": "To request a refund, email support@example.com.",
-        "hours": "We're open Monday\u2013Friday, 9am\u20135pm PST.",
+        "hours": "We're open Monday–Friday, 9am–5pm PST.",
         "pricing": "See our pricing page at example.com/pricing.",
     }
 )
 ```
 
-**Source:** [`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py)
+**Source:** [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py)
 
 ---
 
-## 7. Composition Agents (SequentialAgent / ParallelAgent / LoopAgent)
+### [ ] 7. Composition Agents (SequentialAgent / ParallelAgent / LoopAgent)
 
 These are **not subclassed** — you instantiate them directly with `sub_agents`.
 
-### [ ] SequentialAgent — run sub-agents one after another
+#### [ ] SequentialAgent — run sub-agents one after another
 
 **Use when:** Pipeline stages that must run in order, each passing output to the next via session state.
 
 ```
-extract → transform → load
-research → draft → review → publish
+extract ► transform ► load
+research ► draft ► review ► publish
 ```
 
 ```python
@@ -648,16 +659,18 @@ pipeline = SequentialAgent(
 )
 ```
 
-**Source:** [`agents/sequential_agent.py`](../adk-python/src/google/adk/agents/sequential_agent.py)
+**Source:** [`agents/sequential_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/sequential_agent.py)
 
 ---
 
-### [ ] ParallelAgent — run sub-agents concurrently
+#### [ ] ParallelAgent — run sub-agents concurrently
 
 **Use when:** Independent tasks that don't depend on each other's output. Results are merged into the session and a downstream agent synthesizes them.
 
 ```
-[search_agent, calculator_agent, translator_agent] → all run at once → synthesizer_agent
+┌─ search_agent ─────┐
+├─ calculator_agent ──┤ ► all run at once ► synthesizer_agent
+└─ translator_agent ──┘
 ```
 
 ```python
@@ -682,16 +695,24 @@ full_pipeline = SequentialAgent(
 
 > **Important:** Each sub-agent in `ParallelAgent` runs in an isolated branch — they cannot see each other's events. Use session state (`output_key`) to share data.
 
-**Source:** [`agents/parallel_agent.py`](../adk-python/src/google/adk/agents/parallel_agent.py)
+**Source:** [`agents/parallel_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/parallel_agent.py)
 
 ---
 
-### [ ] LoopAgent — repeat until escalate or max_iterations
+#### [ ] LoopAgent — repeat until escalate or max_iterations
 
 **Use when:** Iterative refinement, polling, retry loops, or any "keep going until done" pattern.
 
 ```
-[critic_agent, refiner_agent] → loops until critic is satisfied → escalates
+┌─────────────────────────────────────┐
+│         refinement_loop             │
+│  ┌──────────┐    ┌──────────┐      │
+│  │  critic   │ ►  │  refiner  │     │
+│  └──────────┘    └──────────┘      │
+│       ▲               │            │
+│       └───────────────┘            │
+│   loops until critic escalates     │
+└─────────────────────────────────────┘
 ```
 
 ```python
@@ -719,11 +740,11 @@ refinement_loop = LoopAgent(
 - A sub-agent sets `event.actions.escalate = True`
 - `max_iterations` is reached
 
-**Source:** [`agents/loop_agent.py`](../adk-python/src/google/adk/agents/loop_agent.py)
+**Source:** [`agents/loop_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/loop_agent.py)
 
 ---
 
-## 8. LLM-controlled Sub-agent Transfer
+### [ ] 8. LLM-controlled Sub-agent Transfer
 
 Give `LlmAgent` a list of `sub_agents`; the LLM decides which to delegate to.
 
@@ -744,11 +765,13 @@ root = LlmAgent(
 
 The LLM calls the hidden `transfer_to_agent` function. `AutoFlow` intercepts it and routes control. Use `description` on sub-agents — the LLM uses it to decide whom to transfer to.
 
-**Source:** [`flows/llm_flows/auto_flow.py`](../adk-python/src/google/adk/flows/llm_flows/auto_flow.py)
+**Source:** [`flows/llm_flows/auto_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/auto_flow.py)
 
 ---
 
-## Summary Table
+## Gotchas
+
+### [ ] Summary Table
 
 | What to build | When | Key base class / pattern |
 |--------------|------|--------------------------|
@@ -779,11 +802,11 @@ The LLM calls the hidden `transfer_to_agent` function. `AutoFlow` intercepts it 
 
 ---
 
-## My Custom Use Cases
+## Related
 
----
+### [ ] Custom Use Cases
 
-### [ ] Use Case 1 — Parse the User Message, Enrich with API Context, Feed Only Enriched Context to the Responder Agent
+#### [ ] Use Case 1 — Parse the User Message, Enrich with API Context, Feed Only Enriched Context to the Responder Agent
 
 **Scenario:**
 The user sends a raw message like `"abc media_id:1"`. You want to:
@@ -814,7 +837,7 @@ Additional context for the media:
 
 ---
 
-#### [ ] How it works: `include_contents="none"` is the key
+##### How it works: `include_contents="none"` is the key
 
 `LlmAgent` has a field `include_contents: Literal["default", "none"]`.
 
@@ -829,28 +852,28 @@ Stage 2 is completely isolated. It reads only what stage 1 wrote to state.
 
 ---
 
-#### [ ] Three Options for Stage 1 (the extraction step)
+##### Three Options for Stage 1 (the extraction step)
 
 The responder agent is always the same. What varies is how you do the extraction.
 
 ---
 
-##### Option A — `before_agent_callback` on the pipeline (simplest, no extra LLM call)
+###### Option A — `before_agent_callback` on the pipeline (simplest, no extra LLM call)
 
 Use `before_agent_callback` on the root `SequentialAgent` to parse the message and call APIs **before any agent runs**. Pure Python, no LLM involved in extraction. Results go to session state. Then the responder reads from state.
 
 ```
 before_agent_callback fires (on SequentialAgent)
- → read ctx.user_content (the raw "abc media_id:1")
- → parse IDs with regex
- → call media API + user API concurrently
- → write to callback_context.state["clean_query"], ["media_context"], ["user_context"]
- → return None → pipeline runs normally
+ ► read ctx.user_content (the raw "abc media_id:1")
+ ► parse IDs with regex
+ ► call media API + user API concurrently
+ ► write to callback_context.state["clean_query"], ["media_context"], ["user_context"]
+ ► return None → pipeline runs normally
  │
  ▼
 responder_agent (include_contents="none")
- → instruction resolves {clean_query}, {media_context}, {user_context} from state
- → LLM sees only the enriched system prompt, nothing else
+ ► instruction resolves {clean_query}, {media_context}, {user_context} from state
+ ► LLM sees only the enriched system prompt, nothing else
 ```
 
 ```python
@@ -864,7 +887,7 @@ from google.genai import types
 
 # --- Parsing helper ---
 def parse_user_message(raw: str) -> tuple[str, dict]:
-    """'abc media_id:1' \u2192 ('abc', {'media_id': '1'})"""
+    """'abc media_id:1' → ('abc', {'media_id': '1'})"""
     ids = {}
     clean = raw
     for match in re.finditer(r'(\w+_id):(\w+)', raw):
@@ -897,13 +920,13 @@ async def enrich_before_pipeline(callback_context: CallbackContext):
     callback_context.state["media_context"] = json.dumps(responses.get("media", {}), indent=2)
     callback_context.state["user_context"] = json.dumps(responses.get("user", {}), indent=2)
 
-    return None # proceed \u2014 don't short-circuit the pipeline
+    return None # proceed — don't short-circuit the pipeline
 
 # --- Responder: never sees the raw message ---
 responder_agent = LlmAgent(
     name="responder",
     model="gemini-2.5-flash",
-    include_contents="none", # \u2190 zero session history sent to LLM
+    include_contents="none", # ← zero session history sent to LLM
     instruction="""
     You are a helpful media assistant.
 
@@ -928,14 +951,14 @@ pipeline = SequentialAgent(
 ```
 
 **Tradeoffs:**
-- ✅ Zero extra LLM calls — extraction is pure Python
-- ✅ Simplest structure — one agent, one callback
-- ❌ Parsing logic is hardcoded — no LLM reasoning during extraction
-- ❌ Complex extraction (ambiguous queries, nested structures) needs more code
+- Zero extra LLM calls — extraction is pure Python
+- Simplest structure — one agent, one callback
+- Parsing logic is hardcoded — no LLM reasoning during extraction
+- Complex extraction (ambiguous queries, nested structures) needs more code
 
 ---
 
-##### Option B — `SequentialAgent` with extractor `LlmAgent` (LLM does the extraction)
+###### Option B — `SequentialAgent` with extractor `LlmAgent` (LLM does the extraction)
 
 Use a first LlmAgent to parse and enrich using tools. The LLM handles ambiguous or complex extraction. Results are stored in state. The responder reads from state with `include_contents="none"`.
 
@@ -943,14 +966,14 @@ Use a first LlmAgent to parse and enrich using tools. The LLM handles ambiguous 
 SequentialAgent
  │
  ├─ extractor_agent (LlmAgent — sees raw message, calls tools)
- │ → parse_and_extract("abc media_id:1")
- │ → state["clean_query"] = "abc"
- │ → state["media_context"] = "{...}"
- │ → state["user_context"] = "{...}"
+ │  ► parse_and_extract("abc media_id:1")
+ │  ► state["clean_query"] = "abc"
+ │  ► state["media_context"] = "{...}"
+ │  ► state["user_context"] = "{...}"
  │
  └─ responder_agent (LlmAgent — include_contents="none")
- → instruction: "User query is: {clean_query} ..."
- → LLM sees only the enriched system prompt
+    ► instruction: "User query is: {clean_query} ..."
+    ► LLM sees only the enriched system prompt
 ```
 
 ```python
@@ -1013,7 +1036,7 @@ extractor_agent = LlmAgent(
 responder_agent = LlmAgent(
     name="responder",
     model="gemini-2.5-flash",
-    include_contents="none", # \u2190 never sees extractor's conversation or raw message
+    include_contents="none", # ← never sees extractor's conversation or raw message
     instruction="""
     You are a helpful media assistant.
 
@@ -1036,25 +1059,25 @@ pipeline = SequentialAgent(
 ```
 
 **Tradeoffs:**
-- ✅ LLM handles ambiguous parsing ("find that sports clip from yesterday media_id:5")
-- ✅ Extractor and responder are independently testable
-- ✅ Easy to add more extraction tools without changing the responder
-- ❌ 2 LLM calls per turn (extractor + responder)
-- ❌ More moving parts
+- LLM handles ambiguous parsing ("find that sports clip from yesterday media_id:5")
+- Extractor and responder are independently testable
+- Easy to add more extraction tools without changing the responder
+- 2 LLM calls per turn (extractor + responder)
+- More moving parts
 
 ---
 
-##### Option C — `before_model_callback` on the responder (no SequentialAgent needed)
+###### Option C — `before_model_callback` on the responder (no SequentialAgent needed)
 
 If you don't want a two-agent structure at all, use a single agent with `before_model_callback`. It rewrites `llm_request.contents` just before the LLM call — the LLM receives the enriched version, never the raw string.
 
 ```
 Single LlmAgent
- → flow builds LlmRequest with raw "abc media_id:1" in contents
- → before_model_callback fires
- → parse + call APIs
- → replace llm_request.contents[-1] with enriched text
- → LLM sees enriched message
+ ► flow builds LlmRequest with raw "abc media_id:1" in contents
+ ► before_model_callback fires
+ ► parse + call APIs
+ ► replace llm_request.contents[-1] with enriched text
+ ► LLM sees enriched message
 ```
 
 ```python
@@ -1092,14 +1115,14 @@ agent = LlmAgent(
 ```
 
 **Tradeoffs:**
-- ✅ Simplest possible structure — one agent, one callback, no SequentialAgent
-- ✅ 1 LLM call per turn
-- ❌ Enrichment logic is embedded in a callback, harder to test
-- ❌ Doesn't work if you need an LLM to do the extraction
+- Simplest possible structure — one agent, one callback, no SequentialAgent
+- 1 LLM call per turn
+- Enrichment logic is embedded in a callback, harder to test
+- Doesn't work if you need an LLM to do the extraction
 
 ---
 
-#### [ ] Comparison
+##### Comparison
 
 | | Option A: `before_agent_callback` | Option B: `SequentialAgent` | Option C: `before_model_callback` |
 |--|-----------------------------------|------------------------------|------------------------------------|
@@ -1115,35 +1138,36 @@ agent = LlmAgent(
 
 ---
 
-#### [ ] Data Flow
+##### Data Flow
 
 ```
 User sends: "abc media_id:1"
  │
  ▼
 Runner stores Event(author="user", content="abc media_id:1") in session
- │ ← raw message stays here, that's fine
+ │                          ← raw message stays here, that's fine
  │
  ├── Option A / B ──────────────────────────────────────────────────────┐
- │ │
- │ before_agent_callback (A) extractor_agent (B) │
- │ parse → IDs → API calls parse → API tools │
- │ state["clean_query"] = "abc" state["clean_query"] = "abc" │
- │ state["media_context"]= "{...}" state["media_context"]= "{...}" │
- │ state["user_context"] = "{...}" state["user_context"] = "{...}" │
- │ │
- │ responder_agent (include_contents="none") │
- │ LlmRequest.contents = [] ← empty, no history sent │
- │ system_instruction resolves {clean_query}, {media_context}, ... │
- │ LLM sees only the enriched system prompt │
- │ │
+ │                                                                      │
+ │  before_agent_callback (A)         extractor_agent (B)              │
+ │  parse ► IDs ► API calls           parse ► API tools                │
+ │  state["clean_query"] = "abc"      state["clean_query"] = "abc"     │
+ │  state["media_context"]= "{...}"   state["media_context"]= "{...}"  │
+ │  state["user_context"] = "{...}"   state["user_context"] = "{...}"  │
+ │                                                                      │
+ │  responder_agent (include_contents="none")                          │
+ │  LlmRequest.contents = []         ← empty, no history sent         │
+ │  system_instruction resolves {clean_query}, {media_context}, ...    │
+ │  LLM sees only the enriched system prompt                           │
+ │                                                                      │
  └── Option C ────────────────────────────────────────────────────────┐ │
- │ │
- before_model_callback │ │
- parse → API calls │ │
- rewrite llm_request.contents[-1] → enriched text │ │
- LLM receives enriched message instead of "abc media_id:1" │ │
- │ │
+                                                                      │ │
+   before_model_callback                                              │ │
+   parse ► API calls                                                  │ │
+   rewrite llm_request.contents[-1] ► enriched text                   │ │
+   LLM receives enriched message instead of "abc media_id:1"          │ │
+                                                                      │ │
+ ◄────────────────────────────────────────────────────────────────────┘ │
  ◄──────────────────────────────────────────────────────────────────────┘
  │
  ▼

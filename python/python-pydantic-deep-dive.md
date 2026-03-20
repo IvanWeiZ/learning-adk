@@ -1,36 +1,37 @@
-# Comprehensive Pydantic Deep Dive Guide for Java Developers
+# Python Pydantic v2 — Deep Dive
 
-**For:** Wei (Java → Python transition, building Google ADK agents)
-**Audience:** Experienced Java developers learning Pydantic fundamentals
-**Context:** Pydantic powers ALL data structures in Google ADK (Event, EventActions, Session, GenerateContentConfig, tool schemas)
+> **ADK relevance:** Every ADK data structure (Event, Session, EventActions, tool schemas) is a Pydantic model | **Estimated time:** 4-5 hours
 
----
+## [ ] At a Glance
 
-## Table of Contents
+```
++------------------------------------------------------------------+
+|              Pydantic v2 Architecture                              |
+|                                                                    |
+|  BaseModel                                                        |
+|    |                                                               |
+|    +-- Field()           Constraints, aliases, descriptions       |
+|    +-- Validators        @field_validator, @model_validator        |
+|    +-- Serialization     model_dump(), model_dump_json()           |
+|    +-- Deserialization   model_validate(), model_validate_json()   |
+|    +-- model_copy()      Immutable updates (critical for ADK)     |
+|    +-- JSON Schema       model_json_schema() -> tool definitions  |
+|    +-- ConfigDict        frozen, strict, extra handling           |
+|    +-- Generics          Response[T], Page[T]                     |
+|    +-- Discriminated     Union[TypeA, TypeB] by field value       |
+|       Unions                                                      |
+|                                                                    |
+|  Java analogy: Lombok @Data + Jackson + Bean Validation in one    |
++------------------------------------------------------------------+
+```
 
-1. [BaseModel Fundamentals](#basemodel-fundamentals)
-2. [Field() Configuration](#field-configuration)
-3. [Validation](#validation)
-4. [Serialization & Deserialization](#serialization--deserialization)
-5. [model_copy(update={...}) - Critical for ADK](#model_copyupdate---critical-for-adk)
-6. [Nested Models & Composition](#nested-models--composition)
-7. [Discriminated Unions](#discriminated-unions)
-8. [Generic Models](#generic-models)
-9. [JSON Schema Generation](#json-schema-generation)
-10. [ConfigDict](#configdict)
-11. [Computed Fields](#computed-fields)
-12. [Inheritance](#inheritance)
-13. [Custom Types](#custom-types)
-14. [Performance Tips](#performance-tips)
-15. [ADK-Specific Patterns](#adk-specific-patterns)
-16. [Common Pitfalls](#common-pitfalls)
-17. [Java → Pydantic Reference](#java--pydantic-reference)
+Pydantic powers ALL data structures in Google ADK (Event, EventActions, Session, GenerateContentConfig, tool schemas). This guide covers everything from basic model definition through advanced patterns like discriminated unions and JSON schema generation, with Java comparisons throughout.
 
----
+## [ ] Core Concepts
 
-## BaseModel Fundamentals
+## [ ] BaseModel Fundamentals
 
-### [ ] What is BaseModel?
+#### What is BaseModel?
 
 In Java, you'd use **records** (Java 16+) or **Lombok @Data** to define POJOs with automatic getters, setters, equals, hashCode, and toString. **Pydantic's BaseModel** is similar but goes further: it validates data on construction and provides serialization/deserialization out of the box.
 
@@ -49,15 +50,15 @@ class User(BaseModel):
     age: int
 
 # Construction with validation
-user = User(name="Wei", age=30)
-print(user.name)  # "Wei"
+user = User(name="you", age=30)
+print(user.name)  # "you"
 print(user.age)   # 30
 
 # Accessing as dict (like Java's .asMap() if you had that method)
-print(user.model_dump())  # {'name': 'Wei', 'age': 30}
+print(user.model_dump())  # {'name': 'you', 'age': 30}
 ```
 
-### [ ] Field Types and Python Typing
+#### Field Types and Python Typing
 
 Python uses type hints instead of Java's explicit types. Here's the mapping:
 
@@ -99,7 +100,7 @@ event = Event(
 )
 ```
 
-### [ ] Optional Fields and Defaults
+#### Optional Fields and Defaults
 
 In Java, you'd use `@Nullable` or Optional. In Pydantic:
 
@@ -114,10 +115,10 @@ class User(BaseModel):
     is_admin: bool = False
 
 # Valid constructions
-user1 = User(name="Wei", email="wei@example.com")
-user2 = User(name="Wei", email="wei@example.com", phone="+1-555-0123")
+user1 = User(name="you", email="wei@example.com")
+user2 = User(name="you", email="wei@example.com", phone="+1-555-0123")
 user3 = User(
-    name="Wei",
+    name="you",
     email="wei@example.com",
     phone=None,
     age=30,
@@ -131,29 +132,34 @@ except Exception as e:
     print(e)  # Validation error
 ```
 
-### [ ] Field Order Matters
+#### Field Order
 
-Fields without defaults must come before fields with defaults:
+In plain Python dataclasses, required fields after optional fields cause a `TypeError`. However, **Pydantic v2 allows any field order** -- you can freely mix required and optional fields:
 
 ```python
-# ✓ Correct
+# ✓ Both orderings work in Pydantic v2
 class Config(BaseModel):
     name: str  # Required, no default
     timeout: int = 30  # Optional with default
 
-# ✗ Wrong - Python syntax error
-# class Config(BaseModel):
-#     timeout: int = 30
-#     name: str  # Required field after optional field
+class ConfigReversed(BaseModel):
+    timeout: int = 30  # Optional with default
+    name: str  # Required field after optional — valid in Pydantic v2!
+
+# Both work:
+Config(name="my_app")
+ConfigReversed(name="my_app")
 ```
+
+> **Note:** This is a Pydantic-specific feature. Standard Python `dataclass` and plain `class __init__` signatures still require required parameters before optional ones.
 
 ---
 
-## Field() Configuration
+## [ ] Field() Configuration
 
 Pydantic's `Field()` function gives you fine-grained control over individual fields, similar to Java's validation annotations (`@NotNull`, `@Min`, `@Pattern`, etc.).
 
-### [ ] Basic Field() Usage
+#### Basic Field() Usage
 
 ```python
 from pydantic import BaseModel, Field
@@ -197,7 +203,7 @@ except Exception as e:
     print(f"Validation error: {e}")
 ```
 
-### [ ] Aliases and Serialization Names
+#### Aliases and Serialization Names
 
 Often you receive data with different field names (e.g., from APIs using snake_case or camelCase):
 
@@ -212,25 +218,25 @@ class User(BaseModel):
 
 # Input uses alias names
 user = User(
-    firstName="Wei",
-    lastName="Zheng",
+    firstName="you",
+    lastName="Doe",
     emailAddress="wei@example.com"
 )
 
 # Output uses Python names by default
 print(user.model_dump())
-# {'first_name': 'Wei', 'last_name': 'Zheng', 'email_address': 'wei@example.com'}
+# {'first_name': 'you', 'last_name': 'Doe', 'email_address': 'wei@example.com'}
 
 # Output with aliases
 print(user.model_dump(by_alias=True))
-# {'firstName': 'Wei', 'lastName': 'Zheng', 'emailAddress': 'wei@example.com'}
+# {'firstName': 'you', 'lastName': 'Doe', 'emailAddress': 'wei@example.com'}
 
 # JSON input with aliases
-json_str = '{"firstName":"Wei","lastName":"Zheng","emailAddress":"wei@example.com"}'
+json_str = '{"firstName":"you","lastName":"Doe","emailAddress":"wei@example.com"}'
 user_from_json = User.model_validate_json(json_str)
 ```
 
-### [ ] default_factory for Mutable Defaults
+#### default_factory for Mutable Defaults
 
 This is crucial! In Java, you might initialize collections in constructors. In Python, if you use `= []` as a default, all instances share the same list. Use `default_factory`:
 
@@ -256,7 +262,7 @@ print(session1.tags)  # ['important']
 print(session2.tags)  # [] - NOT shared!
 ```
 
-### [ ] Exclude and Deprecated Fields
+#### Exclude and Deprecated Fields
 
 ```python
 class Document(BaseModel):
@@ -280,11 +286,11 @@ print(doc.model_dump())
 
 ---
 
-## Validation
+## [ ] Validation
 
 Pydantic validates data **on construction**, automatically catching errors before they propagate. This is more like Java's builder pattern with validation.
 
-### [ ] Automatic Validation (Lax vs Strict Mode)
+#### Automatic Validation (Lax vs Strict Mode)
 
 By default, Pydantic is **lenient** and coerces compatible types:
 
@@ -315,7 +321,7 @@ except Exception as e:
     print(f"Strict mode rejected string: {e}")
 ```
 
-### [ ] @field_validator
+#### @field_validator
 
 Use `@field_validator` to add custom validation logic (replaces Pydantic v1's `@validator`):
 
@@ -358,7 +364,38 @@ except Exception as e:
     print(f"Validation failed: {e}")
 ```
 
-#### [ ] Validation Modes: before, after, wrap
+##### Validation Pipeline — Flowchart
+
+```
+Raw Input Value
+    │
+    ▼
+┌──────────────────────────┐
+│  mode="before" validator │  Runs on raw input before type coercion
+│  (pre-processing)        │  e.g., strip whitespace, parse strings
+└──────────┬───────────────┘
+           │
+           ▼
+┌──────────────────────────┐
+│  Core type coercion      │  Pydantic's built-in: str→int, dict→Model, etc.
+│  (Pydantic internals)    │  In strict mode, no coercion — must match exactly
+└──────────┬───────────────┘
+           │
+           ▼
+┌──────────────────────────┐
+│  mode="after" validator  │  Runs on the coerced Python value (default mode)
+│  (post-processing)       │  e.g., range checks, business rules
+└──────────┬───────────────┘
+           │
+           ▼
+     Validated Value
+
+mode="wrap" wraps the ENTIRE pipeline — your validator calls
+handler(v) to invoke core coercion + after validators, with
+full control over pre- and post-processing.
+```
+
+##### Validation Modes: before, after, wrap
 
 ```python
 from pydantic import field_validator
@@ -400,7 +437,7 @@ class Temperature(BaseModel):
 temp = Temperature(celsius="25.5")
 ```
 
-### [ ] @model_validator
+#### @model_validator
 
 Validate across multiple fields or after all fields are set:
 
@@ -430,7 +467,7 @@ except Exception as e:
     print(f"Cross-field validation failed: {e}")
 ```
 
-### [ ] Custom Validation with Annotated Types
+#### Custom Validation with Annotated Types
 
 For reusable validation constraints:
 
@@ -459,11 +496,11 @@ except Exception as e:
 
 ---
 
-## Serialization & Deserialization
+## [ ] Serialization & Deserialization
 
 Pydantic seamlessly converts between Python objects and JSON/dicts. In Java, you'd use libraries like Jackson or Gson for this.
 
-### [ ] model_dump() and model_dump_json()
+#### model_dump() and model_dump_json()
 
 ```python
 from pydantic import BaseModel
@@ -476,7 +513,7 @@ class User(BaseModel):
     is_active: bool
 
 user = User(
-    name="Wei",
+    name="you",
     email="wei@example.com",
     created_at=datetime.now(),
     is_active=True
@@ -484,12 +521,12 @@ user = User(
 
 # To Python dict
 print(user.model_dump())
-# {'name': 'Wei', 'email': 'wei@example.com', 'created_at': datetime(...), 'is_active': True}
+# {'name': 'you', 'email': 'wei@example.com', 'created_at': datetime(...), 'is_active': True}
 
 # To JSON string
 print(user.model_dump_json(indent=2))
 # {
-#   "name": "Wei",
+#   "name": "you",
 #   "email": "wei@example.com",
 #   "created_at": "2026-03-15T...",
 #   "is_active": true
@@ -497,15 +534,15 @@ print(user.model_dump_json(indent=2))
 
 # To JSON dict-like (strings as JSON values)
 print(user.model_dump_json())
-# {"name":"Wei","email":"wei@example.com","created_at":"2026-03-15T...","is_active":true}
+# {"name":"you","email":"wei@example.com","created_at":"2026-03-15T...","is_active":true}
 ```
 
-### [ ] model_validate() and model_validate_json()
+#### model_validate() and model_validate_json()
 
 ```python
 # From dict
 user_dict = {
-    "name": "Wei",
+    "name": "you",
     "email": "wei@example.com",
     "created_at": "2026-03-15T10:30:00",
     "is_active": True
@@ -513,7 +550,7 @@ user_dict = {
 user = User.model_validate(user_dict)
 
 # From JSON string
-json_str = '{"name":"Wei","email":"wei@example.com","created_at":"2026-03-15T10:30:00","is_active":true}'
+json_str = '{"name":"you","email":"wei@example.com","created_at":"2026-03-15T10:30:00","is_active":true}'
 user = User.model_validate_json(json_str)
 
 # From JSON with strict mode
@@ -526,7 +563,7 @@ except Exception as e:
     print(f"Strict validation failed: {e}")
 ```
 
-### [ ] Include/Exclude Fields
+#### Include/Exclude Fields
 
 Useful for controlling what gets serialized (e.g., sensitive data):
 
@@ -538,7 +575,7 @@ class User(BaseModel):
     api_key: str
 
 user = User(
-    name="Wei",
+    name="you",
     email="wei@example.com",
     password_hash="hashed_password",
     api_key="sk_test_123456"
@@ -546,17 +583,17 @@ user = User(
 
 # Exclude sensitive fields
 print(user.model_dump(exclude={"password_hash", "api_key"}))
-# {'name': 'Wei', 'email': 'wei@example.com'}
+# {'name': 'you', 'email': 'wei@example.com'}
 
 # Include only specific fields
 print(user.model_dump(include={"name", "email"}))
-# {'name': 'Wei', 'email': 'wei@example.com'}
+# {'name': 'you', 'email': 'wei@example.com'}
 
 # Nested exclusion
 print(user.model_dump(exclude={"api_key"}))
 ```
 
-### [ ] Custom Serializers
+#### Custom Serializers
 
 For complex serialization logic:
 
@@ -587,7 +624,7 @@ print(event.model_dump())
 # {'name': 'Login', 'timestamp': '2026-03-15T...', 'duration_ms': '1500ms'}
 ```
 
-### [ ] Model Serializer (Full Control)
+#### Model Serializer (Full Control)
 
 For complete serialization control:
 
@@ -613,11 +650,11 @@ print(response.model_dump())
 
 ---
 
-## model_copy(update={...}) - Critical for ADK
+## [ ] model_copy(update={...}) - Critical for ADK
 
 This is arguably the most important pattern in ADK. Instead of mutating objects, you create modified copies. This is similar to Java's builder pattern but more concise.
 
-### [ ] Basic model_copy()
+#### Basic model_copy()
 
 ```python
 from pydantic import BaseModel
@@ -651,7 +688,7 @@ assert context.request_id == "req_789"
 assert child_context.request_id == "req_child_001"
 ```
 
-### [ ] Deep Copy vs Shallow Copy
+#### Deep Copy vs Shallow Copy
 
 By default, `model_copy()` creates a **shallow copy**. Nested objects are still references:
 
@@ -671,7 +708,7 @@ original = Document(
     title="Guide",
     metadata=Metadata(
         tags=["python", "pydantic"],
-        attributes={"author": "Wei"}
+        attributes={"author": "you"}
     )
 )
 
@@ -688,7 +725,7 @@ original2 = Document(
     title="Guide",
     metadata=Metadata(
         tags=["python", "pydantic"],
-        attributes={"author": "Wei"}
+        attributes={"author": "you"}
     )
 )
 
@@ -699,7 +736,7 @@ print(original2.metadata.tags)  # ['python', 'pydantic'] - NOT shared
 print(deep.metadata.tags)       # ['python', 'pydantic', 'addk']
 ```
 
-### [ ] ADK Pattern: Nested Context
+#### ADK Pattern: Nested Context
 
 This is how ADK creates child InvocationContexts:
 
@@ -750,11 +787,11 @@ print(f"Root request: {root.request_id}, Child request: {child.request_id}")
 
 ---
 
-## Nested Models & Composition
+## [ ] Nested Models & Composition
 
 Real-world data is hierarchical. Pydantic handles nested validation gracefully.
 
-### [ ] Basic Nesting
+#### Basic Nesting
 
 ```python
 from pydantic import BaseModel
@@ -771,7 +808,7 @@ class User(BaseModel):
 
 # Construction - Pydantic auto-converts dicts to models
 user = User(
-    name="Wei",
+    name="you",
     email="wei@example.com",
     address={
         "street": "123 Main St",
@@ -785,7 +822,7 @@ print(type(user.address))  # <class '__main__.Address'>
 
 # Or pass Address object directly
 user2 = User(
-    name="Wei",
+    name="you",
     email="wei@example.com",
     address=Address(
         street="456 Oak Ave",
@@ -795,7 +832,7 @@ user2 = User(
 )
 ```
 
-### [ ] Lists and Dicts of Models
+#### Lists and Dicts of Models
 
 ```python
 from typing import Optional
@@ -813,20 +850,20 @@ class Company(BaseModel):
 company = Company(
     name="TechCorp",
     contacts=[
-        {"name": "Wei", "phone": "555-0123"},
+        {"name": "you", "phone": "555-0123"},
         {"name": "Alice", "phone": "555-0456"}
     ],
     departments={
-        "Engineering": "Wei",
+        "Engineering": "you",
         "Sales": "Bob"
     }
 )
 
-print(company.contacts[0].name)  # "Wei"
+print(company.contacts[0].name)  # "you"
 print(len(company.contacts))     # 2
 ```
 
-### [ ] Optional Nested Models
+#### Optional Nested Models
 
 ```python
 from typing import Optional
@@ -840,18 +877,18 @@ class User(BaseModel):
     profile: Optional[Profile] = None
 
 # Valid - no profile
-user1 = User(name="Wei")
+user1 = User(name="you")
 print(user1.profile)  # None
 
 # Valid - with profile
 user2 = User(
-    name="Wei",
+    name="you",
     profile={"bio": "Python developer", "website": "example.com"}
 )
 print(user2.profile.bio)  # "Python developer"
 ```
 
-### [ ] Validation Cascades
+#### Validation Cascades
 
 When nested models fail validation, the error propagates:
 
@@ -867,7 +904,7 @@ class User(BaseModel):
 
 try:
     user = User(
-        name="Wei",
+        name="you",
         address={
             "street": "123 Main St",
             # Missing 'city' and 'zipcode'
@@ -880,11 +917,11 @@ except Exception as e:
 
 ---
 
-## Discriminated Unions
+## [ ] Discriminated Unions
 
 This is critical for ADK, which uses unions for different event types, tool types, etc. Discriminated unions tell Pydantic which model to use based on a specific field.
 
-### [ ] Basic Discriminated Union
+#### Basic Discriminated Union
 
 Without a discriminator, Pydantic tries each type in order, which is inefficient:
 
@@ -905,7 +942,7 @@ ShapeEvent = Union[CircleEvent, SquareEvent]
 circle = CircleEvent(radius=5.0)
 ```
 
-### [ ] With Field(discriminator=...)
+#### With Field(discriminator=...)
 
 Use Annotated with discriminator for efficient routing:
 
@@ -948,7 +985,7 @@ processor2 = ShapeProcessor(
 print(type(processor2.event))  # <class '__main__.TriangleEvent'>
 ```
 
-### [ ] ADK Pattern: Tool Union
+#### ADK Pattern: Tool Union
 
 How ADK likely defines different tool types:
 
@@ -1000,11 +1037,11 @@ for tool in registry.tools:
 
 ---
 
-## Generic Models
+## [ ] Generic Models
 
 Create reusable model templates that work with any type. Like Java generics but for models.
 
-### [ ] Basic Generic Model
+#### Basic Generic Model
 
 ```python
 from typing import Generic, TypeVar, Optional
@@ -1028,7 +1065,7 @@ class ListResponse(Response[list]):
 # Usage
 user_response = UserResponse(
     status="success",
-    data={"user_id": 123, "name": "Wei"}
+    data={"user_id": 123, "name": "you"}
 )
 
 list_response = ListResponse(
@@ -1036,11 +1073,11 @@ list_response = ListResponse(
     data=[1, 2, 3, 4, 5]
 )
 
-print(user_response.data)  # {'user_id': 123, 'name': 'Wei'}
+print(user_response.data)  # {'user_id': 123, 'name': 'you'}
 print(list_response.data)  # [1, 2, 3, 4, 5]
 ```
 
-### [ ] Generic with Nested Models
+#### Generic with Nested Models
 
 ```python
 from typing import Generic, TypeVar
@@ -1061,18 +1098,18 @@ class User(BaseModel):
 # Use with User
 user_page = Page[User](
     items=[
-        {"id": 1, "name": "Wei", "email": "wei@example.com"},
+        {"id": 1, "name": "you", "email": "wei@example.com"},
         {"id": 2, "name": "Alice", "email": "alice@example.com"}
     ],
     page_number=1,
     total_items=100
 )
 
-print(user_page.items[0].name)  # "Wei"
+print(user_page.items[0].name)  # "you"
 print(type(user_page.items[0]))  # <class '__main__.User'>
 ```
 
-### [ ] TypeAdapter for Generic Validation
+#### TypeAdapter for Generic Validation
 
 Sometimes you need to validate generic types directly without a model:
 
@@ -1094,11 +1131,11 @@ validated_dict = dict_adapter.validate_python({"x": 10, "y": 20})
 
 ---
 
-## JSON Schema Generation
+## [ ] JSON Schema Generation
 
 This is HOW ADK auto-generates tool definitions! Pydantic converts type hints to JSON Schema that LLMs understand.
 
-### [ ] Basic JSON Schema
+#### Basic JSON Schema
 
 ```python
 from pydantic import BaseModel, Field
@@ -1138,7 +1175,7 @@ print(json.dumps(schema, indent=2))
 # }
 ```
 
-### [ ] Schema with Constraints
+#### Schema with Constraints
 
 Field constraints become JSON Schema constraints:
 
@@ -1173,7 +1210,7 @@ print(json.dumps(schema, indent=2))
 # }
 ```
 
-### [ ] Schema with Enums
+#### Schema with Enums
 
 ```python
 from enum import Enum
@@ -1201,7 +1238,7 @@ print(json.dumps(schema, indent=2))
 # }
 ```
 
-### [ ] ADK Pattern: Tool Schema Generation
+#### ADK Pattern: Tool Schema Generation
 
 How ADK generates tool definitions:
 
@@ -1265,11 +1302,11 @@ print(json.dumps({
 
 ---
 
-## ConfigDict
+## [ ] ConfigDict
 
 Global configuration for a model, like Java's @Configuration annotations.
 
-### [ ] Common ConfigDict Options
+#### Common ConfigDict Options
 
 ```python
 from pydantic import BaseModel, ConfigDict
@@ -1281,7 +1318,7 @@ class ImmutableUser(BaseModel):
     age: int
 
 # Cannot modify
-user = ImmutableUser(name="Wei", age=30)
+user = ImmutableUser(name="you", age=30)
 try:
     user.name = "Alice"  # Error
 except Exception as e:
@@ -1291,7 +1328,7 @@ except Exception as e:
 user2 = user.model_copy(update={"name": "Alice"})
 ```
 
-### [ ] Validation Configuration
+#### Validation Configuration
 
 ```python
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -1305,8 +1342,8 @@ class StrictConfig(BaseModel):
     name: str
 
 # Whitespace stripped automatically
-user = StrictConfig(name="  Wei  ")
-print(f"'{user.name}'")  # 'Wei' (stripped)
+user = StrictConfig(name="  you  ")
+print(f"'{user.name}'")  # 'you' (stripped)
 
 # Strict mode - no coercion
 try:
@@ -1315,7 +1352,7 @@ except Exception as e:
     print(f"Strict mode rejected: {e}")
 ```
 
-### [ ] Allow Arbitrary Types
+#### Allow Arbitrary Types
 
 For fields with types Pydantic doesn't understand by default:
 
@@ -1336,7 +1373,7 @@ event = EventWithTimezone(
 print(event.timezone)  # UTC
 ```
 
-### [ ] Populate by Name
+#### Populate by Name
 
 Allow both field names and aliases:
 
@@ -1349,14 +1386,14 @@ class User(BaseModel):
     last_name: str = Field(alias="lastName")
 
 # Both work
-user1 = User(firstName="Wei", lastName="Zheng")
-user2 = User(first_name="Wei", last_name="Zheng")  # Field name also works
+user1 = User(firstName="you", lastName="Doe")
+user2 = User(first_name="you", last_name="Doe")  # Field name also works
 
-print(user1.first_name)  # "Wei"
-print(user2.first_name)  # "Wei"
+print(user1.first_name)  # "you"
+print(user2.first_name)  # "you"
 ```
 
-### [ ] Extra Fields Handling
+#### Extra Fields Handling
 
 Control what happens with unknown fields:
 
@@ -1369,7 +1406,7 @@ class StrictModel(BaseModel):
     name: str
 
 try:
-    bad = StrictModel(name="Wei", age=30)  # 'age' is extra
+    bad = StrictModel(name="you", age=30)  # 'age' is extra
 except Exception as e:
     print(f"Extra field rejected: {e}")
 
@@ -1378,25 +1415,25 @@ class FlexibleModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
     name: str
 
-flexible = FlexibleModel(name="Wei", age=30)
-print(flexible.model_dump())  # {'name': 'Wei'} - age ignored
+flexible = FlexibleModel(name="you", age=30)
+print(flexible.model_dump())  # {'name': 'you'} - age ignored
 
 class AllowExtraModel(BaseModel):
     """Allow extra fields."""
     model_config = ConfigDict(extra="allow")
     name: str
 
-allow_extra = AllowExtraModel(name="Wei", age=30)
-print(allow_extra.model_dump())  # {'name': 'Wei', 'age': 30}
+allow_extra = AllowExtraModel(name="you", age=30)
+print(allow_extra.model_dump())  # {'name': 'you', 'age': 30}
 ```
 
 ---
 
-## Computed Fields
+## [ ] Computed Fields
 
 Fields that are derived from other fields and appear in serialization, but aren't stored.
 
-### [ ] Basic Computed Field
+#### Basic Computed Field
 
 ```python
 from pydantic import BaseModel, computed_field
@@ -1410,15 +1447,15 @@ class User(BaseModel):
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
-user = User(first_name="Wei", last_name="Zheng")
-print(user.full_name)  # "Wei Zheng"
+user = User(first_name="you", last_name="Doe")
+print(user.full_name)  # "you"
 
 # Shows in serialization
 print(user.model_dump())
-# {'first_name': 'Wei', 'last_name': 'Zheng', 'full_name': 'Wei Zheng'}
+# {'first_name': 'you', 'last_name': 'Doe', 'full_name': 'you'}
 ```
 
-### [ ] Computed Field with Complex Logic
+#### Computed Field with Complex Logic
 
 ```python
 from pydantic import BaseModel, computed_field
@@ -1449,11 +1486,11 @@ print(subscription.is_active)  # True
 
 ---
 
-## Inheritance
+## [ ] Inheritance
 
 Reuse model structure through inheritance, like Java class hierarchies.
 
-### [ ] Basic Inheritance
+#### Basic Inheritance
 
 ```python
 from pydantic import BaseModel, Field
@@ -1483,7 +1520,7 @@ print(cat.name)  # "Whiskers"
 print(cat.lives_remaining)  # 9
 ```
 
-### [ ] Overriding Fields
+#### Overriding Fields
 
 ```python
 from pydantic import BaseModel, Field
@@ -1500,7 +1537,7 @@ car = Car(brand="Toyota")
 print(car.color)  # "blue" (not "white")
 ```
 
-### [ ] Multiple Inheritance
+#### Multiple Inheritance
 
 ```python
 from pydantic import BaseModel
@@ -1523,18 +1560,18 @@ doc = Document(
     content="...",
     created_at="2026-03-15",
     updated_at="2026-03-15",
-    author="Wei",
+    author="you",
     reviewer="Alice"
 )
 ```
 
 ---
 
-## Custom Types
+## [ ] Custom Types
 
 Create custom types that Pydantic validates correctly.
 
-### [ ] Using __get_pydantic_core_schema__
+#### Using __get_pydantic_core_schema__
 
 For custom validation of non-standard types:
 
@@ -1569,7 +1606,7 @@ print(user.name.value)  # "WEI"
 print(user.code.value)  # "ABC"
 ```
 
-### [ ] Using Annotated for Simple Custom Validation
+#### Using Annotated for Simple Custom Validation
 
 ```python
 from typing import Annotated
@@ -1593,9 +1630,9 @@ print(contact.phone)  # "(555) 012-3456"
 
 ---
 
-## Performance Tips
+## [ ] Performance Tips
 
-### [ ] model_construct() - Skip Validation
+#### model_construct() - Skip Validation
 
 For performance-critical code where you know data is valid:
 
@@ -1607,16 +1644,16 @@ class User(BaseModel):
     age: int
 
 # Normal construction (validates)
-user = User(name="Wei", age=30)
+user = User(name="you", age=30)
 
 # Bypass validation (DANGEROUS - use carefully)
-user_fast = User.model_construct(name="Wei", age=30)
+user_fast = User.model_construct(name="you", age=30)
 
 # Both work, but model_construct is faster for trusted data
-print(user_fast.name)  # "Wei"
+print(user_fast.name)  # "you"
 ```
 
-### [ ] TypeAdapter for Bulk Validation
+#### TypeAdapter for Bulk Validation
 
 Validate many items efficiently:
 
@@ -1632,17 +1669,17 @@ adapter = TypeAdapter(list[User])
 
 # Validate many items
 data = [
-    {"name": "Wei", "age": 30},
+    {"name": "you", "age": 30},
     {"name": "Alice", "age": 28},
     {"name": "Bob", "age": 35}
 ]
 
 users = adapter.validate_python(data)
 print(len(users))  # 3
-print(users[0].name)  # "Wei"
+print(users[0].name)  # "you"
 ```
 
-### [ ] Dataclasses vs Pydantic
+#### Dataclasses vs Pydantic
 
 Use dataclasses when you don't need validation:
 
@@ -1663,9 +1700,9 @@ point = Point(x=10, y=20)
 
 ---
 
-## ADK-Specific Patterns
+## [ ] ADK-Specific Patterns
 
-### [ ] Modeling Events
+#### Modeling Events
 
 ```python
 from typing import Annotated, Union, Literal, Optional
@@ -1724,7 +1761,7 @@ for event in log.events:
         print(f"User {event.user_id} logged in from {event.ip_address}")
 ```
 
-### [ ] Modeling Sessions
+#### Modeling Sessions
 
 ```python
 from pydantic import BaseModel, Field
@@ -1768,7 +1805,7 @@ print(inactive.is_active)     # False
 print(session.session_id)     # "sess_123" (unchanged)
 ```
 
-### [ ] Modeling Tool Definitions
+#### Modeling Tool Definitions
 
 ```python
 from pydantic import BaseModel, Field
@@ -1854,11 +1891,11 @@ calculator = ToolDefinition(
 print(json.dumps(calculator.to_openai_format(), indent=2))
 ```
 
-### [ ] Modeling Agent Configuration
+#### Modeling Agent Configuration
 
 ```python
 from pydantic import BaseModel, Field
-from typing import Optional, dict, list
+from typing import Optional
 from enum import Enum
 
 class ModelProvider(str, Enum):
@@ -1869,7 +1906,7 @@ class ModelProvider(str, Enum):
 class GenerateContentConfig(BaseModel):
     """Configuration for content generation."""
     model: str = Field(
-        description="Model ID (e.g., 'gemini-pro')"
+        description="Model ID (e.g., 'gemini-2.5-flash')"
     )
     provider: ModelProvider = Field(
         default=ModelProvider.GOOGLE,
@@ -1921,7 +1958,7 @@ agent_config = AgentConfig(
     name="research_agent",
     description="Agent for research tasks",
     generate_config=GenerateContentConfig(
-        model="gemini-pro",
+        model="gemini-2.5-flash",
         provider=ModelProvider.GOOGLE,
         temperature=0.5
     ),
@@ -1932,7 +1969,7 @@ agent_config = AgentConfig(
 print(agent_config.model_dump_json(indent=2))
 ```
 
-### [ ] Mini Project: Complete ADK-like System
+#### Mini Project: Complete ADK-like System
 
 ```python
 from pydantic import BaseModel, Field, field_validator
@@ -2047,9 +2084,25 @@ example_adk_flow()
 
 ---
 
-## Common Pitfalls
+## [ ] ADK in Practice
 
-### [ ] 1. Mutable Default Values
+Pydantic patterns map directly to ADK components:
+
+| Pydantic Concept | ADK Usage |
+|---|---|
+| `BaseModel` | `Event`, `EventActions`, `Session`, `GenerateContentConfig` |
+| `model_copy(update={...})` | Creating child `InvocationContext` for sub-agents |
+| `Field(discriminator=...)` | Discriminated unions for different tool/event types |
+| `model_json_schema()` | Auto-generating tool definitions for LLM function calling |
+| `@field_validator` | Validating agent configuration (names, model IDs) |
+| `ConfigDict(frozen=True)` | Immutable event objects in the event stream |
+| `model_dump()` | Serializing state deltas for session persistence |
+| Nested models | `Event.content` -> `Content.parts` -> `Part` hierarchy |
+| `default_factory` | Mutable defaults in `EventActions(state_delta={})` |
+
+## [ ] Common Mistakes
+
+#### 1. Mutable Default Values
 
 **WRONG:**
 
@@ -2060,7 +2113,7 @@ class User(BaseModel):
     name: str
     tags: list[str] = []  # WRONG! Shared across instances
 
-user1 = User(name="Wei")
+user1 = User(name="you")
 user2 = User(name="Alice")
 
 user1.tags.append("admin")
@@ -2077,7 +2130,7 @@ class User(BaseModel):
     name: str
     tags: list[str] = Field(default_factory=list)  # Each instance gets its own
 
-user1 = User(name="Wei")
+user1 = User(name="you")
 user2 = User(name="Alice")
 
 user1.tags.append("admin")
@@ -2085,7 +2138,7 @@ print(user1.tags)  # ['admin']
 print(user2.tags)  # [] - Correct! Not shared
 ```
 
-### [ ] 2. Forgetting model_copy
+#### 2. Forgetting model_copy
 
 **WRONG:**
 
@@ -2104,7 +2157,7 @@ child = context.model_copy(update={"depth": context.depth + 1})
 # child.depth = 1 (new)
 ```
 
-### [ ] 3. Validation Errors in Nested Models
+#### 3. Validation Errors in Nested Models
 
 When nested model validation fails, the error shows the full path:
 
@@ -2118,7 +2171,7 @@ class User(BaseModel):
 
 try:
     user = User(
-        name="Wei",
+        name="you",
         address={"zipcode": 123}  # Invalid: should be string
     )
 except Exception as e:
@@ -2126,7 +2179,7 @@ except Exception as e:
     # Error shows: address.zipcode (value should be a valid string)
 ```
 
-### [ ] 4. Circular References
+#### 4. Circular References
 
 Models can reference each other, but you need forward references:
 
@@ -2146,7 +2199,7 @@ user2 = User(name="Child", parent={"name": "Parent"})
 User.model_rebuild()
 ```
 
-### [ ] 5. JSON Schema Not Including Constraints
+#### 5. JSON Schema Not Including Constraints
 
 If you're generating JSON schema for tools, make sure to add Field descriptions:
 
@@ -2165,7 +2218,7 @@ class Calculator(BaseModel):
 print(Calculator.model_json_schema())
 ```
 
-### [ ] 6. Using Mutable Types as Defaults
+#### 6. Using Mutable Types as Defaults
 
 ```python
 # WRONG
@@ -2181,7 +2234,7 @@ class Config(BaseModel):
     metadata: Optional[dict] = None
 ```
 
-### [ ] 7. Forgetting to Import Field
+#### 7. Forgetting to Import Field
 
 ```python
 # WRONG
@@ -2197,11 +2250,11 @@ class User(BaseModel):
     age: int = Field(ge=0)
 ```
 
-### [ ] 8. Type Hints Are Not Enforced at Runtime
+#### 8. Type Hints Are Not Enforced at Runtime
 
 ```python
 # Pydantic validates on construction
-user = User(name="Wei", age=30)  # Valid
+user = User(name="you", age=30)  # Valid
 
 # But direct assignment doesn't validate
 user.age = "not an int"  # No error!
@@ -2213,13 +2266,13 @@ class ImmutableUser(BaseModel):
     name: str
     age: int
 
-immutable = ImmutableUser(name="Wei", age=30)
+immutable = ImmutableUser(name="you", age=30)
 immutable.age = 31  # Error: frozen model
 ```
 
 ---
 
-## Java → Pydantic Reference
+## [ ] Java to Pydantic Reference
 
 | Java | Pydantic | Notes |
 |------|----------|-------|
@@ -2252,9 +2305,9 @@ immutable.age = 31  # Error: frozen model
 
 ---
 
-## Summary
+## [ ] Quick Reference Card
 
-**Key Takeaways for Wei:**
+**Key Takeaways:**
 
 1. **BaseModel is your foundation** - Replace Java records/Lombok @Data with Pydantic BaseModel
 2. **Validation happens on construction** - This is different from Java; you get errors early
@@ -2277,4 +2330,3 @@ immutable.age = 31  # Error: frozen model
 
 ---
 
-*Part of the Python for ADK learning series — March 2026*

@@ -1,20 +1,51 @@
-# Sessions — Conversation History & State
+# 08 — Sessions: Conversation History & State
 
-**Source:** [`sessions/session.py`](../adk-python/src/google/adk/sessions/session.py) · [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](../adk-python/src/google/adk/sessions/in_memory_session_service.py)
+> **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/session.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/session.py), [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py), [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) | **Prereqs:** 03, 07
+
+## At a Glance
+
+```
+┌─────────────────────────────────────────────────────┐
+│                     Session                         │
+│  state {}          events [...]       metadata      │
+│  - key-value       - ordered list     - id, app,    │
+│    dict (scoped      of Event           user_id,    │
+│    by session,       objects             timestamps  │
+│    user, app)                                       │
+└─────────────────────────┬───────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│            BaseSessionService (CRUD)                │
+│  create_session / get_session / list / delete       │
+│  append_event — applies state_delta, persists       │
+├─────────────────────────────────────────────────────┤
+│  InMemorySessionService     (dev/tests)             │
+│  SqliteSessionService       (local persistence)     │
+│  DatabaseSessionService     (production DB)         │
+│  VertexAiSessionService     (cloud managed)         │
+└─────────────────────────────────────────────────────┘
+```
+
+A `Session` is one conversation thread. It stores the full ordered list of `Event`s (conversation history) and a mutable `state` dict (arbitrary key-value data persisted across turns). `BaseSessionService` provides CRUD. Agents access sessions only through `InvocationContext`.
 
 ---
 
-## [ ] What It Is
+## Class Hierarchy
 
-A `Session` is one conversation thread. Stores:
-- The full ordered list of `Event`s (conversation history)
-- A mutable `state` dict (arbitrary key-value data persisted across turns)
-
-`BaseSessionService` provides CRUD. Agents access sessions only through `InvocationContext`.
+```
+BaseSessionService (ABC)
+├── InMemorySessionService    ─ Python dict, dev/tests
+├── SqliteSessionService      ─ SQLite file, local persistence
+├── DatabaseSessionService    ─ SQLAlchemy, production databases
+└── VertexAiSessionService    ─ Vertex AI managed, cloud deployment
+```
 
 ---
 
-## [ ] Session Data Model
+## Key API
+
+### [ ] Session Data Model
 
 ```python
 class Session(BaseModel):
@@ -28,33 +59,7 @@ class Session(BaseModel):
 
 Intentionally minimal. Complexity lives in the service and Event list.
 
----
-
-## [ ] Session State
-
-`session.state` is a free-form dict. Written via `EventActions.state_delta`:
-
-```python
-# In a tool or callback:
-tool_context.state['user_name'] = 'Alice'
-# → stored in event.actions.state_delta['user_name'] = 'Alice'
-# → session_service applies the delta on append_event
-
-# In LlmAgent:
-agent = LlmAgent(output_key='summary')
-# → final response text is saved to session.state['summary']
-```
-
-State is scoped:
-- `'key'` — session-level (default)
-- `'user:key'` — user-level (shared across all sessions for this user)
-- `'app:key'` — app-level (shared across all sessions and users)
-
-Scoping is handled by the session service implementations.
-
----
-
-## [ ] BaseSessionService — The Interface
+### [ ] BaseSessionService — The Interface
 
 ```python
 class BaseSessionService(ABC):
@@ -68,7 +73,7 @@ class BaseSessionService(ABC):
         # config: GetSessionConfig(num_recent_events=..., after_timestamp=...)
 
     async def list_sessions(
-        self, *, app_name, user_id
+        self, *, app_name, user_id=None
     ) -> ListSessionsResponse
 
     async def delete_session(
@@ -85,22 +90,7 @@ class BaseSessionService(ABC):
 
 `append_event` is called by `Runner` after every event yielded by the agent.
 
----
-
-## [ ] Implementations
-
-| Class | Storage | Use Case |
-|-------|---------|----------|
-| `InMemorySessionService` | Python dict | Development, tests |
-| `SQLiteSessionService` | SQLite file | Local persistence, single process |
-| `DatabaseSessionService` | SQLAlchemy | Postgres, MySQL, production databases |
-| `VertexAiSessionService` | Vertex AI managed | Cloud deployment with Vertex AI |
-
-Same interface; swap backends by changing the `Runner` constructor argument.
-
----
-
-## [ ] GetSessionConfig — Partial Loading
+### [ ] GetSessionConfig — Partial Loading
 
 Load only recent events for long conversations:
 
@@ -112,77 +102,104 @@ config = GetSessionConfig(
 session = await session_service.get_session(..., config=config)
 ```
 
-sessions have thousands of events but you only need recent context.
+Sessions have thousands of events but you only need recent context.
+
+### [ ] Implementations
+
+| Class | Storage | Use Case |
+|-------|---------|----------|
+| `InMemorySessionService` | Python dict | Development, tests |
+| `SqliteSessionService` | SQLite file | Local persistence, single process |
+| `DatabaseSessionService` | SQLAlchemy | Postgres, MySQL, production databases |
+| `VertexAiSessionService` | Vertex AI managed | Cloud deployment with Vertex AI |
+
+Same interface; swap backends by changing the `Runner` constructor argument.
+
+For selection guidance (pros/cons, decision tree), see [20-best-practices.md](20-best-practices.md).
 
 ---
 
-## [ ] How Runner Uses Sessions
+## How It Works
+
+### [ ] How Runner Uses Sessions
 
 ```
 Runner.run_async(user_id, session_id, new_message)
 │
-├─ session_service.get_session(app_name, user_id, session_id)
-│ └─ If not found: raise SessionNotFoundError (or auto-create if configured)
+├── session_service.get_session(app_name, user_id, session_id)
+│   └── If not found: raise SessionNotFoundError (or auto-create if configured)
 │
-├─ Create user message Event, session_service.append_event(session, user_event)
+├── Create user message Event, session_service.append_event(session, user_event)
 │
-├─ agent.run_async(ctx) → yields Events
+├── agent.run_async(ctx) → yields Events
 │
-├─ For each event:
-│ └─ session_service.append_event(session, event)
-│ → applies state_delta
-│ → persists to storage
+├── For each event:
+│   └── session_service.append_event(session, event)
+│       ├── applies state_delta
+│       └── persists to storage
 │
-└─ (Optional) compaction: summarize old events, update session
+└── (Optional) compaction: summarize old events, update session
 ```
 
----
-
-## [ ] State Delta Lifecycle
+### [ ] State Delta Lifecycle
 
 ```
-Your code EventActions Session Service
-───────── ──────────── ───────────────
-
 ctx.state["city"] = "Tokyo"
- │
- ▼
-State._delta["city"] = "Tokyo"
-State._value["city"] = "Tokyo" ← immediately readable
- │
- ▼ (when event is yielded)
-event.actions.state_delta = {"city": "Tokyo"}
- │
- ▼ (Runner calls append_event)
-session.state["city"] = "Tokyo" ← committed
- │
- ▼ (subclass persists)
-Database/Memory store updated
+│
+├── State object updates immediately
+│   ├── State._delta["city"] = "Tokyo"
+│   └── State._value["city"] = "Tokyo" (readable right away)
+│
+├── event yielded by agent
+│   └── event.actions.state_delta = {"city": "Tokyo"}
+│
+└── session_service.append_event(session, event)
+    ├── session.state["city"] = "Tokyo" (committed)
+    └── database/memory store updated
 ```
 
-## [ ] State Scope Visual
+### [ ] State Scope Visual
 
 ```
-┌─ app:config ──────────────────────────────────────────────────┐
-│ Shared by ALL users, ALL sessions │
-│ │
-│ ┌─ user:preferences ──────────────────────────────────────┐ │
-│ │ Shared across ALL sessions for this user │ │
-│ │ │ │
-│ │ ┌─ count (session-scoped) ──────────────────────────┐ │ │
-│ │ │ Lives in THIS session only │ │ │
-│ │ │ │ │ │
-│ │ │ ┌─ temp:scratch ──────────────────────────────┐ │ │ │
-│ │ │ │ THIS invocation only — never persisted │ │ │ │
-│ │ │ └──────────────────────────────────────────────┘ │ │ │
-│ │ └────────────────────────────────────────────────────┘ │ │
-│ └──────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ app:config — Shared by ALL users, ALL sessions              │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ user:preferences — Shared across ALL sessions         │  │
+│  │   for this user                                       │  │
+│  │                                                       │  │
+│  │  ┌─────────────────────────────────────────────────┐  │  │
+│  │  │ count (session-scoped) — THIS session only      │  │  │
+│  │  │                                                 │  │  │
+│  │  │  ┌───────────────────────────────────────────┐  │  │  │
+│  │  │  │ temp:scratch — THIS invocation only       │  │  │  │
+│  │  │  │   never persisted                         │  │  │  │
+│  │  │  └───────────────────────────────────────────┘  │  │  │
+│  │  └─────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## [ ] State Scoping in Practice
+## Examples
+
+### [ ] Session State
+
+`session.state` is a free-form dict. Written via `EventActions.state_delta`:
+
+```python
+# In a tool or callback:
+tool_context.state['user_name'] = 'Alice'
+# → stored in event.actions.state_delta['user_name'] = 'Alice'
+# → session_service applies the delta on append_event
+
+# In LlmAgent:
+agent = LlmAgent(output_key='summary')
+# → final response text is saved to session.state['summary']
+```
+
+### [ ] State Scoping in Practice
 
 ```python
 # Session-scoped (default) — only this session sees this:
@@ -195,15 +212,31 @@ tool_context.state['user:preferences'] = {'theme': 'dark'}
 tool_context.state['app:feature_flags'] = {'beta': True}
 ```
 
+State is scoped:
+- `'key'` — session-level (default)
+- `'user:key'` — user-level (shared across all sessions for this user)
+- `'app:key'` — app-level (shared across all sessions and users)
+
+Scoping is handled by the session service implementations.
+
 ---
 
-## [ ] Related Files
+## Gotchas
 
-- [`sessions/session.py`](../adk-python/src/google/adk/sessions/session.py) — data model
-- [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) — abstract interface
-- [`sessions/in_memory_session_service.py`](../adk-python/src/google/adk/sessions/in_memory_session_service.py) — default for dev
-- [`sessions/sqlite_session_service.py`](../adk-python/src/google/adk/sessions/sqlite_session_service.py) — local persistence
-- [`sessions/database_session_service.py`](../adk-python/src/google/adk/sessions/database_session_service.py) — production DB
-- [`sessions/state.py`](../adk-python/src/google/adk/sessions/state.py) — state scoping constants
+- State deltas are only committed when `append_event` is called by the Runner — if you set state but the event is never appended, the change is lost.
+- `GetSessionConfig` filters events on retrieval, not deletion — the full history still exists in storage.
+- The `"user"` name is reserved by ADK; do not use it as a user_id.
+- `temp:` prefixed keys are ephemeral and never persisted — useful for scratch data within a single invocation.
+
+---
+
+## Related
+
+- [`sessions/session.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/session.py) — data model
+- [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) — abstract interface
+- [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) — default for dev
+- [`sessions/sqlite_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/sqlite_session_service.py) — local persistence
+- [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) — production DB
+- [`sessions/state.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/state.py) — state scoping constants
 - [19-session-security.md](19-session-security.md) — Session event security considerations
 - [18-session-lifecycle.md](18-session-lifecycle.md) — Session service call timeline and optimization

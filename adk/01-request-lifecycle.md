@@ -1,35 +1,76 @@
-# Request-to-Response Lifecycle
+# 01 — Request-to-Response Lifecycle
 
-Trace of one user message from `run_async()` to the final streamed event.
+> **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py), [`base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py), [`llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py), [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py), [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py), [`google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py) | **Prereqs:** none
 
----
+## At a Glance
 
-## Quick Setup
+```
+runner.run_async(user_id, session_id, new_message)
+│
+├── Runner ─── session bookkeeping (get/create, append_event for each event)
+│
+├── BaseAgent ─── before/after_agent_callback (guard, skip, extra events)
+│
+├── LlmAgent ─── delegates to flow, saves output_key to state
+│
+└── BaseLlmFlow ─── reason-act loop
+    │
+    ├── preprocess: build LlmRequest (instructions, history, tools)
+    ├── call LLM:   model.generate_content_async(request, stream=...)
+    ├── postprocess: execute tools, handle agent transfer
+    └── loop?        function calls → repeat │ final text → yield Event, EXIT
+```
+
+Trace of one user message from `run_async()` to the final streamed event. Five layers participate: Runner handles session bookkeeping (load, persist every event), BaseAgent runs before/after callbacks, LlmAgent delegates to the flow and saves `output_key` if set, BaseLlmFlow runs the reason-act loop (build request, call LLM, dispatch tools, repeat), and SessionSvc commits state atomically on every `append_event()`. The flow loops until the LLM returns no function calls. A tool-using turn typically loops 2x: tool call, then final answer.
+
+Class hierarchy: see [04-agents.md](04-agents.md#class-hierarchy).
+
+## Key API
+
+### [ ] Quick Setup
 
 ```bash
 pip install google-adk # installs ADK + google-genai SDK
 export GOOGLE_API_KEY="your-key-here" # get one at https://aistudio.google.com/apikey
 ```
 
----
+### [ ] Core Entry Point
 
-## Mental Model
-
-Five layers:
-
-```
-Runner → session bookkeeping (load, persist every event)
-BaseAgent → before/after_agent_callback guards
-LlmAgent → delegates to the flow, saves output_key if set
-BaseLlmFlow → the reason-act loop: build request → call LLM → dispatch tools → repeat
-SessionSvc → atomic state commits on every append_event()
+```python
+async for event in runner.run_async(
+    user_id="user_42",
+    session_id=session.id,
+    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),
+):
+    if event.is_final_response():
+        print(event.content.parts[0].text)
 ```
 
-The flow loops until the LLM returns no function calls. A tool-using turn typically loops 2x: tool call, then final answer.
+> **Additional `run_async` parameters:** Beyond the `user_id`, `session_id`, and `new_message` shown above, `run_async` also accepts an optional `invocation_id` (to resume a previous invocation, e.g., after a long-running tool pauses) and `state_delta` (a `dict` injected into session state alongside the user message event).
 
----
+### [ ] CallbackContext
 
-## The Example
+```python
+CallbackContext(
+    invocation_id: str,
+    agent_name: str,
+    user_content: Optional[types.Content], # original user message (read-only)
+    state: State, # mutable — writes queue a state_delta
+    session: Session, # read-only view of session
+    user_id: str, # direct @property — same as callback_context.session.user_id
+    actions: EventActions, # accumulated side-effects
+)
+```
+
+### [ ] ToolContext
+
+Same as `CallbackContext` plus:
+- `function_call_id: str` — ID of the in-flight call (`"fc-001"`)
+- `tool_confirmation: ToolConfirmation | None` — populated if confirmation was requested
+
+## Examples
+
+### [ ] The Weather Agent
 
 ```python
 from google.adk.agents import LlmAgent
@@ -66,9 +107,58 @@ User message: **"What's the weather in Tokyo?"**
 
 > **Just want to run something?** Wrap the above in `async def main(): ...` and call `asyncio.run(main())`. Or use `runner.run(...)` (sync wrapper) for scripts. The rest of this file traces what happens inside.
 
----
+### [ ] What the Caller Receives
 
-## Layer Diagram
+`runner.run_async()` yields these events for the Tokyo weather query:
+
+```
+┌───────────┬──────────────────┬─────────────────────────────────────────────┬──────────────────────┐
+│ Event     │ author           │ content summary                             │ is_final_response()  │
+├───────────┼──────────────────┼─────────────────────────────────────────────┼──────────────────────┤
+│ evt-002   │ weather_agent    │ FunctionCall(get_weather, city="Tokyo")     │ False                │
+│ evt-003   │ weather_agent    │ FunctionResponse(get_weather, {temp_c:18})  │ False                │
+│ evt-004a  │ weather_agent    │ "The weather in Tokyo" [partial]            │ False                │
+│ evt-004b  │ weather_agent    │ " is currently 18°C" [partial]             │ False                │
+│ evt-004c  │ weather_agent    │ " with partly cloudy skies." [partial]     │ False                │
+│ evt-004   │ weather_agent    │ "The weather in Tokyo is currently 18°C…"  │ True ← render this   │
+└───────────┴──────────────────┴─────────────────────────────────────────────┴──────────────────────┘
+```
+
+> `evt-001` (the user message) is appended to the session but never yielded — the Runner created it internally.
+
+**Typical handling pattern:**
+
+```python
+async for event in runner.run_async(...):
+    if event.is_final_response() and event.content:
+        print(event.content.parts[0].text)
+    elif event.partial and event.content:
+        print(event.content.parts[0].text, end="", flush=True) # stream to UI
+```
+
+### [ ] Variations
+
+#### [ ] LLM calls two tools in one response
+
+`functions.py` receives a single Event with two `FunctionCall` parts, runs both tools (potentially in parallel), then yields a single Event with two `FunctionResponse` parts. The loop continues with both results in the next `LlmRequest`.
+
+#### [ ] `output_key="result"` set on the agent
+
+After the final Event is yielded, `__maybe_save_output_to_state` runs:
+
+```python
+# LlmAgent._run_async_impl — final event's state_delta is written
+event.actions.state_delta["result"] = "The weather in Tokyo is currently 18°C…"
+# → applied by append_event() → session.state["result"] is now set
+```
+
+#### [ ] Sub-agent transfer (AutoFlow)
+
+The LLM returns a `transfer_to_agent` function call. `auto_flow.py` intercepts it, finds the target agent in the tree, and calls `sub_agent.run_async(ctx)`. The sub-agent runs its own full lifecycle (its own loop), emitting events with its own `author` and a child `branch`.
+
+## How It Works
+
+### [ ] Layer Diagram
 
 ```
 CALLER
@@ -127,47 +217,80 @@ CALLER
   │
   ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│ GEMINI LLM [models/gemini_llm.py]                                 │
+│ GEMINI LLM [models/google_llm.py]                                 │
 │   generate_content_async(LlmRequest) → AsyncIterator[LlmResponse] │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
----
+### [ ] Full Sequence Diagram
 
-## What the Caller Receives
-
-`runner.run_async()` yields these events for the Tokyo weather query:
+All callbacks and session writes shown in order. A callback returning non-None short-circuits the step it guards.
 
 ```
-┌───────────┬──────────────────┬─────────────────────────────────────────────┬──────────────────────┐
-│ Event │ author │ content summary │ is_final_response() │
-├───────────┼──────────────────┼─────────────────────────────────────────────┼──────────────────────┤
-│ evt-002 │ weather_agent │ FunctionCall(get_weather, city="Tokyo") │ False │
-│ evt-003 │ weather_agent │ FunctionResponse(get_weather, {temp_c:18}) │ False │
-│ evt-004a │ weather_agent │ "The weather in Tokyo" [partial] │ False │
-│ evt-004b │ weather_agent │ " is currently 18°C" [partial] │ False │
-│ evt-004c │ weather_agent │ " with partly cloudy skies." [partial] │ False │
-│ evt-004 │ weather_agent │ "The weather in Tokyo is currently 18°C…" │ True ← render this │
-└───────────┴──────────────────┴─────────────────────────────────────────────┴──────────────────────┘
+runner.run_async(user_id, session_id, new_message)
+│
+├── 1. RUNNER
+│   ├── get_session()                              ← SESSION READ
+│   ├── append_event(user_msg)                     ← SESSION WRITE
+│   └── agent.run_async(ctx)
+│
+├── 2. BASE AGENT
+│   ├── before_agent_callback
+│   │   └── None → continue  |  Content → yield + skip agent
+│   └── _llm_flow.run_async(ctx)
+│
+├── 3. LLM FLOW — LOOP (repeats until no function calls)
+│   │
+│   ├── preprocess: build LlmRequest from session.events   ← SESSION READ
+│   │
+│   ├── before_model_callback
+│   │   └── None → call LLM  |  LlmResponse → skip LLM
+│   │
+│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
+│   │   (loop 1: returns FunctionCall)
+│   │
+│   ├── on_model_error_callback  (only on error)
+│   │   └── None → re-raise  |  LlmResponse → suppress
+│   │
+│   ├── after_model_callback
+│   │   └── None → use response  |  LlmResponse → swap
+│   │
+│   ├── ◄── yield evt-002: Event(FunctionCall)             ← SESSION WRITE
+│   │
+│   ├── before_tool_callback
+│   │   └── None → run tool  |  dict → skip tool
+│   │
+│   ├── get_weather(city="Tokyo") ──► {"temp_c": 18, ...}
+│   │
+│   ├── on_tool_error_callback  (only on error)
+│   │   └── None → re-raise  |  dict → suppress error
+│   │
+│   ├── after_tool_callback
+│   │   └── None → keep result  |  dict → replace result
+│   │
+│   ├── ◄── yield evt-003: Event(FunctionResponse)         ← SESSION WRITE
+│   │
+│   ├── preprocess: rebuild LlmRequest (now has fc+fr)     ← SESSION READ
+│   │
+│   ├── before_model_callback (loop 2)
+│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
+│   │   (loop 2: returns text, no more function calls)
+│   ├── after_model_callback
+│   │
+│   ├── ◄── yield evt-004a: Event(partial)
+│   ├── ◄── yield evt-004b: Event(partial)
+│   ├── ◄── yield evt-004c: Event(partial)
+│   └── ◄── yield evt-004:  Event(final)                   ← SESSION WRITE
+│       loop ends — no more function calls
+│
+└── 4. BACK TO BASE AGENT
+    └── after_agent_callback
+        └── None → done  |  Content → yield extra event
 ```
 
-> `evt-001` (the user message) is appended to the session but never yielded — the Runner created it internally.
+### [ ] Step-by-Step Trace
 
-**Typical handling pattern:**
-
-```python
-async for event in runner.run_async(...):
-    if event.is_final_response() and event.content:
-        print(event.content.parts[0].text)
-    elif event.partial and event.content:
-        print(event.content.parts[0].text, end="", flush=True) # stream to UI
-```
-
----
-
-## Step-by-Step Trace
-
-### [ ] Step 0 — Session State Before the Request
+#### [ ] Step 0 — Session State Before the Request
 
 ```python
 # Session loaded by get_session() — empty for a brand-new conversation
@@ -180,15 +303,11 @@ Session(
 )
 ```
 
----
+#### [ ] Step 1 — Runner Entry
 
-### [ ] Step 1 — Runner Entry
-
-**Source:** [`runners.py`](../adk-python/src/google/adk/runners.py)
+**Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py)
 
 Runner fetches the session, persists the user message as an Event, and builds the `InvocationContext`.
-
-> **Additional `run_async` parameters:** Beyond the `user_id`, `session_id`, and `new_message` shown above, `run_async` also accepts an optional `invocation_id` (to resume a previous invocation, e.g., after a long-running tool pauses) and `state_delta` (a `dict` injected into session state alongside the user message event).
 
 **User Event (evt-001) — created and persisted before the agent runs:**
 
@@ -221,46 +340,28 @@ InvocationContext(
 )
 ```
 
----
+#### [ ] Step 2 — Agent Callbacks (before_agent_callback)
 
-### [ ] Step 2 — Agent Callbacks (before_agent_callback)
-
-**Source:** [`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py)
+**Source:** [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py)
 
 ```
 BaseAgent.run_async(ctx)
- → _create_invocation_context() # clone ctx, bind agent=self
- → _handle_before_agent_callback() # plugins first, then agent list
- → _run_async_impl() # → LlmAgent
- → _handle_after_agent_callback()
+ ► _create_invocation_context() # clone ctx, bind agent=self
+ ► _handle_before_agent_callback() # plugins first, then agent list
+ ► _run_async_impl() # ► LlmAgent
+ ► _handle_after_agent_callback()
 ```
 
-No callbacks configured → both return `None`.
+No callbacks configured — both return `None`.
 
-The `CallbackContext` passed into every callback:
+#### [ ] Step 3 — Build LlmRequest (Preprocess)
 
-```python
-CallbackContext(
-    invocation_id: str,
-    agent_name: str,
-    user_content: Optional[types.Content], # original user message (read-only)
-    state: State, # mutable — writes queue a state_delta
-    session: Session, # read-only view of session
-    # user_id is NOT a direct property — access via: callback_context.session.user_id
-    actions: EventActions, # accumulated side-effects
-)
-```
-
----
-
-### [ ] Step 3 — Build LlmRequest (Preprocess)
-
-**Source:** [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py)
+**Source:** [`flows/llm_flows/base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py)
 
 Three processors mutate `LlmRequest` in order:
 
 1. **`instructions.py`** — injects the system prompt (substitutes `{vars}` if any)
-2. **`contents.py`** — reads `session.events` filtered to the current branch → builds `contents` list
+2. **`contents.py`** — reads `session.events` filtered to the current branch — builds `contents` list
 3. **`functions.py`** — converts Python tools to `FunctionDeclaration` schemas
 
 **LlmRequest sent to the model:**
@@ -287,11 +388,9 @@ LlmRequest(
 
 > **`before_model_callback` fires here** — after this request is built, before the API call. Return `None` to proceed; return an `LlmResponse` to skip the LLM entirely.
 
----
+#### [ ] Step 4 — LLM Call → Function Call Response
 
-### [ ] Step 4 — LLM Call → Function Call Response
-
-**Source:** [`models/gemini_llm.py`](../adk-python/src/google/adk/models/gemini_llm.py)
+**Source:** [`models/google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py)
 
 The LLM calls `get_weather`, streaming a function call chunk then the final:
 
@@ -321,24 +420,18 @@ Event(
 # is_final_response() = False — contains a function call
 ```
 
----
+#### [ ] Step 5 — Tool Dispatch
 
-### [ ] Step 5 — Tool Dispatch
-
-**Source:** [`flows/llm_flows/functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py)
+**Source:** [`flows/llm_flows/functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py)
 
 ```
 1. Extract FunctionCall: name="get_weather", args={"city": "Tokyo"}, id="fc-001"
-2. Look up: tools_dict["get_weather"] → FunctionTool(func=get_weather)
-3. before_tool_callback → None → proceed
+2. Look up: tools_dict["get_weather"] ► FunctionTool(func=get_weather)
+3. before_tool_callback ► None ► proceed
 4. tool.run_async({"city": "Tokyo"}, tool_context)
- on error → on_tool_error_callback
-5. after_tool_callback → None → keep original result
+   on error ► on_tool_error_callback
+5. after_tool_callback ► None ► keep original result
 ```
-
-`ToolContext` is the same as `CallbackContext` plus:
-- `function_call_id: str` — ID of the in-flight call (`"fc-001"`)
-- `tool_confirmation: ToolConfirmation | None` — populated if confirmation was requested
 
 **Tool result:**
 
@@ -367,9 +460,7 @@ Event(
 # is_final_response() = False — contains a function response
 ```
 
----
-
-### [ ] Step 6 — Rebuild LlmRequest (Loop Iteration 2)
+#### [ ] Step 6 — Rebuild LlmRequest (Loop Iteration 2)
 
 The flow loops. Session now has 3 events. A new `LlmRequest` includes the full history:
 
@@ -391,9 +482,7 @@ LlmRequest(
 
 > `before_model_callback` fires again before this second LLM call.
 
----
-
-### [ ] Step 7 — Final LLM Response (Streaming)
+#### [ ] Step 7 — Final LLM Response (Streaming)
 
 The LLM streams the answer:
 
@@ -430,9 +519,7 @@ Event(
 # is_final_response() = True — text only, partial=False → flow loop exits
 ```
 
----
-
-### [ ] Step 8 — Session After the Request
+#### [ ] Step 8 — Session After the Request
 
 ```python
 Session(
@@ -447,99 +534,13 @@ Session(
 )
 ```
 
----
+## Gotchas
 
-## Full Sequence Diagram
-
-All callbacks and session writes shown in order. A callback returning non-None short-circuits the step it guards.
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ 1. CALLER → RUNNER                                                  │
-│                                                                     │
-│   runner.run_async(user_id, session_id, new_message)                │
-│     ├── get_session()                              SESSION READ     │
-│     ├── append_event(user_msg)                     SESSION WRITE    │
-│     └── agent.run_async(ctx)                                        │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 2. BASE AGENT                                                       │
-│                                                                     │
-│   before_agent_callback                                             │
-│     └── None → continue  │  Content → yield + skip agent            │
-│                                                                     │
-│   _llm_flow.run_async(ctx)                                          │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 3. LLM FLOW — LOOP (repeats until no function calls)               │
-│                                                                     │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │ preprocess: build LlmRequest from session.events            │   │
-│   │                                            SESSION READ     │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ before_model_callback                                       │   │
-│   │   └── None → call LLM  │  LlmResponse → skip LLM          │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ LlmRequest ──► GeminiLLM ──► LlmResponse                   │   │
-│   │   (loop 1: returns FunctionCall)                            │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ on_model_error_callback  (only on error)                    │   │
-│   │   └── None → re-raise  │  LlmResponse → suppress           │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ after_model_callback                                        │   │
-│   │   └── None → use response  │  LlmResponse → swap           │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ ◄── yield evt-002: Event(FunctionCall)     SESSION WRITE    │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ before_tool_callback                                        │   │
-│   │   └── None → run tool  │  dict → skip tool                 │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ get_weather(city="Tokyo") ──► {"temp_c": 18, ...}          │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ on_tool_error_callback  (only on error)                     │   │
-│   │   └── None → re-raise  │  dict → suppress error            │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ after_tool_callback                                         │   │
-│   │   └── None → keep result  │  dict → replace result         │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ ◄── yield evt-003: Event(FunctionResponse)  SESSION WRITE   │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ preprocess: rebuild LlmRequest (now has fc+fr in history)   │   │
-│   │                                            SESSION READ     │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ before_model_callback (loop 2)                              │   │
-│   │ LlmRequest ──► GeminiLLM ──► LlmResponse                   │   │
-│   │   (loop 2: returns text, no more function calls)            │   │
-│   │ after_model_callback                                        │   │
-│   ├─────────────────────────────────────────────────────────────┤   │
-│   │ ◄── yield evt-004a: Event(partial)                          │   │
-│   │ ◄── yield evt-004b: Event(partial)                          │   │
-│   │ ◄── yield evt-004c: Event(partial)                          │   │
-│   │ ◄── yield evt-004:  Event(final)           SESSION WRITE    │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│   loop ends — no more function calls                                │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 4. BACK TO BASE AGENT                                               │
-│                                                                     │
-│   after_agent_callback                                              │
-│     └── None → done  │  Content → yield extra event                 │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Reference: Callbacks
+### [ ] Callbacks
 
 Plugins run first (stop at first non-None), then agent callbacks. Each can be a function or list.
 
-### [ ] Signatures and Return Effects
+#### [ ] Signatures and Return Effects
 
 ```python
 # ── AGENT ────────────────────────────────────────────────────────────────────
@@ -575,20 +576,9 @@ def after_tool_callback(tool: BaseTool, args: dict[str, Any], tool_context: Tool
 def on_tool_error_callback(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, error: Exception) -> Optional[dict]: ...
 ```
 
-### [ ] Quick Reference
+For a summary table of each callback's None/non-None effects, see [04-agents.md](04-agents.md).
 
-| Callback | None | Non-None |
-|---|---|---|
-| `before_agent_callback` | proceed | yield Event with content, skip agent (`end_invocation=True`) |
-| `after_agent_callback` | nothing | yield extra Event with content |
-| `before_model_callback` | call LLM | skip LLM, use returned `LlmResponse` |
-| `after_model_callback` | use actual response | replace with returned `LlmResponse` |
-| `on_model_error_callback` | re-raise | suppress, use returned `LlmResponse` |
-| `before_tool_callback` | execute tool | skip tool, use returned `dict` |
-| `after_tool_callback` | use actual result | replace with returned `dict` |
-| `on_tool_error_callback` | re-raise | suppress, use returned `dict` |
-
-### [ ] Plugin-Only Callbacks
+#### [ ] Plugin-Only Callbacks
 
 Plugins add four more hooks:
 
@@ -599,126 +589,53 @@ Plugins add four more hooks:
 | `after_run_callback` | After agent loop ends |
 | `on_event_callback` | On every yielded event |
 
----
+### [ ] Session Service
 
-## Reference: Session Service
+**Source:** [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py)
 
-**Source:** [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py)
+#### [ ] Session Calls Per Invocation
 
-### [ ] Session Calls Per Invocation
+Runner makes one `get_session` call at start, one `append_event` for the user message, and one `append_event` per non-partial event. See [18-session-lifecycle.md](18-session-lifecycle.md) for the complete annotated timeline.
 
-```
-run_async()
- 1. get_session() ← load session.events + session.state
- 2. [create_session()] ← only if missing AND auto_create=True
- 3. append_event(user_msg) ← persist user message before agent starts
- ┌─ agent loop ─────────────────────────────────────────────────────┐
- │ 4+. append_event(event) ← for EVERY non-partial yielded event │
- └──────────────────────────────────────────────────────────────────┘
- 5. [append_event(plugin)] ← if before_run_callback short-circuits
- 6. [append_event(rewind)] ← if rewind_async() is called
- 7. [compaction] ← optional App plugin post-invocation
-```
+See [18-session-lifecycle.md](18-session-lifecycle.md) for the full `append_event` pseudocode and step-by-step breakdown.
 
-Calls 4+ are the hot path. A tool-call turn generates 3–4+ `append_event` calls minimum.
-
-### [ ] What `append_event()` Does
-
-```python
-async def append_event(session: Session, event: Event) -> Event:
-    if event.partial:
-        return event # 1. Partial events are free — never persisted
-
-    for key, value in event.actions.state_delta.items():
-        if key.startswith("temp:"):
-            session.state[key] = value # 2. Write temp: keys to in-memory state immediately
-            # so later agents in this invocation can read them
-
-    # 3. Strip temp: keys from the delta before writing to storage
-    event.actions.state_delta = {
-        k: v for k, v in event.actions.state_delta.items()
-        if not k.startswith("temp:")
-    }
-
-    session.state.update(event.actions.state_delta) # 4. Commit remaining state
-    session.events.append(event) # 5. Add to in-memory history
-    # subclass writes to its storage backend # 6. Database / file / etc.
-    return event
-```
-
-### [ ] State Key Scopes
+#### [ ] State Key Scopes
 
 State keys use prefixes to control scope: no prefix (session), `app:` (all users), `user:` (cross-session), `temp:` (current invocation only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules, persistence behavior, and code examples.
 
-### [ ] Backend Comparison
+See [08-sessions.md](08-sessions.md) for the backend comparison table and [18-session-lifecycle.md](18-session-lifecycle.md) for latency and concurrency details.
 
-| | `InMemorySessionService` | `DatabaseSessionService` |
-|---|---|---|
-| Storage | Python dicts | SQLAlchemy (SQLite / MySQL / PostgreSQL) |
-| Persistence | Lost on restart | Durable |
-| `append_event` cost | ~microseconds | ~milliseconds |
-| `get_session` cost | `deepcopy()` of session | DB query |
-| Concurrency | No locking | asyncio locks + DB row-level locks |
-
-**Recommended default:** `InMemorySessionService` + `GetSessionConfig(num_recent_events=20)` — sub-millisecond writes, bounded memory.
-
----
-
-## Variations
-
-### [ ] LLM calls two tools in one response
-
-`functions.py` receives a single Event with two `FunctionCall` parts, runs both tools (potentially in parallel), then yields a single Event with two `FunctionResponse` parts. The loop continues with both results in the next `LlmRequest`.
-
-### [ ] `output_key="result"` set on the agent
-
-After the final Event is yielded, `__maybe_save_output_to_state` runs:
-
-```python
-# LlmAgent._run_async_impl — final event's state_delta is written
-event.actions.state_delta["result"] = "The weather in Tokyo is currently 18°C…"
-# → applied by append_event() → session.state["result"] is now set
-```
-
-### [ ] Sub-agent transfer (AutoFlow)
-
-The LLM returns a `transfer_to_agent` function call. `auto_flow.py` intercepts it, finds the target agent in the tree, and calls `sub_agent.run_async(ctx)`. The sub-agent runs its own full lifecycle (its own loop), emitting events with its own `author` and a child `branch`.
-
----
-
-## Key Invariants
+### [ ] Key Invariants
 
 | Invariant | Source |
 |---|---|
-| Every Event gets a unique UUID | [`event.py:model_post_init`](../adk-python/src/google/adk/events/event.py#L77) |
-| `invocation_id` ties all events in one `run_async()` call | [`runners.py`](../adk-python/src/google/adk/runners.py) |
-| `partial=True` events are never passed to `append_event` | [`base_session_service.py:L105`](../adk-python/src/google/adk/sessions/base_session_service.py#L105) |
-| `state_delta` is applied atomically on `append_event` | [`base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) |
-| `temp:` keys are in-memory only — stripped from persisted delta | [`base_session_service.py:_apply_temp_state`](../adk-python/src/google/adk/sessions/base_session_service.py#L118) |
-| LLM is never called directly — always through a flow | [`llm_agent.py:_run_async_impl`](../adk-python/src/google/adk/agents/llm_agent.py#L458) |
-| Tool results feed into the next `LlmRequest.contents` | [`flows/llm_flows/contents.py`](../adk-python/src/google/adk/flows/llm_flows/contents.py) |
-| Only `is_final_response()=True` events should be rendered | [`event.py:is_final_response`](../adk-python/src/google/adk/events/event.py#L83) |
-| Callbacks: plugins first, agent list second; first non-None wins | [`base_agent.py:L434`](../adk-python/src/google/adk/agents/base_agent.py#L434) |
+| Every Event gets a unique UUID | [`event.py:model_post_init`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event.py#L77) |
+| `invocation_id` ties all events in one `run_async()` call | [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) |
+| `partial=True` events are never passed to `append_event` | [`base_session_service.py:L105`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py#L105) |
+| `state_delta` is applied atomically on `append_event` | [`base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) |
+| `temp:` keys are in-memory only — stripped from persisted delta | [`base_session_service.py:_apply_temp_state`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py#L118) |
+| LLM is never called directly — always through a flow | [`llm_agent.py:_run_async_impl`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py#L458) |
+| Tool results feed into the next `LlmRequest.contents` | [`flows/llm_flows/contents.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/contents.py) |
+| Only `is_final_response()=True` events should be rendered | [`event.py:is_final_response`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event.py#L83) |
+| Callbacks: plugins first, agent list second; first non-None wins | [`base_agent.py:L434`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py#L434) |
 
----
+## Related
 
-## Sources
-
-[`runners.py`](../adk-python/src/google/adk/runners.py) ·
-[`agents/base_agent.py`](../adk-python/src/google/adk/agents/base_agent.py) ·
-[`agents/llm_agent.py`](../adk-python/src/google/adk/agents/llm_agent.py) ·
-[`agents/invocation_context.py`](../adk-python/src/google/adk/agents/invocation_context.py) ·
-[`agents/context.py`](../adk-python/src/google/adk/agents/context.py) ·
-[`agents/callback_context.py`](../adk-python/src/google/adk/agents/callback_context.py) ·
-[`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) ·
-[`flows/llm_flows/functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py) ·
-[`models/base_llm.py`](../adk-python/src/google/adk/models/base_llm.py) ·
-[`models/llm_request.py`](../adk-python/src/google/adk/models/llm_request.py) ·
-[`models/llm_response.py`](../adk-python/src/google/adk/models/llm_response.py) ·
-[`events/event.py`](../adk-python/src/google/adk/events/event.py) ·
-[`events/event_actions.py`](../adk-python/src/google/adk/events/event_actions.py) ·
-[`sessions/session.py`](../adk-python/src/google/adk/sessions/session.py) ·
-[`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) ·
-[`sessions/state.py`](../adk-python/src/google/adk/sessions/state.py) ·
-[`tools/base_tool.py`](../adk-python/src/google/adk/tools/base_tool.py) ·
-[`plugins/plugin_manager.py`](../adk-python/src/google/adk/plugins/plugin_manager.py)
+[`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) ·
+[`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py) ·
+[`agents/llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py) ·
+[`agents/invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py) ·
+[`agents/context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/context.py) ·
+[`agents/callback_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/callback_context.py) ·
+[`flows/llm_flows/base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) ·
+[`flows/llm_flows/functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) ·
+[`models/base_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/base_llm.py) ·
+[`models/llm_request.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_request.py) ·
+[`models/llm_response.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_response.py) ·
+[`events/event.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event.py) ·
+[`events/event_actions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event_actions.py) ·
+[`sessions/session.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/session.py) ·
+[`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) ·
+[`sessions/state.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/state.py) ·
+[`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py) ·
+[`plugins/plugin_manager.py`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/plugin_manager.py)

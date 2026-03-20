@@ -1,30 +1,55 @@
-# Python for Google ADK — Intensive 2-Week Learning Plan
+# Python for ADK — Learning Plan
 
-> **For:** Experienced Java developer with basic Python knowledge
-> **Goal:** Master the Python features needed to build production ADK agents
-> **Timeline:** ~10 working days, 6–8 hours/day
+> **ADK relevance:** Every Python feature here is directly used in ADK agent development | **Estimated time:** ~10 working days, 6-8 hours/day
 
----
+## At a Glance
 
-## How This Plan Is Organized
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              Python for ADK — 2-Week Learning Path              │
+│                                                                 │
+│  Week 1: Foundations                                            │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐    │
+│  │ D1  │ │ D2  │ │ D3  │ │ D4  │ │ D5  │ │ D6  │ │ D7  │    │
+│  │Type │ │Pyd. │ │Pyd. │ │Gen. │ │Async│ │Async│ │ABC/ │    │
+│  │Hints│ │Base │ │Adv. │ │yield│ │io   │ │Gen. │ │Proto│    │
+│  └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘    │
+│     │       │       │       │       │       │       │          │
+│  Week 2: Advanced Patterns & ADK-Specific                      │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐    │
+│  │ D8  │ │ D9  │ │ D10 │ │ D11 │ │ D12 │ │ D13 │ │ D14 │    │
+│  │Deco.│ │Ctx  │ │Dict/│ │Mod. │ │Error│ │Test │ │Cap- │    │
+│  │     │ │Mgr  │ │Kwarg│ │Sys  │ │Hand.│ │Async│ │stone│    │
+│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘    │
+│                                                                 │
+│  For: Experienced Java developer with basic Python knowledge    │
+│  Goal: Master Python features needed for production ADK agents  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-Each day covers one or two tightly scoped topics. Every topic includes:
+A focused 2-week curriculum that bridges your Java expertise with the Python patterns ADK relies on. Each day covers one or two tightly scoped topics with ADK connections, Java comparisons, and hands-on practice.
+
+## Core Concepts
+
+### [ ] How This Plan Is Organized
+
+Each day includes:
 - **Why it matters for ADK** — concrete connection to the framework
-- **Java ↔ Python** — what transfers and what doesn't
+- **Java to Python** — what transfers and what doesn't
 - **Key concepts** — what to study
 - **Practice** — a small exercise that reinforces the concept in an ADK-like context
 
 ---
 
-## Week 1 — Foundations
+### [ ] Week 1 — Foundations
 
-### [ ] Day 1: Python Type Hints & the `typing` Module
+#### [ ] Day 1: Python Type Hints & the `typing` Module
 
 **Why ADK needs this:**
 ADK auto-generates tool schemas from your function signatures. If your type hints are wrong, your tools break. Every ADK class uses full type annotations.
 
-**Java → Python:**
-Java generics (`List<String>`) → Python `list[str]`. Java's type system is enforced at compile time; Python's is optional and checked by tools like `mypy`. Think of it as TypeScript vs JavaScript — same language, opt-in safety.
+**Java to Python:**
+Java generics (`List<String>`) map to Python `list[str]`. Java's type system is enforced at compile time; Python's is optional and checked by tools like `mypy`. Think of it as TypeScript vs JavaScript — same language, opt-in safety.
 
 **Key concepts to study:**
 - Built-in generic types: `list[str]`, `dict[str, Any]`, `tuple[int, ...]`
@@ -42,12 +67,12 @@ Write a function `def search(query: str, max_results: int = 10, filters: dict[st
 
 ---
 
-### [ ] Day 2: Pydantic BaseModel (Part 1 — Basics)
+#### [ ] Day 2: Pydantic BaseModel (Part 1 — Basics)
 
 **Why ADK needs this:**
-Every ADK data structure — `Event`, `EventActions`, `Session`, `GenerateContentConfig` — is a Pydantic model. You'll subclass `BaseModel` constantly.
+Every ADK data structure — `Event`, `EventActions`, `Session`, `GenerateContentConfig` — is a Pydantic model. You will subclass `BaseModel` constantly.
 
-**Java → Python:**
+**Java to Python:**
 Think of Pydantic as Lombok `@Data` + Jackson + Bean Validation all in one. You define fields with types, and Pydantic handles validation, serialization, and schema generation automatically.
 
 **Key concepts to study:**
@@ -75,7 +100,7 @@ Then practice `model_copy(update={"author": "new_agent"})`.
 
 ---
 
-### [ ] Day 3: Pydantic BaseModel (Part 2 — Advanced)
+#### [ ] Day 3: Pydantic BaseModel (Part 2 — Advanced)
 
 **Why ADK needs this:**
 ADK uses validators for configuration, custom serialization for events, and discriminated unions for different tool types.
@@ -93,12 +118,12 @@ Create a `ToolDefinition` model that uses a discriminated union for different to
 
 ---
 
-### [ ] Day 4: Generators & `yield` (Sync)
+#### [ ] Day 4: Generators & `yield` (Sync)
 
 **Why ADK needs this:**
 ADK streams everything through generators. Understanding sync generators is prerequisite to async generators (which ADK actually uses). The `yield` keyword has no Java equivalent — this is genuinely new.
 
-**Java → Python:**
+**Java to Python:**
 Java's `Stream<T>` is the closest analogy, but generators are lazily evaluated coroutines that maintain internal state between calls. More like a Java `Iterator` that's trivially easy to write.
 
 **Key concepts to study:**
@@ -122,12 +147,12 @@ Then chain it with a filter generator that only passes through certain event typ
 
 ---
 
-### [ ] Day 5: `asyncio` Fundamentals
+#### [ ] Day 5: `asyncio` Fundamentals
 
 **Why ADK needs this:**
 ADK is **async-first**. Every agent method, every LLM call, every tool execution is async. If you don't understand asyncio, you can't use ADK.
 
-**Java → Python:**
+**Java to Python:**
 Java uses `CompletableFuture` and thread pools. Python's asyncio is single-threaded cooperative multitasking — closer to JavaScript's event loop than Java's threading model. This is a fundamental mindset shift.
 
 **Key concepts to study:**
@@ -147,7 +172,7 @@ Write an async function that simulates calling 3 different LLM providers concurr
 
 ---
 
-### [ ] Day 6: `AsyncGenerator` & `async for`
+#### [ ] Day 6: `AsyncGenerator` & `async for`
 
 **Why ADK needs this:**
 ADK's core method signature is:
@@ -181,13 +206,13 @@ async def run_sequential(agents) -> AsyncGenerator[Event, None]:
 
 ---
 
-### [ ] Day 7: Abstract Base Classes, Protocols & Inheritance
+#### [ ] Day 7: Abstract Base Classes, Protocols & Inheritance
 
 **Why ADK needs this:**
 ADK's extension model is built on ABCs: `BaseAgent`, `BaseLlm`, `BaseTool`, `BaseSessionService`. To create custom agents or tools, you subclass these and implement abstract methods.
 
-**Java → Python:**
-Java `abstract class` → Python `ABC`. Java `interface` → Python `Protocol` (structural) or `ABC` (nominal). Multiple inheritance is supported and commonly used (no `implements` keyword needed).
+**Java to Python:**
+Java `abstract class` maps to Python `ABC`. Java `interface` maps to Python `Protocol` (structural) or `ABC` (nominal). Multiple inheritance is supported and commonly used (no `implements` keyword needed).
 
 **Key concepts to study:**
 - `abc.ABC` and `@abstractmethod`
@@ -203,26 +228,29 @@ Create an ADK-like tool system:
 ```python
 class BaseTool(ABC):
     @abstractmethod
-    async def run_async(self, args: dict, context: ToolContext) -> Any: ...
+    async def run_async(
+        self, *, args: dict[str, Any], tool_context: ToolContext
+    ) -> Any: ...
+    # NOTE: args and tool_context are keyword-only (after *)
 
 class FunctionTool(BaseTool):
     def __init__(self, func: Callable):
         self._func = func
 
-    async def run_async(self, args, context):
+    async def run_async(self, *, args, tool_context):
         return await self._func(**args)
 ```
 
 ---
 
-## Week 2 — Advanced Patterns & ADK-Specific
+### [ ] Week 2 — Advanced Patterns & ADK-Specific
 
-### [ ] Day 8: Decorators & First-Class Functions
+#### [ ] Day 8: Decorators & First-Class Functions
 
 **Why ADK needs this:**
 ADK's callback system and tool registration rely on passing functions as arguments and using decorators. `@tool`, callback registration, and plugin hooks all use these patterns.
 
-**Java → Python:**
+**Java to Python:**
 Java's `@FunctionalInterface` and lambdas are limited compared to Python. In Python, functions are truly first-class objects — you can assign them to variables, pass them as arguments, return them from functions, and modify them with decorators.
 
 **Key concepts to study:**
@@ -249,13 +277,13 @@ async def search_web(query: str, max_results: int = 5) -> list[str]:
 
 ---
 
-### [ ] Day 9: Context Managers & Resource Management
+#### [ ] Day 9: Context Managers & Resource Management
 
 **Why ADK needs this:**
 ADK uses async context managers for session management, MCP toolset connections, database connections, and cleanup. The `async with` pattern appears everywhere.
 
-**Java → Python:**
-Java's try-with-resources (`try (var x = ...)`) → Python's `with`/`async with`. The `__enter__`/`__exit__` protocol is like Java's `AutoCloseable` but more powerful.
+**Java to Python:**
+Java's try-with-resources (`try (var x = ...)`) maps to Python's `with`/`async with`. The `__enter__`/`__exit__` protocol is like Java's `AutoCloseable` but more powerful.
 
 **Key concepts to study:**
 - `with` statement and the context manager protocol
@@ -283,13 +311,13 @@ class SessionManager:
 
 ---
 
-### [ ] Day 10: Dict/Kwargs Patterns & Python Data Manipulation
+#### [ ] Day 10: Dict/Kwargs Patterns & Python Data Manipulation
 
 **Why ADK needs this:**
 ADK configuration, state management (`session.state`), event actions (`state_delta`), and tool arguments all use dict patterns heavily. Python dicts are far more central than Java Maps.
 
-**Java → Python:**
-Java `Map<String, Object>` → Python `dict[str, Any]`. But Python dicts are used where Java would use POJOs, builder patterns, or configuration objects.
+**Java to Python:**
+Java `Map<String, Object>` maps to Python `dict[str, Any]`. But Python dicts are used where Java would use POJOs, builder patterns, or configuration objects.
 
 **Key concepts to study:**
 - `*args` and `**kwargs` — variadic arguments
@@ -319,12 +347,12 @@ class SessionState:
 
 ---
 
-### [ ] Day 11: Python Module System & Project Structure
+#### [ ] Day 11: Python Module System & Project Structure
 
 **Why ADK needs this:**
 ADK uses namespace packages (`google.adk.agents`), and your agent projects need proper structure for imports, testing, and deployment.
 
-**Java → Python:**
+**Java to Python:**
 Java packages map to directories with predictable rules. Python's module system is more flexible but also more confusing: `__init__.py`, relative imports, `sys.path` manipulation, namespace packages.
 
 **Key concepts to study:**
@@ -360,12 +388,12 @@ my_agents/
 
 ---
 
-### [ ] Day 12: Error Handling & Logging
+#### [ ] Day 12: Error Handling & Logging
 
 **Why ADK needs this:**
 ADK has error callbacks (`on_model_error_callback`, `on_tool_error_callback`), and production agents need robust error handling and observability.
 
-**Java → Python:**
+**Java to Python:**
 Python has no checked exceptions (everything is unchecked). `logging` module is similar to SLF4J but configured differently. No `log4j.xml` — configuration is programmatic or via `dictConfig`.
 
 **Key concepts to study:**
@@ -384,7 +412,9 @@ Build an error-handling wrapper for ADK tool execution:
 ```python
 async def safe_tool_call(tool: BaseTool, args: dict, context: ToolContext) -> Event:
     try:
-        result = await asyncio.wait_for(tool.run_async(args, context), timeout=30.0)
+        result = await asyncio.wait_for(
+            tool.run_async(args=args, tool_context=context), timeout=30.0
+        )
         return Event(type="tool_result", content=result)
     except asyncio.TimeoutError:
         logger.warning("Tool %s timed out", tool.name)
@@ -396,13 +426,13 @@ async def safe_tool_call(tool: BaseTool, args: dict, context: ToolContext) -> Ev
 
 ---
 
-### [ ] Day 13: Testing Async Python Code
+#### [ ] Day 13: Testing Async Python Code
 
 **Why ADK needs this:**
 You need to test your agents, tools, and flows. Testing async code has specific patterns.
 
-**Java → Python:**
-JUnit → `pytest`. Mockito → `unittest.mock`. But async testing needs `pytest-asyncio` and has its own patterns.
+**Java to Python:**
+JUnit maps to `pytest`. Mockito maps to `unittest.mock`. But async testing needs `pytest-asyncio` and has its own patterns.
 
 **Key concepts to study:**
 - `pytest` basics: test discovery, assertions, fixtures
@@ -429,7 +459,7 @@ async def test_search_tool_returns_results():
 
 ---
 
-### [ ] Day 14: Putting It All Together — Build a Mini ADK Agent
+#### [ ] Day 14: Putting It All Together — Build a Mini ADK Agent
 
 **Why this matters:**
 Integrate everything into one working project that mirrors ADK's architecture.
@@ -448,31 +478,61 @@ Integrate everything into one working project that mirrors ADK's architecture.
 
 This should be ~300-500 lines of Python and will exercise every concept from the previous 13 days.
 
+## ADK in Practice
+
+The learning plan maps directly to ADK usage:
+
+| Day Topic | ADK Usage |
+|---|---|
+| Type hints | Tool schema auto-generation from function signatures |
+| Pydantic basics | Every ADK data structure (`Event`, `Session`, `EventActions`) |
+| Pydantic advanced | Discriminated unions for tool types, `model_copy` for contexts |
+| Generators | Event streaming throughout the framework |
+| asyncio | Every agent method, LLM call, and tool execution |
+| AsyncGenerator | `run_async() -> AsyncGenerator[Event, None]` — the core API |
+| ABCs/Protocols | `BaseAgent`, `BaseTool`, `BaseLlm`, `BaseSessionService` |
+| Decorators | Tool registration, callback hooks, plugin system |
+| Context managers | MCP toolset connections, session management |
+| Dict patterns | State management, `state_delta`, tool arguments |
+| Module system | ADK's namespace packages (`google.adk.*`) |
+| Error handling | Error callbacks, resilient agent execution |
+| Testing | Mocking LLM calls, testing tool functions, async test patterns |
+
+## Common Mistakes
+
+| Mistake | Fix |
+|---|---|
+| Using `time.sleep()` in async code | Always use `await asyncio.sleep()` |
+| Missing `@functools.wraps` on decorators | ADK reads `__name__` and `__doc__` for tool schemas |
+| Mutable default arguments (`def f(x=[])`) | Use `None` default and create inside function |
+| Forgetting to `await` a coroutine | Python warns but won't raise — the coroutine never runs |
+| Using `asyncio.run()` inside async code | Just `await` directly — nested `run()` raises RuntimeError |
+
+## Quick Reference Card
+
+```
+Java → Python Mental Model
+
+CompletableFuture<T>     →  async def + await        (single-threaded, cooperative)
+Stream<T>                →  Generator + comprehensions (lazy, maintains state)
+abstract class           →  ABC                       (multiple inheritance supported)
+interface                →  Protocol                  (structural / duck typing)
+@FunctionalInterface     →  Just pass the function    (functions are first-class)
+try-with-resources       →  async with                (__aenter__/__aexit__)
+Map<K,V>                 →  dict[K,V]                 (used everywhere)
+Optional<T>              →  T | None                  (no .get(), just check is None)
+Lombok @Data             →  Pydantic BaseModel        (validation + serialization built in)
+Jackson                  →  Pydantic model_dump_json() (built into the model)
+Bean Validation          →  Pydantic validators        (@field_validator)
+Spring DI                →  Constructor args / context objects (no framework magic)
+JUnit + Mockito          →  pytest + unittest.mock     (AsyncMock for async)
+setup.py / Maven         →  pyproject.toml             (modern standard)
+Checked exceptions       →  (don't exist)              (everything is unchecked)
+```
+
 ---
 
-## Quick Reference: Java → Python Mental Model
-
-| Java Concept | Python Equivalent | Notes |
-|---|---|---|
-| `CompletableFuture<T>` | `async def` + `await` | Single-threaded, cooperative |
-| `Stream<T>` | Generator + comprehensions | Lazy, maintains state |
-| `abstract class` | `ABC` | Multiple inheritance supported |
-| `interface` | `Protocol` | Structural (duck) typing |
-| `@FunctionalInterface` | Just pass the function | Functions are first-class |
-| `try-with-resources` | `async with` | `__aenter__`/`__aexit__` |
-| `Map<K,V>` | `dict[K,V]` | Used *everywhere* |
-| `Optional<T>` | `T | None` | No `.get()`, just check `is None` |
-| Lombok `@Data` | Pydantic `BaseModel` | Validation + serialization built in |
-| Jackson | Pydantic `model_dump_json()` | Built into the model |
-| Bean Validation | Pydantic validators | `@field_validator` |
-| Spring DI | Constructor args / context objects | No framework magic |
-| JUnit + Mockito | pytest + unittest.mock | `AsyncMock` for async |
-| `setup.py` / Maven | `pyproject.toml` | Modern standard |
-| Checked exceptions | (don't exist) | Everything is unchecked |
-
----
-
-## Recommended Resources
+**Recommended Resources**
 
 **Official docs (primary source of truth):**
 - [Python `typing` module](https://docs.python.org/3/library/typing.html)
@@ -490,7 +550,3 @@ This should be ~300-500 lines of Python and will exercise every concept from the
 - Build small projects after each day's topic
 - Read ADK source code on GitHub (`google/adk-python`) — best way to see patterns in action
 - Contribute to ADK or build a sample multi-agent project
-
----
-
-*Generated for Wei — March 15, 2026*

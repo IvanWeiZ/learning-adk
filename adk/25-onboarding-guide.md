@@ -1,69 +1,93 @@
-# ADK Onboarding Guide — From Zero to Your First Multi-Agent System
+# 25 — Onboarding: Zero to First Agent
 
-For new team members. No ADK knowledge assumed.
+> **Source:** all ADK modules | **Prereqs:** none — start here | **Official docs:** <https://google.github.io/adk-docs/get-started/quickstart/>
 
----
-
-## 1. The Big Picture: What ADK Does
-
-ADK (Agent Development Kit) is Google's Python framework for building **multi-agent AI systems**. a runtime that connects LLMs, tools, and conversation state into a coherent pipeline.
+## At a Glance
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ What You Build with ADK │
-│ │
-│ User: "Book a flight to Tokyo and find a hotel" │
-│ │ │
-│ ▼ │
-│ ┌───────────┐ ┌────────────────┐ ┌─────────────────┐ │
-│ │ Runner │───▶│ Root Agent │───▶│ Flight Agent │ │
-│ │ (engine) │ │ (dispatcher) │ │ (specialist) │ │
-│ └───────────┘ │ │ │ tools: [ │ │
-│ │ │ Decides which │ │ search_flights │ │
-│ │ │ agent handles │ │ book_flight │ │
-│ │ │ each part │ │ ] │ │
-│ │ │ │ └─────────────────┘ │
-│ │ │ │ ┌─────────────────┐ │
-│ │ │ │───▶│ Hotel Agent │ │
-│ │ └────────────────┘ │ (specialist) │ │
-│ │ │ tools: [ │ │
-│ ▼ │ search_hotels │ │
-│ ┌───────────┐ │ book_hotel │ │
-│ │ Session │ │ ] │ │
-│ │ (memory) │ └─────────────────┘ │
-│ └───────────┘ │
+│                  Your ADK Learning Path                                 │
+│                                                                         │
+│  1. Big Picture ──► What ADK does                                       │
+│  2. Core Concepts ──► 6 building blocks (Agent, Runner, Flow, ...)      │
+│  3. First Agent ──► 5 lines of Python                                   │
+│  4. Tools ──► Make your agent useful                                    │
+│  5. ToolContext ──► Access state and services                           │
+│  6. Multi-Agent ──► Transfer, Sequential, Parallel, Loop                │
+│  7. Running ──► Runner + SessionService                                 │
+│  8. Events ──► Universal data type                                      │
+│  9. State Scoping ──► session / user: / app: / temp:                    │
+│ 10. Callbacks ──► Intercept everything                                  │
+│ 11. Full Example ──► Customer support system                            │
+│ 12. Cheat Sheet ──► Agent configuration reference                       │
+│ 13. Where Next ──► Pick your learning track                             │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+A complete walkthrough from zero ADK knowledge to building a multi-agent customer support system. No prior ADK experience assumed. By the end you will understand every core building block and have a working multi-agent system.
+
+## Core Concepts
+
+### [ ] 1. The Big Picture: What ADK Does
+
+ADK (Agent Development Kit) is Google's Python framework for building **multi-agent AI systems**. It is a runtime that connects LLMs, tools, and conversation state into a coherent pipeline.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ What You Build with ADK                                                 │
+│                                                                         │
+│ User: "Book a flight to Tokyo and find a hotel"                         │
+│   │                                                                     │
+│   ▼                                                                     │
+│   ┌───────────┐     ┌────────────────┐     ┌─────────────────┐         │
+│   │ Runner    │────▶│ Root Agent     │────▶│ Flight Agent    │         │
+│   │ (engine)  │     │ (dispatcher)   │     │ (specialist)    │         │
+│   └───────────┘     │                │     │ tools: [        │         │
+│       │             │ Decides which  │     │   search_flights│         │
+│       │             │ agent handles  │     │   book_flight   │         │
+│       │             │ each part      │     │ ]               │         │
+│       │             │                │     └─────────────────┘         │
+│       │             │                │     ┌─────────────────┐         │
+│       │             │                │────▶│ Hotel Agent     │         │
+│       │             └────────────────┘     │ (specialist)    │         │
+│       │                                    │ tools: [        │         │
+│       ▼                                    │   search_hotels │         │
+│   ┌───────────┐                            │   book_hotel    │         │
+│   │ Session   │                            │ ]               │         │
+│   │ (memory)  │                            └─────────────────┘         │
+│   └───────────┘                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Core Concepts in 5 Minutes
+### [ ] 2. Core Concepts in 5 Minutes
 
 Six building blocks:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ ADK Architecture Layers │
-│ │
-│ ┌──────────┐ │
-│ │ Runner │ ← Orchestrator: receives user message, │
-│ └─────┬────┘ manages session, calls agent │
-│ │ │
-│ ┌─────▼────┐ │
-│ │ Agent │ ← Blueprint: defines behavior (instruction, │
-│ └─────┬────┘ model, tools, sub-agents) │
-│ │ │
-│ ┌─────▼────┐ │
-│ │ Flow │ ← Reason-Act loop: sends prompt to LLM, │
-│ └─────┬────┘ processes response, calls tools, repeats │
-│ │ │
-│ ┌─────▼────┐ │
-│ │ Model │ ← LLM adapter: Gemini, Claude, GPT, etc. │
-│ └──────────┘ │
-│ │
-│ ┌──────────┐ ┌──────────┐ │
-│ │ Session │ │ Tools │ ← State storage + capabilities │
-│ └──────────┘ └──────────┘ │
+│ ADK Architecture Layers                                          │
+│                                                                  │
+│   ┌──────────┐                                                   │
+│   │ Runner   │ ← Orchestrator: receives user message,            │
+│   └─────┬────┘   manages session, calls agent                    │
+│         │                                                        │
+│   ┌─────▼────┐                                                   │
+│   │ Agent    │ ← Blueprint: defines behavior (instruction,       │
+│   └─────┬────┘   model, tools, sub-agents)                       │
+│         │                                                        │
+│   ┌─────▼────┐                                                   │
+│   │ Flow     │ ← Reason-Act loop: sends prompt to LLM,          │
+│   └─────┬────┘   processes response, calls tools, repeats        │
+│         │                                                        │
+│   ┌─────▼────┐                                                   │
+│   │ Model    │ ← LLM adapter: Gemini, Claude, GPT, etc.         │
+│   └──────────┘                                                   │
+│                                                                  │
+│   ┌──────────┐   ┌──────────┐                                    │
+│   │ Session  │   │ Tools    │ ← State storage + capabilities     │
+│   └──────────┘   └──────────┘                                    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,7 +103,7 @@ Six building blocks:
 
 ---
 
-## 3. Your First Agent (5 Lines)
+### [ ] 3. Your First Agent (5 Lines)
 
 ```python
 from google.adk import Agent
@@ -96,18 +120,18 @@ User message: "Hi!"
  │
  ▼
 ┌─────────────┐ ┌────────────┐ ┌────────────┐
-│ Runner │───▶│ greeter │───▶│ Gemini │
-│ │ │ Agent │ │ 2.5 Flash │
-│ 1. Load │ │ │ │ │
-│ session │ │ instruction│ │ "You are │
-│ 2. Build │ │ = "You are │ │ friendly │
-│ context │ │ friendly │ │ ..." │
-│ 3. Call │ │ ..." │ │ │
-│ agent │ └────────────┘ └─────┬──────┘
-│ 4. Stream │ │
-│ events │◀───────────────────────────┘
-│ 5. Save │ Event: "Hello! Welcome!"
-│ session │
+│ Runner      │───▶│ greeter    │───▶│ Gemini     │
+│             │ │ Agent      │ │ 2.5 Flash  │
+│ 1. Load     │ │            │ │            │
+│    session  │ │ instruction│ │ "You are   │
+│ 2. Build    │ │ = "You are │ │ friendly   │
+│    context  │ │ friendly   │ │ ..."       │
+│ 3. Call     │ │ ..."       │ │            │
+│    agent    │ └────────────┘ └─────┬──────┘
+│ 4. Stream   │                      │
+│    events   │◀─────────────────────┘
+│ 5. Save     │ Event: "Hello! Welcome!"
+│    session  │
 └─────────────┘
  │
  ▼
@@ -116,18 +140,17 @@ Response: "Hello! Welcome! How can I help you today?"
 
 ---
 
-## 4. Adding Tools (Making Your Agent Useful)
+### [ ] 4. Adding Tools (Making Your Agent Useful)
 
 ```python
 from google.adk import Agent
 
 def get_weather(city: str) -> str:
     """Get current weather for a city."""
-    # Call weather API
     weather_data = {
-        "Tokyo": "☀️ 22°C, clear skies",
-        "London": "🌧️ 14°C, light rain",
-        "New York": "⛅ 18°C, partly cloudy",
+        "Tokyo": "22C, clear skies",
+        "London": "14C, light rain",
+        "New York": "18C, partly cloudy",
     }
     return weather_data.get(city, f"Weather data not available for {city}")
 
@@ -153,38 +176,38 @@ User: "What's the weather in Tokyo and what's 15 * 7?"
  │
  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Reason-Act Loop │
-│ │
-│ Iteration 1: │
-│ ┌─────────┐ ┌──────────────────────────────────┐ │
-│ │ LLM │────▶│ "I need weather + calculation" │ │
-│ │ thinks │ │ Call: get_weather("Tokyo") │ │
-│ └─────────┘ │ Call: calculate("15 * 7") │ │
-│ └──────────┬───────────────────────┘ │
-│ │ │
-│ ▼ │
-│ ┌──────────────────────────────────────────────────┐ │
-│ │ Tool Execution │ │
-│ │ get_weather("Tokyo") → "☀️ 22°C, clear skies" │ │
-│ │ calculate("15 * 7") → "Result: 105" │ │
-│ └──────────────────────────┬───────────────────────┘ │
-│ │ │
-│ ▼ │
-│ Iteration 2: │
-│ ┌─────────┐ ┌──────────────────────────────────┐ │
-│ │ LLM │────▶│ "I have both answers, respond" │ │
-│ │ thinks │ │ Final text response │ │
-│ └─────────┘ └──────────────────────────────────┘ │
-│ │
+│ Reason-Act Loop                                             │
+│                                                             │
+│ Iteration 1:                                                │
+│   ┌─────────┐   ┌──────────────────────────────────┐       │
+│   │ LLM     │────▶│ "I need weather + calculation"  │       │
+│   │ thinks  │   │ Call: get_weather("Tokyo")       │       │
+│   └─────────┘   │ Call: calculate("15 * 7")        │       │
+│                 └──────────┬───────────────────────┘       │
+│                            │                               │
+│                            ▼                               │
+│   ┌──────────────────────────────────────────────────┐     │
+│   │ Tool Execution                                   │     │
+│   │ get_weather("Tokyo") → "22C, clear skies"        │     │
+│   │ calculate("15 * 7")  → "Result: 105"             │     │
+│   └──────────────────────────┬───────────────────────┘     │
+│                              │                             │
+│                              ▼                             │
+│ Iteration 2:                                                │
+│   ┌─────────┐   ┌──────────────────────────────────┐       │
+│   │ LLM     │────▶│ "I have both answers, respond"  │       │
+│   │ thinks  │   │ Final text response              │       │
+│   └─────────┘   └──────────────────────────────────┘       │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
  │
  ▼
-"The weather in Tokyo is ☀️ 22°C with clear skies. And 15 × 7 = 105."
+"The weather in Tokyo is 22C with clear skies. And 15 x 7 = 105."
 ```
 
 ---
 
-## 5. Using ToolContext (Accessing State and Services)
+### [ ] 5. Using ToolContext (Accessing State and Services)
 
 `ToolContext` gives tools access to session state, artifacts, and services:
 
@@ -213,30 +236,30 @@ def view_cart(tool_context: ToolContext) -> str:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ToolContext Data Flow │
-│ │
-│ Runner creates InvocationContext │
-│ │ │
-│ ├── session ──────────────────┐ │
-│ ├── artifact_service ─────────┤ │
-│ ├── memory_service ───────────┤ │
-│ └── credential_service ───────┤ │
-│ ▼ │
-│ ┌──────────────┐ │
-│ │ ToolContext │ │
-│ │ │ │
-│ │ .state │ ← read/write dict │
-│ │ .session │ ← conversation │
-│ │ .actions │ ← side effects │
-│ │ .user_id │ ← current user │
-│ │ │ │
-│ │ .save_artifact() │
-│ │ .load_artifact() │
-│ │ .search_memory() │
-│ └──────────────┘ │
-│ │ │
-│ ▼ │
-│ Your tool function │
+│ ToolContext Data Flow                                         │
+│                                                              │
+│ Runner creates InvocationContext                             │
+│   │                                                          │
+│   ├── session ──────────────────┐                            │
+│   ├── artifact_service ─────────┤                            │
+│   ├── memory_service ───────────┤                            │
+│   └── credential_service ───────┤                            │
+│                                 ▼                            │
+│                   ┌──────────────┐                           │
+│                   │ ToolContext   │                           │
+│                   │              │                           │
+│                   │ .state       │ ← read/write dict         │
+│                   │ .session     │ ← conversation            │
+│                   │ .actions     │ ← side effects            │
+│                   │ .user_id     │ ← current user            │
+│                   │              │                           │
+│                   │ .save_artifact()                         │
+│                   │ .load_artifact()                         │
+│                   │ .search_memory()                         │
+│                   └──────────────┘                           │
+│                         │                                    │
+│                         ▼                                    │
+│                   Your tool function                         │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -244,9 +267,9 @@ The `tool_context` parameter is auto-detected by type and excluded from the LLM'
 
 ---
 
-## 6. Multi-Agent Systems (The Real Power)
+### [ ] 6. Multi-Agent Systems (The Real Power)
 
-### [ ] Pattern 1: Agent Transfer (LLM Decides Routing)
+#### [ ] Pattern 1: Agent Transfer (LLM Decides Routing)
 
 ```python
 from google.adk import Agent
@@ -285,21 +308,21 @@ User: "Find a flight to Tokyo"
  │
  ▼
 ┌────────────────────────────────────────────────────────────────┐
-│ root_agent (travel_assistant) │
-│ │
-│ LLM thinks: "This is a flight question" │
-│ LLM calls: transfer_to_agent("flight_agent") ← auto-injected│
-│ │
-│ │ │
-│ ▼ │
-│ ┌──────────────────────────────────────────┐ │
-│ │ flight_agent │ │
-│ │ │ │
-│ │ LLM thinks: "Search for Tokyo flights" │ │
-│ │ LLM calls: search_flights("Tokyo") │ │
-│ │ Tool returns: [JAL 101, ANA 205, ...] │ │
-│ │ LLM responds: "Here are flights..." │ │
-│ └──────────────────────────────────────────┘ │
+│ root_agent (travel_assistant)                                  │
+│                                                                │
+│ LLM thinks: "This is a flight question"                        │
+│ LLM calls: transfer_to_agent("flight_agent") ← auto-injected  │
+│                                                                │
+│   │                                                            │
+│   ▼                                                            │
+│   ┌──────────────────────────────────────────┐                 │
+│   │ flight_agent                             │                 │
+│   │                                          │                 │
+│   │ LLM thinks: "Search for Tokyo flights"   │                 │
+│   │ LLM calls: search_flights("Tokyo")       │                 │
+│   │ Tool returns: [JAL 101, ANA 205, ...]    │                 │
+│   │ LLM responds: "Here are flights..."      │                 │
+│   └──────────────────────────────────────────┘                 │
 └────────────────────────────────────────────────────────────────┘
  │
  ▼
@@ -308,7 +331,7 @@ User: "Find a flight to Tokyo"
 
 ADK auto-injects `transfer_to_agent` into agents with sub-agents. The LLM uses `description` fields to decide routing.
 
-### [ ] Pattern 2: Sequential Pipeline (Fixed Order)
+#### [ ] Pattern 2: Sequential Pipeline (Fixed Order)
 
 ```python
 from google.adk import Agent
@@ -350,26 +373,26 @@ User: "I want a large pepperoni pizza"
  │
  ▼
 ┌────────────────────────────────────────────────────┐
-│ SequentialAgent: pizza_ordering │
-│ │
-│ Step 1 ─────────────────────────────────┐ │
-│ │ order_intake │ │
-│ │ Collects: size=large, crust=regular, │ │
-│ │ toppings=[pepperoni] │ │
-│ │ Saves to state["current_order"] │ │
-│ └────────────────────────────────────────┘ │
-│ │ │
-│ ▼ │
-│ Step 2 ─────────────────────────────────┐ │
-│ │ order_confirm │ │
-│ │ Reads state["current_order"] │ │
-│ │ Calls calculate_price(order) │ │
-│ │ Responds: "Large pepperoni: $18.99" │ │
-│ └────────────────────────────────────────┘ │
+│ SequentialAgent: pizza_ordering                    │
+│                                                    │
+│ Step 1 ─────────────────────────────────┐         │
+│ │ order_intake                          │         │
+│ │ Collects: size=large, crust=regular,  │         │
+│ │           toppings=[pepperoni]         │         │
+│ │ Saves to state["current_order"]       │         │
+│ └───────────────────────────────────────┘         │
+│   │                                               │
+│   ▼                                               │
+│ Step 2 ─────────────────────────────────┐         │
+│ │ order_confirm                         │         │
+│ │ Reads state["current_order"]          │         │
+│ │ Calls calculate_price(order)          │         │
+│ │ Responds: "Large pepperoni: $18.99"   │         │
+│ └───────────────────────────────────────┘         │
 └────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern 3: Parallel Execution (Concurrent Agents)
+#### [ ] Pattern 3: Parallel Execution (Concurrent Agents)
 
 ```python
 from google.adk import Agent
@@ -416,31 +439,31 @@ User: "I love how fast the new API is!"
  │
  ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ SequentialAgent: analysis_pipeline │
-│ │
-│ Step 1: ParallelAgent ─────────────────────────────┐ │
-│ │ │ │
-│ │ ┌─────────────────────┐ ┌─────────────────────┐│ │
-│ │ │ sentiment_analyzer │ │ topic_classifier ││ │
-│ │ │ │ │ ││ │
-│ │ │ Running │ │ Running ││ │
-│ │ │ concurrently... │ │ concurrently... ││ │
-│ │ │ │ │ ││ │
-│ │ │ → "Positive (0.95)" │ │ → "Technology/API" ││ │
-│ │ │ saved to state │ │ saved to state ││ │
-│ │ └─────────────────────┘ └─────────────────────┘│ │
-│ └───────────────────────────────────────────────────┘ │
-│ │ │
-│ ▼ │
-│ Step 2: summarizer ────────────────────────────────┐ │
-│ │ Reads state["sentiment"] = "Positive (0.95)" │ │
-│ │ Reads state["topic"] = "Technology/API" │ │
-│ │ Responds: "Positive feedback about API performance"│ │
-│ └───────────────────────────────────────────────────┘ │
+│ SequentialAgent: analysis_pipeline                           │
+│                                                              │
+│ Step 1: ParallelAgent ─────────────────────────────┐        │
+│ │                                                   │        │
+│ │ ┌─────────────────────┐ ┌─────────────────────┐  │        │
+│ │ │ sentiment_analyzer  │ │ topic_classifier    │  │        │
+│ │ │                     │ │                     │  │        │
+│ │ │ Running             │ │ Running             │  │        │
+│ │ │ concurrently...     │ │ concurrently...     │  │        │
+│ │ │                     │ │                     │  │        │
+│ │ │ → "Positive (0.95)" │ │ → "Technology/API"  │  │        │
+│ │ │ saved to state      │ │ saved to state      │  │        │
+│ │ └─────────────────────┘ └─────────────────────┘  │        │
+│ └───────────────────────────────────────────────────┘        │
+│   │                                                          │
+│   ▼                                                          │
+│ Step 2: summarizer ────────────────────────────────┐        │
+│ │ Reads state["sentiment"] = "Positive (0.95)"     │        │
+│ │ Reads state["topic"] = "Technology/API"           │        │
+│ │ Responds: "Positive feedback about API performance"│        │
+│ └───────────────────────────────────────────────────┘        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern 4: Loop Agent (Iterate Until Done)
+#### [ ] Pattern 4: Loop Agent (Iterate Until Done)
 
 ```python
 from google.adk import Agent
@@ -464,28 +487,28 @@ root_agent = LoopAgent(
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ LoopAgent: refine_loop (max 5 iterations) │
-│ │
-│ Iteration 1: │
-│ │ code_refiner runs linter → 3 warnings │
-│ │ Improves code, saves to state['code'] │
-│ │ (does not escalate, continues) │
-│ │ │
-│ Iteration 2: │
-│ │ code_refiner runs linter → 0 warnings │
-│ │ Runs tests → all pass │
-│ │ Calls escalate() ← exits the loop │
-│ └────────────────────────────────────────────── │
-│ │
-│ Result: Refined code after 2 iterations │
+│ LoopAgent: refine_loop (max 5 iterations)       │
+│                                                 │
+│ Iteration 1:                                    │
+│   │ code_refiner runs linter → 3 warnings       │
+│   │ Improves code, saves to state['code']       │
+│   │ (does not escalate, continues)              │
+│   │                                             │
+│ Iteration 2:                                    │
+│   │ code_refiner runs linter → 0 warnings       │
+│   │ Runs tests → all pass                       │
+│   │ Calls escalate() ← exits the loop           │
+│   └──────────────────────────────────────────── │
+│                                                 │
+│ Result: Refined code after 2 iterations         │
 └─────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 7. Running Your Agent
+### [ ] 7. Running Your Agent
 
-### [ ] Standard Setup
+#### [ ] Standard Setup
 
 ```python
 from google.adk.runners import Runner
@@ -534,21 +557,21 @@ runner.run_async(session_id, user_id, new_message)
  │
  ▼
  ┌─────────────────────────────────────┐
- │ 1. Fetch session from storage │
- │ 2. Build InvocationContext │
- │ (session + services + config) │
- │ 3. Call agent.run_async(context) │
- │ 4. For each yielded Event: │
- │ a. Append to session │
- │ b. Apply state_delta │
- │ c. Stream to caller │
- │ 5. Persist session updates │
+ │ 1. Fetch session from storage       │
+ │ 2. Build InvocationContext          │
+ │    (session + services + config)    │
+ │ 3. Call agent.run_async(context)    │
+ │ 4. For each yielded Event:         │
+ │    a. Append to session            │
+ │    b. Apply state_delta            │
+ │    c. Stream to caller             │
+ │ 5. Persist session updates         │
  └─────────────────────────────────────┘
 ```
 
 ---
 
-## 8. Understanding Events (The Universal Data Type)
+### [ ] 8. Understanding Events (The Universal Data Type)
 
 Every action in ADK produces an `Event`. Events carry both content and side effects:
 
@@ -574,37 +597,37 @@ event = Event(
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Event Lifecycle │
-│ │
-│ Agent yields Event │
-│ │ │
-│ ▼ │
-│ ┌──────────────────────────────────────────────┐ │
-│ │ Runner processes Event: │ │
-│ │ │ │
-│ │ event.actions.state_delta? │ │
-│ │ ├── Yes → merge into session.state │ │
-│ │ │ │ │
-│ │ event.actions.transfer_to_agent? │ │
-│ │ ├── Yes → switch execution to target agent │ │
-│ │ │ │ │
-│ │ event.actions.escalate? │ │
-│ │ ├── Yes → exit current loop/agent │ │
-│ │ │ │ │
-│ │ event.content? │ │
-│ │ ├── Yes → stream text/data to caller │ │
-│ │ │ │ │
-│ │ Append event to session.events │ │
-│ └──────────────────────────────────────────────┘ │
-│ │ │
-│ ▼ │
-│ Caller receives event (your code) │
+│ Event Lifecycle                                                  │
+│                                                                  │
+│ Agent yields Event                                               │
+│   │                                                              │
+│   ▼                                                              │
+│   ┌──────────────────────────────────────────────┐               │
+│   │ Runner processes Event:                      │               │
+│   │                                              │               │
+│   │ event.actions.state_delta?                   │               │
+│   │ ├── Yes → merge into session.state           │               │
+│   │ │                                            │               │
+│   │ event.actions.transfer_to_agent?             │               │
+│   │ ├── Yes → switch execution to target agent   │               │
+│   │ │                                            │               │
+│   │ event.actions.escalate?                      │               │
+│   │ ├── Yes → exit current loop/agent            │               │
+│   │ │                                            │               │
+│   │ event.content?                               │               │
+│   │ ├── Yes → stream text/data to caller         │               │
+│   │ │                                            │               │
+│   │ Append event to session.events               │               │
+│   └──────────────────────────────────────────────┘               │
+│   │                                                              │
+│   ▼                                                              │
+│ Caller receives event (your code)                                │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 9. Session State Scoping
+### [ ] 9. Session State Scoping
 
 State keys have scopes via prefixes:
 - No prefix → this session only
@@ -616,55 +639,58 @@ See [08-sessions.md](08-sessions.md) for the full scoping rules and persistence 
 
 ---
 
-## 10. The Callback System (Intercepting Everything)
+### [ ] 10. The Callback System (Intercepting Everything)
 
 ADK hooks at every layer:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Callback Execution Order │
-│ │
-│ ① before_agent_callback │
-│ │ ├── Return Content → skip agent entirely │
-│ │ └── Return None → continue │
-│ │ │
-│ │ ② before_model_callback │
-│ │ │ ├── Return LlmResponse → skip LLM call │
-│ │ │ └── Return None → continue │
-│ │ │ │
-│ │ │ ┌──────────────┐ │
-│ │ │ │ LLM Call │ │
-│ │ │ └──────────────┘ │
-│ │ │ │
-│ │ ③ after_model_callback │
-│ │ │ ├── Return LlmResponse → replace response │
-│ │ │ └── Return None → use original │
-│ │ │ │
-│ │ │ If LLM requested a tool call: │
-│ │ │ │
-│ │ │ ④ before_tool_callback │
-│ │ │ │ ├── Return dict → skip tool, use as result │
-│ │ │ │ └── Return None → continue │
-│ │ │ │ │
-│ │ │ │ ┌──────────────┐ │
-│ │ │ │ │ Tool runs │ │
-│ │ │ │ └──────────────┘ │
-│ │ │ │ │
-│ │ │ ⑤ after_tool_callback │
-│ │ │ ├── Return dict → replace result │
-│ │ │ └── Return None → use original │
-│ │ │ │
-│ │ │ (Loop back to ② if more tool calls needed) │
-│ │ │
-│ ⑥ after_agent_callback │
-│ ├── Return Content → append to response │
-│ └── Return None → no change │
+│ Callback Execution Order                                         │
+│                                                                  │
+│ 1. before_agent_callback                                         │
+│   │ ├── Return Content → skip agent entirely                     │
+│   │ └── Return None → continue                                   │
+│   │                                                              │
+│   │ 2. before_model_callback                                     │
+│   │ │ ├── Return LlmResponse → skip LLM call                    │
+│   │ │ └── Return None → continue                                 │
+│   │ │                                                            │
+│   │ │   ┌──────────────┐                                         │
+│   │ │   │ LLM Call     │                                         │
+│   │ │   └──────────────┘                                         │
+│   │ │                                                            │
+│   │ 3. after_model_callback                                      │
+│   │ │ ├── Return LlmResponse → replace response                 │
+│   │ │ └── Return None → use original                             │
+│   │ │                                                            │
+│   │ │ If LLM requested a tool call:                              │
+│   │ │                                                            │
+│   │ │ 4. before_tool_callback                                    │
+│   │ │ │ ├── Return dict → skip tool, use as result               │
+│   │ │ │ └── Return None → continue                               │
+│   │ │ │                                                          │
+│   │ │ │   ┌──────────────┐                                       │
+│   │ │ │   │ Tool runs    │                                       │
+│   │ │ │   └──────────────┘                                       │
+│   │ │ │                                                          │
+│   │ │ 5. after_tool_callback                                     │
+│   │ │   ├── Return dict → replace result                         │
+│   │ │   └── Return None → use original                           │
+│   │ │                                                            │
+│   │ │ (Loop back to 2 if more tool calls needed)                 │
+│   │                                                              │
+│ 6. after_agent_callback                                          │
+│   ├── Return Content → append to response                        │
+│   └── Return None → no change                                    │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+Full callback signatures: see [04-agents.md](04-agents.md).
 
 **Example: Logging + rate limiting callback:**
 
 ```python
+import asyncio
 import time
 
 async def rate_limit_callback(
@@ -676,7 +702,7 @@ async def rate_limit_callback(
     now = time.time()
 
     if now - last_call < 1.0: # Min 1 second between calls
-    await asyncio.sleep(1.0 - (now - last_call))
+        await asyncio.sleep(1.0 - (now - last_call))
 
     callback_context.state["temp:last_llm_call"] = time.time()
     print(f"[LLM Call] {len(llm_request.contents)} messages in context")
@@ -692,7 +718,7 @@ root_agent = Agent(
 
 ---
 
-## 11. Putting It All Together: Complete Example
+### [ ] 11. Putting It All Together: Complete Example
 
 A realistic customer support agent system:
 
@@ -704,7 +730,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-# ─── Tools ─────────────────────────────────────────────
+# --- Tools ---
 
 def lookup_order(order_id: str, tool_context: ToolContext) -> str:
     """Look up an order by its ID."""
@@ -726,7 +752,7 @@ def transfer_to_human(summary: str) -> str:
     """Transfer the conversation to a human support agent."""
     return f"Transferred to human agent. Summary: {summary}"
 
-# ─── Agents ────────────────────────────────────────────
+# --- Agents ---
 
 order_agent = Agent(
     model="gemini-2.5-flash",
@@ -754,7 +780,7 @@ root_agent = Agent(
     sub_agents=[order_agent, refund_agent],
 )
 
-# ─── Run It ────────────────────────────────────────────
+# --- Run It ---
 
 async def main():
     session_service = InMemorySessionService()
@@ -811,29 +837,31 @@ refund_agent → initiate_refund("ORD-001", "Laptop arrived damaged")
 
 ---
 
-## 12. Quick Reference: Agent Configuration Cheat Sheet
+## Quick Reference Card
+
+### [ ] Agent Configuration Cheat Sheet
 
 ```python
 Agent(
-    # ─── Required ───────────────────────────────────────
+    # --- Required ---
     name="my_agent", # Valid Python identifier, NOT "user"
     model="gemini-2.5-flash", # Or inherit from parent agent
 
-    # ─── Common ─────────────────────────────────────────
+    # --- Common ---
     instruction="You are...", # System prompt (supports {state_key} placeholders)
     description="Does X", # Used by parent for transfer decisions
     tools=[func1, func2], # Functions, BaseTool, or BaseToolset instances
     sub_agents=[child1, child2], # Enable agent transfer
 
-    # ─── Output Control ─────────────────────────────────
+    # --- Output Control ---
     output_schema=MyModel, # Force structured JSON output (disables tools!)
     output_key="result", # Save output to session state
 
-    # ─── Transfer Control ────────────────────────────────
+    # --- Transfer Control ---
     disallow_transfer_to_parent=False, # Can this agent return to parent?
     disallow_transfer_to_peers=False, # Can this agent go to siblings?
 
-    # ─── Callbacks ───────────────────────────────────────
+    # --- Callbacks ---
     before_agent_callback=my_fn, # Before agent runs
     after_agent_callback=my_fn, # After agent completes
     before_model_callback=my_fn, # Before each LLM call
@@ -841,7 +869,7 @@ Agent(
     before_tool_callback=my_fn, # Before each tool execution
     after_tool_callback=my_fn, # After each tool execution
 
-    # ─── Advanced ────────────────────────────────────────
+    # --- Advanced ---
     generate_content_config=types.GenerateContentConfig(
     temperature=0.7,
     max_output_tokens=2048,
@@ -854,28 +882,28 @@ Agent(
 
 ---
 
-## 13. Where to Go Next
+### [ ] Where to Go Next
 
 ```
 You are here ────────────────────────────────────────────────────┐
-│ │
-│ ✅ 25-onboarding-guide.md (this file) │
-│ │ │
-│ ├── Want to avoid common mistakes? │
-│ │ → 20-best-practices.md │
-│ │ │
-│ ├── Want to go deeper into advanced patterns? │
-│ │ → 23-advanced-internals.md │
-│ │ │
-│ ├── Want to understand a specific component? │
-│ │ → 07-events.md through 10-apps.md (in order) │
-│ │ │
-│ ├── Want to see a full traced request? │
-│ │ → 01-request-lifecycle.md │
-│ │ │
-│ └── Need to decide which ADK component to use? │
-│ → 02-when-to-build-what.md │
-└─────────────────────────────────────────────────────────────────┘
+│                                                                │
+│  This file (25-onboarding-guide.md)                            │
+│   │                                                            │
+│   ├── Want to avoid common mistakes?                           │
+│   │   → 20-best-practices.md                                   │
+│   │                                                            │
+│   ├── Want to go deeper into advanced patterns?                │
+│   │   → 23-advanced-internals.md                               │
+│   │                                                            │
+│   ├── Want to understand a specific component?                 │
+│   │   → 07-events.md through 10-apps.md (in order)             │
+│   │                                                            │
+│   ├── Want to see a full traced request?                       │
+│   │   → 01-request-lifecycle.md                                │
+│   │                                                            │
+│   └── Need to decide which ADK component to use?               │
+│       → 02-when-to-build-what.md                               │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### [ ] Learning Paths — Pick Your Track

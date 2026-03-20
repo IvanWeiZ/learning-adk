@@ -1,64 +1,83 @@
-# Advanced ADK — Internals, Patterns, and Deep Customization
+# 23 — Advanced Internals: Processors, Plugins, A2A
 
-**Prerequisite:** [25-onboarding-guide.md](25-onboarding-guide.md), [20-best-practices.md](20-best-practices.md)
+> **Source:** [adk-python](https://github.com/google/adk-python) | **Prereqs:** [25-onboarding-guide.md](25-onboarding-guide.md), [20-best-practices.md](20-best-practices.md), [05-flows.md](05-flows.md) | **Official docs:** <https://google.github.io/adk-docs/agents/>
 
----
-
-## 1. The Processor Pipeline
-
-`BaseLlmFlow` runs **request processors** (build prompt) then **response processors** (handle output) in order for every LLM call.
-
-### [ ] Full Request Processor Pipeline
+## At a Glance
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ Request Processors (executed in order) │
-│ │
-│ ① basic Set model, config, output_schema │
-│ │ │
-│ ② auth_preprocessor Resume tool calls after auth completed │
-│ │ │
-│ ③ request_confirmation Set up tool confirmation prompts │
-│ │ │
-│ ④ instructions Inject system prompt + state placeholders │
-│ │ │
-│ ⑤ identity Add identity context (user info) │
-│ │ │
-│ ⑥ compaction Compact long conversation history │
-│ │ │
-│ ⑦ contents Build conversation messages array │
-│ │ Filter events, handle branches │
-│ │ │
-│ ⑧ context_cache Set up context caching for long prompts │
-│ │ │
-│ ⑨ interactions Stateful conversation API setup │
-│ │ │
-│ ⑩ nl_planning Mark thought/reasoning parts │
-│ │ │
-│ ⑪ code_execution Preprocess code blocks + data files │
-│ │ │
-│ ⑫ output_schema_processor Handle output_schema + tools workaround │
-│ │ │
-│ ▼ │
-│ LlmRequest ready → sent to model │
+│ ADK Internals — Three Pillars                                        │
+│                                                                      │
+│ ┌────────────────────┐ ┌──────────────────┐ ┌──────────────────┐    │
+│ │ Processor Pipeline │ │ Plugin System    │ │ A2A Protocol     │    │
+│ │                    │ │                  │ │                  │    │
+│ │ 12 request procs   │ │ Wraps agent      │ │ Cross-service    │    │
+│ │   ↓                │ │ lifecycle        │ │ agent comms      │    │
+│ │ LLM call           │ │   ↓              │ │   ↓              │    │
+│ │   ↓                │ │ before/after     │ │ ADK Event        │    │
+│ │ 2 response procs   │ │ every hook       │ │ ↔ A2A Message    │    │
+│ └────────────────────┘ └──────────────────┘ └──────────────────┘    │
+│                                                                      │
+│ + Custom Tools, Toolsets, Auth, Artifacts, Code Executors,           │
+│   Planners, Streaming, Event Compaction, Content Filtering           │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+This file covers the internal machinery of ADK: the processor pipeline that builds prompts and handles responses, the plugin system for cross-cutting concerns, custom tool patterns beyond `FunctionTool`, the authentication flow, artifact management, code execution, planners, A2A protocol, event compaction, content filtering, and streaming modes.
+
+## How It Works
+
+### [ ] 1. The Processor Pipeline
+
+`BaseLlmFlow` runs **request processors** (build prompt) then **response processors** (handle output) in order for every LLM call.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ Request Processors (executed in order)                                │
+│                                                                      │
+│ ① basic               Set model, config, output_schema               │
+│ │                                                                    │
+│ ② auth_preprocessor    Resume tool calls after auth completed        │
+│ │                                                                    │
+│ ③ request_confirmation Set up tool confirmation prompts              │
+│ │                                                                    │
+│ ④ instructions         Inject system prompt + state placeholders     │
+│ │                                                                    │
+│ ⑤ identity             Add identity context (user info)              │
+│ │                                                                    │
+│ ⑥ compaction           Compact long conversation history             │
+│ │                                                                    │
+│ ⑦ contents             Build conversation messages array             │
+│ │                       Filter events, handle branches               │
+│ │                                                                    │
+│ ⑧ context_cache        Set up context caching for long prompts       │
+│ │                                                                    │
+│ ⑨ interactions          Stateful conversation API setup              │
+│ │                                                                    │
+│ ⑩ nl_planning          Mark thought/reasoning parts                  │
+│ │                                                                    │
+│ ⑪ code_execution       Preprocess code blocks + data files           │
+│ │                                                                    │
+│ ⑫ output_schema_processor Handle output_schema + tools workaround   │
+│ │                                                                    │
+│ ▼                                                                    │
+│ LlmRequest ready → sent to model                                    │
 └──────────────────────────────────────────────────────────────────────┘
  │
  ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│ Response Processors (executed in order) │
-│ │
-│ ① nl_planning Extract planning tags from response │
-│ │ │
-│ ② code_execution Execute code blocks, capture output │
-│ │ │
-│ ▼ │
-│ LlmResponse processed → function calls extracted → tools run │
+│ Response Processors (executed in order)                               │
+│                                                                      │
+│ ① nl_planning          Extract planning tags from response           │
+│ │                                                                    │
+│ ② code_execution       Execute code blocks, capture output           │
+│ │                                                                    │
+│ ▼                                                                    │
+│ LlmResponse processed → function calls extracted → tools run        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] AutoFlow Adds Agent Transfer
-
-`AutoFlow` extends `SingleFlow` by injecting one extra request processor:
+AutoFlow adds agent transfer — `AutoFlow` extends `SingleFlow` by injecting one extra request processor:
 
 ```
 SingleFlow processors:
@@ -88,62 +107,60 @@ AutoFlow processors:
 
 ---
 
-## 2. The Reason-Act Loop — Step by Step
+### [ ] 2. The Reason-Act Loop — Step by Step
 
 The core loop in `BaseLlmFlow.run_async()`:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ BaseLlmFlow.run_async() Loop │
-│ │
-│ while True: │
-│ │ │
-│ │ ┌─────────────────────────────────────┐ │
-│ │ │ 1. Run all request processors │ │
-│ │ │ → builds LlmRequest │ │
-│ │ └─────────────────┬───────────────────┘ │
-│ │ │ │
-│ │ ┌─────────────────▼───────────────────┐ │
-│ │ │ 2. Call model.generate_content() │ │
-│ │ │ or model.connect() for live │ │
-│ │ │ → yields LlmResponse │ │
-│ │ └─────────────────┬───────────────────┘ │
-│ │ │ │
-│ │ ┌─────────────────▼───────────────────┐ │
-│ │ │ 3. Run all response processors │ │
-│ │ │ → may modify response │ │
-│ │ └─────────────────┬───────────────────┘ │
-│ │ │ │
-│ │ ┌─────────▼─────────┐ │
-│ │ │ Function calls? │ │
-│ │ └────┬─────────┬────┘ │
-│ │ Yes │ │ No │
-│ │ │ │ │
-│ │ ┌────────────▼──┐ │ │
-│ │ │ 4. Execute │ │ │
-│ │ │ tools in │ │ │
-│ │ │ parallel │ │ │
-│ │ └────────┬──────┘ │ │
-│ │ │ │ │
-│ │ ┌────────▼──────┐ │ │
-│ │ │ 5. Yield tool │ │ │
-│ │ │ events │ │ │
-│ │ └────────┬──────┘ │ │
-│ │ │ │ │
-│ │ continue loop │ │
-│ │ │ │
-│ │ ┌──────────────────────▼──────┐ │
-│ │ │ 6. Yield final text event │ │
-│ │ │ → break loop │ │
-│ │ └─────────────────────────────┘ │
-│ │ │
-│ end while │
+│ BaseLlmFlow.run_async() Loop                                     │
+│                                                                  │
+│ while True:                                                      │
+│ │                                                                │
+│ │ ┌─────────────────────────────────────┐                        │
+│ │ │ 1. Run all request processors      │                        │
+│ │ │    → builds LlmRequest             │                        │
+│ │ └─────────────────┬───────────────────┘                        │
+│ │                   │                                            │
+│ │ ┌─────────────────▼───────────────────┐                        │
+│ │ │ 2. Call model.generate_content()    │                        │
+│ │ │    or model.connect() for live      │                        │
+│ │ │    → yields LlmResponse            │                        │
+│ │ └─────────────────┬───────────────────┘                        │
+│ │                   │                                            │
+│ │ ┌─────────────────▼───────────────────┐                        │
+│ │ │ 3. Run all response processors     │                        │
+│ │ │    → may modify response           │                        │
+│ │ └─────────────────┬───────────────────┘                        │
+│ │                   │                                            │
+│ │         ┌─────────▼─────────┐                                  │
+│ │         │  Function calls?  │                                  │
+│ │         └────┬─────────┬────┘                                  │
+│ │          Yes │         │ No                                    │
+│ │              │         │                                        │
+│ │   ┌────────────▼──┐    │                                       │
+│ │   │ 4. Execute    │    │                                       │
+│ │   │    tools in   │    │                                       │
+│ │   │    parallel   │    │                                       │
+│ │   └────────┬──────┘    │                                       │
+│ │            │           │                                       │
+│ │   ┌────────▼──────┐    │                                       │
+│ │   │ 5. Yield tool │    │                                       │
+│ │   │    events     │    │                                       │
+│ │   └────────┬──────┘    │                                       │
+│ │            │           │                                       │
+│ │      continue loop     │                                       │
+│ │                        │                                       │
+│ │     ┌──────────────────────▼──────┐                            │
+│ │     │ 6. Yield final text event   │                            │
+│ │     │    → break loop             │                            │
+│ │     └─────────────────────────────┘                            │
+│ │                                                                │
+│ end while                                                        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Parallel Tool Execution
-
-When the LLM returns multiple function calls, ADK runs them concurrently:
+Parallel tool execution — when the LLM returns multiple function calls, ADK runs them concurrently:
 
 ```python
 # Inside handle_function_calls_async():
@@ -162,74 +179,72 @@ async def _execute_tools_parallel(function_calls, tool_context):
 
 ```
 LLM returns: [get_weather("Tokyo"), get_weather("London"), get_weather("NYC")]
- │ │ │
- ▼ ▼ ▼
- ┌──────────┐ ┌──────────┐ ┌──────────┐
- │ Task 1 │ │ Task 2 │ │ Task 3 │
- │ Tokyo │ │ London │ │ NYC │
- └────┬─────┘ └────┬─────┘ └────┬─────┘
- │ │ │
- └─────────────────────┼─────────────────────┘
- │
- asyncio.gather()
- │
- ▼
- All 3 results returned together
- → merged into single event
- → fed back to LLM in next iteration
+ │                         │                         │
+ ▼                         ▼                         ▼
+ ┌──────────┐  ┌──────────┐  ┌──────────┐
+ │  Task 1  │  │  Task 2  │  │  Task 3  │
+ │  Tokyo   │  │  London  │  │  NYC     │
+ └────┬─────┘  └────┬─────┘  └────┬─────┘
+      │              │              │
+      └─────────────────────┼─────────────────────┘
+                            │
+                     asyncio.gather()
+                            │
+                            ▼
+              All 3 results returned together
+              → merged into single event
+              → fed back to LLM in next iteration
 ```
 
 ---
 
-## 3. The Plugin System — Cross-Cutting Concerns
+### [ ] 3. The Plugin System — Cross-Cutting Concerns
 
 Plugins wrap the entire agent lifecycle. They execute **before** agent-level callbacks.
 
-### [ ] Plugin Execution Order
-
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ Full Callback Execution Order │
-│ │
-│ User message arrives │
-│ │ │
-│ ├── Plugin.on_user_message_callback() ← all plugins, in order │
-│ │ │
-│ ├── Plugin.before_run_callback() ← before runner starts │
-│ │ │
-│ │ ┌── Plugin.before_agent_callback() ← plugins first │
-│ │ ├── Agent.before_agent_callback() ← then agent callback │
-│ │ │ │
-│ │ │ ┌── Plugin.before_model_callback() │
-│ │ │ ├── Agent.before_model_callback() │
-│ │ │ │ │
-│ │ │ │ ══════ LLM CALL ══════ │
-│ │ │ │ │
-│ │ │ ├── Agent.after_model_callback() │
-│ │ │ └── Plugin.after_model_callback() │
-│ │ │ │
-│ │ │ ┌── Plugin.before_tool_callback() │
-│ │ │ ├── Agent.before_tool_callback() │
-│ │ │ │ │
-│ │ │ │ ══════ TOOL CALL ══════ │
-│ │ │ │ │
-│ │ │ ├── Agent.after_tool_callback() │
-│ │ │ └── Plugin.after_tool_callback() │
-│ │ │ │
-│ │ ├── Agent.after_agent_callback() │
-│ │ └── Plugin.after_agent_callback() │
-│ │ │
-│ ├── Plugin.on_event_callback() ← after each event yielded │
-│ │ │
-│ └── Plugin.after_run_callback() ← after runner completes │
-│ │
-│ Error paths: │
-│ ├── Plugin.on_model_error_callback() ← LLM errors │
-│ └── Plugin.on_tool_error_callback() ← Tool errors │
+│ Full Callback Execution Order                                        │
+│                                                                      │
+│ User message arrives                                                 │
+│ │                                                                    │
+│ ├── Plugin.on_user_message_callback()  ← all plugins, in order      │
+│ │                                                                    │
+│ ├── Plugin.before_run_callback()       ← before runner starts       │
+│ │                                                                    │
+│ │   ┌── Plugin.before_agent_callback() ← plugins first              │
+│ │   ├── Agent.before_agent_callback()  ← then agent callback        │
+│ │   │                                                                │
+│ │   │   ┌── Plugin.before_model_callback()                          │
+│ │   │   ├── Agent.before_model_callback()                           │
+│ │   │   │                                                            │
+│ │   │   │   ══════ LLM CALL ══════                                  │
+│ │   │   │                                                            │
+│ │   │   ├── Agent.after_model_callback()                            │
+│ │   │   └── Plugin.after_model_callback()                           │
+│ │   │                                                                │
+│ │   │   ┌── Plugin.before_tool_callback()                           │
+│ │   │   ├── Agent.before_tool_callback()                            │
+│ │   │   │                                                            │
+│ │   │   │   ══════ TOOL CALL ══════                                 │
+│ │   │   │                                                            │
+│ │   │   ├── Agent.after_tool_callback()                             │
+│ │   │   └── Plugin.after_tool_callback()                            │
+│ │   │                                                                │
+│ │   ├── Agent.after_agent_callback()                                │
+│ │   └── Plugin.after_agent_callback()                               │
+│ │                                                                    │
+│ ├── Plugin.on_event_callback()         ← after each event yielded   │
+│ │                                                                    │
+│ └── Plugin.after_run_callback()        ← after runner completes     │
+│                                                                      │
+│ Error paths:                                                         │
+│ ├── Plugin.on_model_error_callback()   ← LLM errors                │
+│ └── Plugin.on_tool_error_callback()    ← Tool errors                │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Building a Custom Plugin
+Building a custom plugin:
 
 ```python
 from google.adk.plugins import BasePlugin
@@ -277,13 +292,14 @@ class MetricsPlugin(BasePlugin):
         return None
 ```
 
-### [ ] Registering Plugins
+Registering plugins:
 
 ```python
 from google.adk.apps import App
 
 app = App(
-    agent=root_agent,
+    name="my_app",
+    root_agent=root_agent,
     plugins=[
         MetricsPlugin(),
         DebugLoggingPlugin(), # Built-in
@@ -293,9 +309,9 @@ app = App(
 
 ---
 
-## 4. Custom Tools — Beyond FunctionTool
+### [ ] 4. Custom Tools — Beyond FunctionTool
 
-### [ ] BaseTool Subclass (Full Lifecycle Control)
+**BaseTool subclass (full lifecycle control):**
 
 ```python
 from google.adk.tools import BaseTool
@@ -361,9 +377,7 @@ class HttpApiTool(BaseTool):
                 return {"status": response.status, "data": data}
 ```
 
-### [ ] LongRunningFunctionTool (Async Operations)
-
-For tools that take minutes/hours — file processing, CI/CD triggers, approval workflows:
+**LongRunningFunctionTool (async operations)** — for tools that take minutes/hours (file processing, CI/CD triggers, approval workflows):
 
 ```python
 from google.adk.tools import LongRunningFunctionTool
@@ -392,29 +406,29 @@ deploy_tool = LongRunningFunctionTool(func=start_deployment)
 ```
 
 ```
-Normal tool: LongRunningFunctionTool:
-┌─────────────┐ ┌─────────────┐
-│ LLM calls │ │ LLM calls │
-│ tool │ │ tool │
-└──────┬──────┘ └──────┬──────┘
- │ │
- ▼ ▼
-┌─────────────┐ ┌─────────────┐
-│ Tool runs │ │ Tool starts │
-│ (blocks) │ │ async work │
-│ 5 minutes │ │ returns ID │
-└──────┬──────┘ └──────┬──────┘
- │ │ (immediate)
- ▼ ▼
-┌─────────────┐ ┌─────────────┐
-│ Result sent │ │ LLM gets │
-│ to LLM │ │ tracking ID │
-└─────────────┘ │ tells user │
- │ to wait │
- └─────────────┘
+Normal tool:                LongRunningFunctionTool:
+┌─────────────┐             ┌─────────────┐
+│ LLM calls   │             │ LLM calls   │
+│ tool        │             │ tool        │
+└──────┬──────┘             └──────┬──────┘
+       │                           │
+       ▼                           ▼
+┌─────────────┐             ┌─────────────┐
+│ Tool runs   │             │ Tool starts │
+│ (blocks)    │             │ async work  │
+│ 5 minutes   │             │ returns ID  │
+└──────┬──────┘             └──────┬──────┘
+       │                           │ (immediate)
+       ▼                           ▼
+┌─────────────┐             ┌─────────────┐
+│ Result sent │             │ LLM gets    │
+│ to LLM      │             │ tracking ID │
+└─────────────┘             │ tells user  │
+                            │ to wait     │
+                            └─────────────┘
 ```
 
-### [ ] AgentTool (Wrap an Agent as a Tool)
+**AgentTool (wrap an agent as a tool):**
 
 ```python
 from google.adk.tools.agent_tool import AgentTool
@@ -444,48 +458,48 @@ root_agent = Agent(
 ```
 AgentTool execution flow:
 ┌─────────────────────────────────────────────────────┐
-│ Parent Agent calls research_tool(topic="quantum") │
-│ │ │
-│ ▼ │
-│ AgentTool.run_async(): │
-│ │ │
-│ │ 1. Create child Runner │
-│ │ 2. Create new session for child │
-│ │ 3. Run research_agent with input │
-│ │ 4. Collect all events from child │
-│ │ 5. Extract last content + state deltas │
-│ │ 6. Return result to parent │
-│ │ │
-│ │ ┌──────────────────────────────┐ │
-│ │ │ Child Agent (isolated) │ │
-│ │ │ - Own session │ │
-│ │ │ - Own conversation history │ │
-│ │ │ - Can use its own tools │ │
-│ │ └──────────────────────────────┘ │
-│ │ │
-│ ▼ │
-│ Parent receives result as tool output │
+│ Parent Agent calls research_tool(topic="quantum")   │
+│ │                                                   │
+│ ▼                                                   │
+│ AgentTool.run_async():                              │
+│ │                                                   │
+│ │ 1. Create child Runner                            │
+│ │ 2. Create new session for child                   │
+│ │ 3. Run research_agent with input                  │
+│ │ 4. Collect all events from child                  │
+│ │ 5. Extract last content + state deltas            │
+│ │ 6. Return result to parent                        │
+│ │                                                   │
+│ │ ┌──────────────────────────────┐                  │
+│ │ │ Child Agent (isolated)       │                  │
+│ │ │ - Own session                │                  │
+│ │ │ - Own conversation history   │                  │
+│ │ │ - Can use its own tools      │                  │
+│ │ └──────────────────────────────┘                  │
+│ │                                                   │
+│ ▼                                                   │
+│ Parent receives result as tool output               │
 └─────────────────────────────────────────────────────┘
 ```
 
-**AgentTool vs sub_agents:**
+AgentTool vs sub_agents:
 
 ```
 ┌──────────────────────┬──────────────────────────────────────────┐
-│ │ sub_agents AgentTool │
+│                      │ sub_agents          AgentTool            │
 ├──────────────────────┼──────────────────────────────────────────┤
-│ Transfer control? │ Yes (LLM decides) No (tool call) │
-│ Shares session? │ Yes (same session) No (new session)│
-│ Shares history? │ Yes (sees all msgs) No (isolated) │
-│ LLM picks when? │ Based on description Based on tool │
-│ Returns to parent? │ Via transfer back Automatically │
-│ Use case │ "Route to specialist" "Use as helper" │
+│ Transfer control?    │ Yes (LLM decides)   No (tool call)      │
+│ Shares session?      │ Yes (same session)  No (new session)    │
+│ Shares history?      │ Yes (sees all msgs) No (isolated)       │
+│ LLM picks when?      │ Based on description Based on tool      │
+│ Returns to parent?   │ Via transfer back   Automatically       │
+│ Use case             │ "Route to specialist" "Use as helper"   │
 └──────────────────────┴──────────────────────────────────────────┘
 ```
 
 ---
 
-## 5. Custom Toolsets — Dynamic Tool Collections
+### [ ] 5. Custom Toolsets — Dynamic Tool Collections
 
 `BaseToolset` provides tools dynamically at runtime, based on context:
 
@@ -537,80 +551,78 @@ class DatabaseToolset(BaseToolset):
 ```
 Toolset resolution at runtime:
 ┌──────────────────────────────────────────────────────────┐
-│ │
-│ Agent starts running │
-│ │ │
-│ ▼ │
-│ For each toolset in agent.tools: │
-│ │ │
-│ ├── Is it a BaseToolset? │
-│ │ Yes → call toolset.get_tools(readonly_context) │
-│ │ │ │
-│ │ ▼ │
-│ │ ┌─────────────────────────────────┐ │
-│ │ │ Toolset inspects context: │ │
-│ │ │ - User role │ │
-│ │ │ - Session state │ │
-│ │ │ - Available services │ │
-│ │ │ │ │
-│ │ │ Returns: [tool_a, tool_b, ...] │ │
-│ │ └─────────────────────────────────┘ │
-│ │ │
-│ ├── Is it a BaseTool? │
-│ │ Yes → use directly │
-│ │ │
-│ └── Is it a callable? │
-│ Yes → wrap in FunctionTool │
-│ │
-│ All tools combined → sent to LLM as function declarations │
+│                                                          │
+│ Agent starts running                                     │
+│ │                                                        │
+│ ▼                                                        │
+│ For each toolset in agent.tools:                         │
+│ │                                                        │
+│ ├── Is it a BaseToolset?                                 │
+│ │   Yes → call toolset.get_tools(readonly_context)       │
+│ │         │                                              │
+│ │         ▼                                              │
+│ │   ┌─────────────────────────────────┐                  │
+│ │   │ Toolset inspects context:       │                  │
+│ │   │ - User role                     │                  │
+│ │   │ - Session state                 │                  │
+│ │   │ - Available services            │                  │
+│ │   │                                 │                  │
+│ │   │ Returns: [tool_a, tool_b, ...]  │                  │
+│ │   └─────────────────────────────────┘                  │
+│ │                                                        │
+│ ├── Is it a BaseTool?                                    │
+│ │   Yes → use directly                                   │
+│ │                                                        │
+│ └── Is it a callable?                                    │
+│     Yes → wrap in FunctionTool                           │
+│                                                          │
+│ All tools combined → sent to LLM as function declarations│
 └──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. Authentication Flow — How Tools Get Credentials
-
-### [ ] The Full Auth Dance
+### [ ] 6. Authentication Flow — How Tools Get Credentials
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ Authentication Flow │
-│ │
-│ ① Tool needs credentials │
-│ │ tool_context.request_credential(auth_config) │
-│ │ │
-│ ② CredentialManager checks: │
-│ │ ┌──────────────────────────────────────┐ │
-│ │ │ 1. Load from credential_service │ │
-│ │ │ → Found and valid? Use it. Done. │ │
-│ │ │ │ │
-│ │ │ 2. Load from session state (temp:) │ │
-│ │ │ → Found? Try exchange/refresh. │ │
-│ │ │ │ │
-│ │ │ 3. Neither found? │ │
-│ │ │ → Request from user. │ │
-│ │ └──────────────────────────────────────┘ │
-│ │ │
-│ ③ If user auth needed: │
-│ │ EventActions.requested_auth_configs = [auth_config] │
-│ │ → ADK sends adk_request_credential function call to client │
-│ │ │
-│ ④ Client shows OAuth dialog / API key prompt │
-│ │ User provides credentials │
-│ │ │
-│ ⑤ Client sends credentials back as function response │
-│ │ │
-│ ⑥ AuthPreprocessor intercepts: │
-│ │ - Stores credential in session state (temp:credential_key) │
-│ │ - Identifies which tool calls to resume │
-│ │ │
-│ ⑦ Original tool re-executed with credential available │
-│ │ tool_context.load_credential() → returns the stored credential │
-│ │
+│ Authentication Flow                                                  │
+│                                                                      │
+│ ① Tool needs credentials                                            │
+│ │  tool_context.request_credential(auth_config)                     │
+│ │                                                                    │
+│ ② CredentialManager checks:                                         │
+│ │  ┌──────────────────────────────────────┐                         │
+│ │  │ 1. Load from credential_service     │                         │
+│ │  │    → Found and valid? Use it. Done. │                         │
+│ │  │                                      │                         │
+│ │  │ 2. Load from session state (temp:)  │                         │
+│ │  │    → Found? Try exchange/refresh.   │                         │
+│ │  │                                      │                         │
+│ │  │ 3. Neither found?                   │                         │
+│ │  │    → Request from user.             │                         │
+│ │  └──────────────────────────────────────┘                         │
+│ │                                                                    │
+│ ③ If user auth needed:                                              │
+│ │  EventActions.requested_auth_configs = [auth_config]              │
+│ │  → ADK sends adk_request_credential function call to client       │
+│ │                                                                    │
+│ ④ Client shows OAuth dialog / API key prompt                        │
+│ │  User provides credentials                                        │
+│ │                                                                    │
+│ ⑤ Client sends credentials back as function response                │
+│ │                                                                    │
+│ ⑥ AuthPreprocessor intercepts:                                      │
+│ │  - Stores credential in session state (temp:credential_key)       │
+│ │  - Identifies which tool calls to resume                          │
+│ │                                                                    │
+│ ⑦ Original tool re-executed with credential available               │
+│ │  tool_context.load_credential() → returns the stored credential   │
+│ │                                                                    │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Implementing an Authenticated Tool
+Implementing an authenticated tool:
 
 ```python
 from google.adk.tools.tool_context import ToolContext
@@ -659,43 +671,41 @@ agent = Agent(
 
 ---
 
-## 7. Artifacts — File Management Across Sessions
-
-### [ ] How Artifacts Work
+### [ ] 7. Artifacts — File Management Across Sessions
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Artifact System │
-│ │
-│ ┌───────────────────────────────────────────────┐ │
-│ │ ArtifactService │ │
-│ │ │ │
-│ │ save_artifact(filename, part) → version_id │ │
-│ │ load_artifact(filename, version?) → Part │ │
-│ │ list_artifact_keys() → [filenames] │ │
-│ │ delete_artifact(filename) │ │
-│ │ list_versions(filename) → [0, 1, 2, ...] │ │
-│ └───────────────────────────────────────────────┘ │
-│ │
-│ Storage backends: │
-│ ┌─────────────────┐ ┌─────────────────┐ ┌──────────────────┐ │
-│ │ InMemory │ │ FileArtifact │ │ GcsArtifact │ │
-│ │ (dev/test) │ │ (local disk) │ │ (Google Cloud) │ │
-│ └─────────────────┘ └─────────────────┘ └──────────────────┘ │
-│ │
-│ Scoping: │
-│ ├── Session-scoped: tied to one conversation │
-│ └── User-scoped: accessible across all sessions (session_id=None) │
-│ │
-│ Versioning: │
-│ save("report.pdf", v1) → version 0 │
-│ save("report.pdf", v2) → version 1 │
-│ load("report.pdf") → latest (version 1) │
-│ load("report.pdf", 0) → version 0 (original) │
+│ Artifact System                                                  │
+│                                                                  │
+│ ┌───────────────────────────────────────────────┐                │
+│ │ ArtifactService                               │                │
+│ │                                               │                │
+│ │ save_artifact(filename, part) → version_id    │                │
+│ │ load_artifact(filename, version?) → Part      │                │
+│ │ list_artifact_keys() → [filenames]            │                │
+│ │ delete_artifact(filename)                     │                │
+│ │ list_versions(filename) → [0, 1, 2, ...]     │                │
+│ └───────────────────────────────────────────────┘                │
+│                                                                  │
+│ Storage backends:                                                │
+│ ┌─────────────────┐ ┌─────────────────┐ ┌──────────────────┐    │
+│ │ InMemory        │ │ FileArtifact    │ │ GcsArtifact      │    │
+│ │ (dev/test)      │ │ (local disk)    │ │ (Google Cloud)   │    │
+│ └─────────────────┘ └─────────────────┘ └──────────────────┘    │
+│                                                                  │
+│ Scoping:                                                         │
+│ ├── Session-scoped: tied to one conversation                     │
+│ └── User-scoped: accessible across all sessions (session_id=None)│
+│                                                                  │
+│ Versioning:                                                      │
+│ save("report.pdf", v1) → version 0                              │
+│ save("report.pdf", v2) → version 1                              │
+│ load("report.pdf")     → latest (version 1)                     │
+│ load("report.pdf", 0)  → version 0 (original)                   │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Using Artifacts in Tools
+Using artifacts in tools:
 
 ```python
 from google.adk.tools.tool_context import ToolContext
@@ -724,49 +734,47 @@ async def load_previous_report(filename: str, tool_context: ToolContext) -> str:
 
 ---
 
-## 8. Code Executors — Running Code in Agents
-
-### [ ] Architecture
+### [ ] 8. Code Executors — Running Code in Agents
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Code Execution Pipeline │
-│ │
-│ LLM generates code block in response │
-│ │ │
-│ ▼ │
-│ Response processor extracts code: │
-│ ```python │
-│ import pandas as pd │
-│ df = pd.read_csv("data.csv") │
-│ print(df.describe()) │
-│ ``` │
-│ │ │
-│ ▼ │
-│ ┌──────────────────────────────────┐ │
-│ │ BaseCodeExecutor.execute_code() │ │
-│ │ │ │
-│ │ Implementations: │ │
-│ │ ├── BuiltInCodeExecutor │ ← Jupyter-like, in-process │
-│ │ ├── ContainerCodeExecutor │ ← Docker sandbox │
-│ │ ├── VertexAICodeExecutor │ ← Google Cloud │
-│ │ ├── UnsafeLocalCodeExecutor │ ← Direct execution (dev) │
-│ │ └── GKECodeExecutor │ ← Kubernetes pods │
-│ └──────────────────────────────────┘ │
-│ │ │
-│ ▼ │
-│ CodeExecutionResult: │
-│ ├── stdout: " col1 col2\nmean 42.0 ..." │
-│ ├── stderr: "" │
-│ └── output_files: ["chart.png"] → saved as artifacts │
-│ │ │
-│ ▼ │
-│ Output appended to conversation → LLM sees results │
-│ Output files saved as artifacts → user can download │
+│ Code Execution Pipeline                                          │
+│                                                                  │
+│ LLM generates code block in response                             │
+│ │                                                                │
+│ ▼                                                                │
+│ Response processor extracts code:                                │
+│ ```python                                                        │
+│ import pandas as pd                                              │
+│ df = pd.read_csv("data.csv")                                    │
+│ print(df.describe())                                             │
+│ ```                                                              │
+│ │                                                                │
+│ ▼                                                                │
+│ ┌──────────────────────────────────┐                             │
+│ │ BaseCodeExecutor.execute_code() │                             │
+│ │                                  │                             │
+│ │ Implementations:                 │                             │
+│ │ ├── BuiltInCodeExecutor          │ ← Jupyter-like, in-process │
+│ │ ├── ContainerCodeExecutor        │ ← Docker sandbox           │
+│ │ ├── VertexAICodeExecutor         │ ← Google Cloud             │
+│ │ ├── UnsafeLocalCodeExecutor      │ ← Direct execution (dev)   │
+│ │ └── GKECodeExecutor              │ ← Kubernetes pods          │
+│ └──────────────────────────────────┘                             │
+│ │                                                                │
+│ ▼                                                                │
+│ CodeExecutionResult:                                             │
+│ ├── stdout: "  col1   col2\nmean  42.0  ..."                    │
+│ ├── stderr: ""                                                   │
+│ └── output_files: ["chart.png"] → saved as artifacts            │
+│ │                                                                │
+│ ▼                                                                │
+│ Output appended to conversation → LLM sees results              │
+│ Output files saved as artifacts → user can download              │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Configuration
+Configuration:
 
 ```python
 from google.adk.code_executors import BuiltInCodeExecutor
@@ -777,69 +785,65 @@ agent = Agent(
     model="gemini-2.5-pro",
     instruction="""You are a data analyst. Write Python code to analyze data.
     Use pandas for data manipulation and matplotlib for charts.""",
-    code_executor=BuiltInCodeExecutor(
-        stateful=True, # Variables persist between code blocks
-        optimize_data_file=True, # Pre-process CSV files
-        error_retry_attempts=2, # Auto-retry on errors
-        timeout_seconds=30, # Execution timeout
-    ),
+    code_executor=BuiltInCodeExecutor(),
+    # Note: BuiltInCodeExecutor delegates to the model's built-in code
+    # execution (Gemini 2.0+). It has no constructor parameters — code
+    # execution configuration is handled by the model itself.
 )
 ```
 
 ---
 
-## 9. Planners — Structured Reasoning
+### [ ] 9. Planners — Structured Reasoning
 
-### [ ] PlanReActPlanner
-
-Adds explicit planning/reasoning tags to the LLM's response:
+**PlanReActPlanner** — adds explicit planning/reasoning tags to the LLM's response:
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ PlanReAct Flow │
-│ │
-│ User: "Research quantum computing and write a summary" │
-│ │ │
-│ ▼ │
-│ /*PLANNING*/ │
-│ 1. Search for recent quantum computing breakthroughs │
-│ 2. Read key papers and articles │
-│ 3. Synthesize findings into a summary │
-│ /*END PLANNING*/ │
-│ │ │
-│ ▼ │
-│ /*ACTION*/ │
-│ Call: web_search("quantum computing breakthroughs 2025") │
-│ /*END ACTION*/ │
-│ │ │
-│ ▼ │
-│ Tool result: [article1, article2, ...] │
-│ │ │
-│ ▼ │
-│ /*REASONING*/ │
-│ Found 3 relevant articles. article1 covers error correction, │
-│ article2 covers qubit scaling. Need to read article3. │
-│ /*END REASONING*/ │
-│ │ │
-│ ▼ │
-│ /*ACTION*/ │
-│ Call: read_article(url=article3.url) │
-│ /*END ACTION*/ │
-│ │ │
-│ ▼ │
-│ /*REPLANNING*/ │
-│ All research done. Proceeding to write summary. │
-│ /*END REPLANNING*/ │
-│ │ │
-│ ▼ │
-│ /*FINAL_ANSWER*/ │
-│ # Quantum Computing: 2025 Breakthroughs │
-│ Recent advances include... │
-│ /*END FINAL_ANSWER*/ │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ PlanReAct Flow                                                   │
+│                                                                  │
+│ User: "Research quantum computing and write a summary"           │
+│ │                                                                │
+│ ▼                                                                │
+│ /*PLANNING*/                                                     │
+│ 1. Search for recent quantum computing breakthroughs             │
+│ 2. Read key papers and articles                                  │
+│ 3. Synthesize findings into a summary                            │
+│ /*END PLANNING*/                                                 │
+│ │                                                                │
+│ ▼                                                                │
+│ /*ACTION*/                                                       │
+│ Call: web_search("quantum computing breakthroughs 2025")         │
+│ /*END ACTION*/                                                   │
+│ │                                                                │
+│ ▼                                                                │
+│ Tool result: [article1, article2, ...]                           │
+│ │                                                                │
+│ ▼                                                                │
+│ /*REASONING*/                                                    │
+│ Found 3 relevant articles. article1 covers error correction,     │
+│ article2 covers qubit scaling. Need to read article3.            │
+│ /*END REASONING*/                                                │
+│ │                                                                │
+│ ▼                                                                │
+│ /*ACTION*/                                                       │
+│ Call: read_article(url=article3.url)                             │
+│ /*END ACTION*/                                                   │
+│ │                                                                │
+│ ▼                                                                │
+│ /*REPLANNING*/                                                   │
+│ All research done. Proceeding to write summary.                  │
+│ /*END REPLANNING*/                                               │
+│ │                                                                │
+│ ▼                                                                │
+│ /*FINAL_ANSWER*/                                                 │
+│ # Quantum Computing: 2025 Breakthroughs                          │
+│ Recent advances include...                                       │
+│ /*END FINAL_ANSWER*/                                             │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] BuiltInPlanner (Model-Native Thinking)
+**BuiltInPlanner (model-native thinking):**
 
 ```python
 from google.adk.planners import BuiltInPlanner
@@ -850,7 +854,7 @@ agent = Agent(
     model="gemini-2.5-pro",
     planner=BuiltInPlanner(
     thinking_config=types.ThinkingConfig(
-    thinking_budget_tokens=2048, # Token budget for internal reasoning
+    thinking_budget=2048, # Token budget for internal reasoning
     ),
     ),
 )
@@ -858,36 +862,36 @@ agent = Agent(
 
 ---
 
-## 10. A2A (Agent-to-Agent Protocol) — Cross-Service Communication
+### [ ] 10. A2A (Agent-to-Agent Protocol) — Cross-Service Communication
 
 A2A enables agents running in different services to communicate:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ A2A Communication │
-│ │
-│ Service A (your app) Service B (remote agent) │
-│ ┌──────────────────┐ ┌──────────────────┐ │
-│ │ Your Agent │ │ Remote Agent │ │
-│ │ │ A2A │ │ │
-│ │ "I need weather │──Protocol──▶│ Weather service │ │
-│ │ data" │ │ processes request │ │
-│ │ │◀────────────│ returns data │ │
-│ └──────────────────┘ └──────────────────┘ │
-│ │
-│ Event Conversion: │
-│ ADK Event ──convert──▶ A2A Message ──convert──▶ ADK Event │
-│ │
-│ Metadata preserved: │
-│ ├── app_name, user_id, session_id │
-│ ├── invocation_id, author, event_id │
-│ ├── branch info │
-│ ├── grounding_metadata │
-│ └── custom_metadata (prefixed with "_adk_") │
+│ A2A Communication                                                    │
+│                                                                      │
+│ Service A (your app)            Service B (remote agent)             │
+│ ┌──────────────────┐            ┌──────────────────┐                │
+│ │ Your Agent       │            │ Remote Agent     │                │
+│ │                  │   A2A      │                  │                │
+│ │ "I need weather  │──Protocol──▶│ Weather service  │                │
+│ │  data"           │            │ processes request │                │
+│ │                  │◀────────────│ returns data     │                │
+│ └──────────────────┘            └──────────────────┘                │
+│                                                                      │
+│ Event Conversion:                                                    │
+│ ADK Event ──convert──▶ A2A Message ──convert──▶ ADK Event           │
+│                                                                      │
+│ Metadata preserved:                                                  │
+│ ├── app_name, user_id, session_id                                   │
+│ ├── invocation_id, author, event_id                                 │
+│ ├── branch info                                                      │
+│ ├── grounding_metadata                                               │
+│ └── custom_metadata (prefixed with "_adk_")                         │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] A2aAgentExecutor
+A2aAgentExecutor:
 
 ```python
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
@@ -895,56 +899,61 @@ from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 executor = A2aAgentExecutor(
     runner=my_runner, # Or a callable that returns a Runner
     config=A2aAgentExecutorConfig(
-        # Interceptors for request/response transformation
-        before_agent_interceptors=[validate_request],
-        after_agent_interceptors=[transform_response],
-        after_event_interceptors=[log_event],
+        # Interceptors use ExecuteInterceptor with before_agent/after_agent/after_event hooks
+        execute_interceptors=[
+            ExecuteInterceptor(
+                before_agent=validate_request,   # async (RequestContext) -> RequestContext
+                after_agent=transform_response,  # async (ExecutorContext, TaskStatusUpdateEvent) -> TaskStatusUpdateEvent
+                after_event=log_event,           # async (ExecutorContext, A2AEvent, Event) -> A2AEvent | None
+            ),
+        ],
     ),
 )
 ```
 
 ---
 
-## 11. Event Compaction — Managing Long Conversations
+### [ ] 11. Event Compaction — Managing Long Conversations
 
 As conversations grow, the context window fills up. Compaction summarizes old events:
 
 ```
 Before compaction (20 events, ~8000 tokens):
 ┌──────────────────────────────────────────┐
-│ Event 1: User asks about weather │
-│ Event 2: Agent calls get_weather │
-│ Event 3: Tool returns weather data │
-│ Event 4: Agent responds with weather │
-│ Event 5: User asks about restaurants │
-│ ... │
-│ Event 18: User asks about hotel │
-│ Event 19: Agent calls search_hotels │
-│ Event 20: Agent responds with hotels │
+│ Event 1: User asks about weather         │
+│ Event 2: Agent calls get_weather         │
+│ Event 3: Tool returns weather data       │
+│ Event 4: Agent responds with weather     │
+│ Event 5: User asks about restaurants     │
+│ ...                                      │
+│ Event 18: User asks about hotel          │
+│ Event 19: Agent calls search_hotels      │
+│ Event 20: Agent responds with hotels     │
 └──────────────────────────────────────────┘
 
 After compaction (summary + recent events):
 ┌──────────────────────────────────────────┐
-│ [Compaction Summary]: │
-│ "User asked about weather in Tokyo │
-│ (sunny, 22°C), then searched for │
-│ restaurants (found 3 options), then │
-│ discussed pricing..." │
-│ │
-│ Event 18: User asks about hotel │
-│ Event 19: Agent calls search_hotels │
-│ Event 20: Agent responds with hotels │
+│ [Compaction Summary]:                    │
+│ "User asked about weather in Tokyo       │
+│  (sunny, 22C), then searched for         │
+│  restaurants (found 3 options), then     │
+│  discussed pricing..."                   │
+│                                          │
+│ Event 18: User asks about hotel          │
+│ Event 19: Agent calls search_hotels      │
+│ Event 20: Agent responds with hotels     │
 └──────────────────────────────────────────┘
 ```
 
-### [ ] Configuration
+Configuration:
 
 ```python
 from google.adk.apps import App
-from google.adk.apps.events_compaction_config import EventsCompactionConfig
+from google.adk.apps.app import EventsCompactionConfig
 
 app = App(
-    agent=root_agent,
+    name="my_app",
+    root_agent=root_agent,
     events_compaction_config=EventsCompactionConfig(
         compaction_interval=5, # Compact every 5 turns
         overlap_size=1, # Keep 1 recent turn uncompacted
@@ -954,44 +963,44 @@ app = App(
 
 ---
 
-## 12. Content Filtering — How Events Become Context
+### [ ] 12. Content Filtering — How Events Become Context
 
 Not every event in the session becomes part of the LLM context. The `contents` processor filters:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Content Filtering Rules │
-│ │
-│ Session has 50 events. Which ones go to the LLM? │
-│ │
-│ For each event: │
-│ │ │
-│ ├── Empty content? → SKIP │
-│ │ │
-│ ├── Wrong branch? → SKIP │
-│ │ (events from other agent │ │
-│ │ branches are filtered out) │ │
-│ │ │
-│ ├── Framework event? → SKIP │
-│ │ (auth requests, confirmations) │ │
-│ │ │
-│ ├── Thought-only parts? → SKIP (unless planning) │
-│ │ │
-│ ├── Compaction event? → INCLUDE as summary │
-│ │ │
-│ ├── Rewind event? → Undo previous events │
-│ │ │
-│ └── Normal content? → INCLUDE │
-│ │
-│ Special modes: │
-│ ├── include_contents='default' → full filtered history │
-│ └── include_contents='none' → current turn only │
+│ Content Filtering Rules                                          │
+│                                                                  │
+│ Session has 50 events. Which ones go to the LLM?                 │
+│                                                                  │
+│ For each event:                                                  │
+│ │                                                                │
+│ ├── Empty content?        → SKIP                                 │
+│ │                                                                │
+│ ├── Wrong branch?         → SKIP                                 │
+│ │   (events from other agent                                     │
+│ │    branches are filtered out)                                  │
+│ │                                                                │
+│ ├── Framework event?      → SKIP                                 │
+│ │   (auth requests, confirmations)                               │
+│ │                                                                │
+│ ├── Thought-only parts?   → SKIP (unless planning)              │
+│ │                                                                │
+│ ├── Compaction event?     → INCLUDE as summary                   │
+│ │                                                                │
+│ ├── Rewind event?         → Undo previous events                 │
+│ │                                                                │
+│ └── Normal content?       → INCLUDE                              │
+│                                                                  │
+│ Special modes:                                                   │
+│ ├── include_contents='default' → full filtered history           │
+│ └── include_contents='none'    → current turn only               │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 13. Function Call ID Management
+### [ ] 13. Function Call ID Management
 
 ADK tracks function calls with client-side IDs:
 
@@ -1024,9 +1033,9 @@ Before sending back to LLM, ADK strips the "adk-" prefix:
 
 ---
 
-## 14. Streaming and Live Mode
+### [ ] 14. Streaming and Live Mode
 
-### [ ] Standard Streaming
+Standard streaming:
 
 ```python
 # Events are yielded as they're produced
@@ -1039,17 +1048,17 @@ async for event in runner.run_async(session_id, user_id, message):
                 print(f"\n[Calling {part.function_call.name}...]")
 ```
 
-### [ ] Live Mode (Bidirectional Streaming)
+Live mode (bidirectional streaming):
 
 ```
-Standard mode: Live mode:
-User ──msg──▶ Agent User ◀══════▶ Agent
- │ ║
- ▼ ║ Bidirectional
- Response ║ streaming
- │ ║
- ▼ Audio/Video
- User in real-time
+Standard mode:              Live mode:
+User ──msg──▶ Agent         User ◀══════▶ Agent
+              │                  ║
+              ▼                  ║ Bidirectional
+         Response                ║ streaming
+              │                  ║
+              ▼               Audio/Video
+             User            in real-time
 ```
 
 ```python
@@ -1067,9 +1076,9 @@ async def live_tool(
 
 ---
 
-## 15. Advanced Agent Patterns
+### [ ] 15. Advanced Agent Patterns
 
-### [ ] Pattern: Guardrail Agent
+**Pattern: Guardrail Agent**
 
 ```python
 async def safety_check(callback_context, llm_response):
@@ -1093,7 +1102,7 @@ agent = Agent(
 )
 ```
 
-### [ ] Pattern: Retry with Reflection
+**Pattern: Retry with Reflection**
 
 ```python
 async def retry_on_tool_error(tool, args, tool_context, tool_response):
@@ -1110,7 +1119,7 @@ async def retry_on_tool_error(tool, args, tool_context, tool_response):
     return None
 ```
 
-### [ ] Pattern: Dynamic Instruction Based on Conversation Phase
+**Pattern: Dynamic Instruction Based on Conversation Phase**
 
 ```python
 async def phase_aware_instruction(ctx) -> str:
@@ -1134,11 +1143,25 @@ agent = Agent(
 )
 ```
 
----
+## Examples
 
-## Cross-references
+See the inline code throughout "How It Works" above. Each section contains production-ready patterns from the adk-python source tree.
 
-- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you're new
+## Gotchas
+
+- **Processor order matters** — request processors run in a fixed sequence. If you override or extend a flow, inserting a processor in the wrong position can break downstream processors.
+- **Plugin callbacks run before agent callbacks** — for `before_*` hooks, plugins execute first. For `after_*` hooks, agent callbacks run first, then plugins. This asymmetry is intentional but easy to forget.
+- **`AutoFlow` silently adds `transfer_to_agent`** — if your agent has `sub_agents`, `AutoFlow` injects a transfer tool. This can conflict if you define your own tool with a similar name.
+- **`AgentTool` creates isolated sessions** — the child agent gets its own session and conversation history. State changes in the child do not propagate to the parent unless explicitly handled via state deltas.
+- **`BaseToolset.get_tools()` is called per-request** — tools are resolved dynamically before each LLM call. If your toolset is expensive to evaluate, cache the results.
+- **Auth flow requires resumability** — credential requests pause the agent. Without proper `ResumabilityConfig`, the flow cannot resume after the user provides credentials.
+- **Compaction loses detail** — compacted events are replaced by a summary. If downstream logic depends on specific past tool responses, compaction may break it.
+- **Content filtering hides events** — events from other branches, framework events, and empty events are silently excluded from LLM context. This can be confusing when debugging why the model "forgot" something.
+- **Function call IDs are rewritten** — ADK wraps server IDs with `adk-` prefixed client IDs during execution, then strips them before sending back. Do not rely on raw IDs from LLM responses.
+
+## Related
+
+- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you are new
 - [20-best-practices.md](20-best-practices.md) — Common mistakes to avoid
 - [07-events.md](07-events.md) — Event class deep dive
 - [05-flows.md](05-flows.md) — Flow architecture

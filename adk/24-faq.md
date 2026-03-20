@@ -1,12 +1,32 @@
-# ADK Frequently Asked Questions
+# 24 — FAQ: Common Questions & Answers
 
----
+> **Source:** patterns across all ADK modules | **Prereqs:** 04-agents, 08-sessions, 09-tools | **Official docs:** <https://google.github.io/adk-docs/get-started/quickstart/>
 
-## Q1: What Is the Best Way to Do Tool Versioning?
+## At a Glance
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    FAQ Topic Map                             │
+│                                                              │
+│  Q1  Tool Versioning ──► Named versions / Toolset / Callback │
+│  Q2  Testing Strategy ──► Unit → Integration → E2E pyramid  │
+│  Q3  Preprocessing ──► before_agent / Plugin / SequentialAgent│
+│  Q4  Message Passing ──► State / Tool writes / Transfer / AgentTool│
+│  Q5  State Scopes ──► session / user: / app: / temp:         │
+│                                                              │
+│  Each question maps a common scenario to concrete ADK code.  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Five frequently asked questions that come up when building production ADK agents. Each answer provides multiple patterns with trade-off analysis so you can pick the right approach for your situation.
+
+## Core Questions
+
+### [ ] Q1: What Is the Best Way to Do Tool Versioning?
 
 ADK has no built-in tool versioning. Three patterns:
 
-### [ ] Pattern A: Version in the Tool Name (Simplest)
+#### [ ] Pattern A: Version in the Tool Name (Simplest)
 
 Run versions side-by-side. The LLM picks based on description.
 
@@ -31,23 +51,23 @@ agent = Agent(
 ```
 Migration timeline:
 ┌──────────────────────────────────────────────────────────┐
-│ │
-│ Phase 1: Both versions available │
-│ tools=[search_v1, search_v2] │
-│ instruction="Prefer v2" │
-│ │ │
-│ ▼ │
-│ Phase 2: Monitor — is v1 still being called? │
-│ (Use before_tool_callback to log tool usage) │
-│ │ │
-│ ▼ │
-│ Phase 3: Remove old version │
-│ tools=[search_v2] (rename to search_products) │
-│ │
+│                                                          │
+│ Phase 1: Both versions available                         │
+│   tools=[search_v1, search_v2]                           │
+│   instruction="Prefer v2"                                │
+│   │                                                      │
+│   ▼                                                      │
+│ Phase 2: Monitor — is v1 still being called?             │
+│   (Use before_tool_callback to log tool usage)           │
+│   │                                                      │
+│   ▼                                                      │
+│ Phase 3: Remove old version                              │
+│   tools=[search_v2] (rename to search_products)          │
+│                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern B: Toolset with Version Selection (Dynamic)
+#### [ ] Pattern B: Toolset with Version Selection (Dynamic)
 
 Use a `BaseToolset` to serve different versions based on context:
 
@@ -90,23 +110,23 @@ agent = Agent(
 ```
 How it works at runtime:
 ┌──────────────────────────────────────────────────────────┐
-│ │
-│ User A (feature_flags: {search_version: "v1"}) │
-│ │ │
-│ ▼ │
-│ VersionedToolset.get_tools() │
-│ → returns [search_products_v1] │
-│ │
-│ User B (feature_flags: {}) ← default │
-│ │ │
-│ ▼ │
-│ VersionedToolset.get_tools() │
-│ → returns [search_products_v2] │
-│ │
+│                                                          │
+│ User A (feature_flags: {search_version: "v1"})           │
+│   │                                                      │
+│   ▼                                                      │
+│   VersionedToolset.get_tools()                           │
+│   → returns [search_products_v1]                         │
+│                                                          │
+│ User B (feature_flags: {}) ← default                     │
+│   │                                                      │
+│   ▼                                                      │
+│   VersionedToolset.get_tools()                           │
+│   → returns [search_products_v2]                         │
+│                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern C: Callback-Based Migration (Transparent)
+#### [ ] Pattern C: Callback-Based Migration (Transparent)
 
 Use `before_tool_callback` to silently redirect old tool calls to new implementations:
 
@@ -133,284 +153,49 @@ agent = Agent(
 )
 ```
 
-### [ ] Summary: When to Use Each Pattern
+#### [ ] Summary: When to Use Each Pattern
 
 ```
 ┌──────────────────┬─────────────────────────────────────────────┐
-│ Pattern │ Best For │
+│ Pattern          │ Best For                                    │
 ├──────────────────┼─────────────────────────────────────────────┤
-│ A: Named versions│ Simple migration, few tools │
-│ B: Toolset │ Feature flags, A/B testing, per-user │
-│ C: Callback │ Transparent migration, no LLM retraining │
+│ A: Named versions│ Simple migration, few tools                 │
+│ B: Toolset       │ Feature flags, A/B testing, per-user        │
+│ C: Callback      │ Transparent migration, no LLM retraining    │
 └──────────────────┴─────────────────────────────────────────────┘
 ```
 
 ---
 
-## Q2: What Is the Best Way to Test Each ADK Component and E2E?
+### [ ] Q2: What Is the Best Way to Test Each ADK Component and E2E?
 
-### [ ] Unit Testing Individual Components
-
-#### [ ] Testing Tools (Isolated)
-
-```python
-import pytest
-from unittest.mock import AsyncMock, MagicMock
-from google.adk.tools.tool_context import ToolContext
-
-@pytest.mark.asyncio
-async def test_add_to_cart():
-    """Test a tool function in isolation with a mock ToolContext."""
-    # Create a mock ToolContext with real state behavior
-    mock_context = MagicMock(spec=ToolContext)
-    mock_context.state = {} # Real dict for state
-
-    # Call the tool directly
-    result = add_to_cart("Laptop", 1, tool_context=mock_context)
-
-    # Assert tool behavior
-    assert "Laptop" in result
-    assert mock_context.state["cart"] == [{"item": "Laptop", "qty": 1}]
-
-@pytest.mark.asyncio
-async def test_tool_handles_missing_data():
-    """Test tool error handling."""
-    mock_context = MagicMock(spec=ToolContext)
-    mock_context.state = {}
-
-    result = lookup_order("NONEXISTENT", tool_context=mock_context)
-
-    assert "not found" in result.lower()
-    # Verify no state corruption
-    assert "current_order" not in mock_context.state
-```
-
-```
-Unit test architecture:
-┌──────────────────────────────────────────────────────────────┐
-│ │
-│ What to mock: What to keep real: │
-│ ┌───────────────────┐ ┌───────────────────────────┐ │
-│ │ ToolContext │ │ Your tool function │ │
-│ │ External APIs │ │ Your business logic │ │
-│ │ Database calls │ │ Argument validation │ │
-│ │ HTTP clients │ │ State read/write logic │ │
-│ └───────────────────┘ └───────────────────────────┘ │
-│ │
-└──────────────────────────────────────────────────────────────┘
-```
-
-#### [ ] Testing Callbacks (Isolated)
-
-```python
-import pytest
-from unittest.mock import MagicMock
-
-@pytest.mark.asyncio
-async def test_rate_limit_callback():
-    """Test before_model_callback in isolation."""
-    mock_context = MagicMock()
-    mock_context.state = {"temp:last_llm_call": 0}
-
-    mock_request = MagicMock()
-    mock_request.contents = [MagicMock(), MagicMock()]
-
-    result = await rate_limit_callback(mock_context, mock_request)
-
-    # Callback should return None (continue) and update timestamp
-    assert result is None
-    assert mock_context.state["temp:last_llm_call"] > 0
-```
-
-#### [ ] Testing Agent Configuration (No LLM Call)
-
-```python
-def test_agent_configuration():
-    """Verify agent is configured correctly without calling the LLM."""
-    agent = build_support_agent()
-
-    # Check structure
-    assert agent.name == "support_bot"
-    assert len(agent.sub_agents) == 2
-    assert agent.sub_agents[0].name == "order_agent"
-    assert agent.sub_agents[1].name == "refund_agent"
-
-    # Check tools are attached
-    tool_names = [t.name for t in agent.tools]
-    assert "transfer_to_human" in tool_names
-
-    # Check sub-agent tools
-    order_tools = [t.name for t in agent.sub_agents[0].tools]
-    assert "lookup_order" in order_tools
-```
-
-#### [ ] Testing Plugins (Isolated)
-
-```python
-@pytest.mark.asyncio
-async def test_metrics_plugin_tracks_tokens():
-    """Test plugin callback in isolation."""
-    plugin = MetricsPlugin()
-    mock_context = MagicMock()
-    mock_context.state = {}
-
-    mock_response = MagicMock()
-    mock_response.usage_metadata.total_token_count = 500
-
-    await plugin.after_model_callback(
-        callback_context=mock_context,
-        llm_response=mock_response,
-    )
-
-    assert mock_context.state["user:total_tokens"] == 500
-```
-
-### [ ] Integration Testing (Real ADK, Mock LLM)
-
-```python
-import pytest
-from unittest.mock import AsyncMock, patch
-from google.adk import Agent
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
-
-@pytest.mark.asyncio
-async def test_agent_uses_tool_correctly():
-    """Integration test: real ADK pipeline, real tools, real LLM."""
-    # Use a cheap/fast model for integration tests
-    agent = Agent(
-        model="gemini-2.5-flash",
-        name="test_agent",
-        instruction="Use get_weather to answer weather questions.",
-        tools=[mock_get_weather], # Real FunctionTool, mock implementation
-    )
-
-    session_service = InMemorySessionService()
-    runner = Runner(
-        agent=agent,
-        app_name="test",
-        session_service=session_service,
-    )
-
-    session = await session_service.create_session(
-        app_name="test", user_id="test_user"
-    )
-
-    events = []
-    async for event in runner.run_async(
-        session_id=session.id,
-        user_id="test_user",
-        new_message=types.Content(
-            role="user",
-            parts=[types.Part(text="What's the weather in Tokyo?")],
-        ),
-    ):
-        events.append(event)
-
-    # Verify a tool was called
-    tool_events = [e for e in events if e.content and any(
-        p.function_call for p in (e.content.parts or [])
-    )]
-    assert len(tool_events) > 0
-
-    # Verify final response mentions Tokyo
-    final_text = ""
-    for e in events:
-        if e.content and e.content.parts:
-            for p in e.content.parts:
-                if p.text:
-                    final_text += p.text
-    assert "tokyo" in final_text.lower() or "22" in final_text
-```
-
-### [ ] E2E Testing (Full Agent System)
-
-```python
-@pytest.mark.asyncio
-async def test_multi_agent_e2e():
-    """End-to-end test: full multi-agent conversation."""
-    # Build the complete agent tree
-    root_agent = build_production_agent()
-
-    session_service = InMemorySessionService()
-    runner = Runner(
-        agent=root_agent,
-        app_name="e2e_test",
-        session_service=session_service,
-    )
-
-    session = await session_service.create_session(
-        app_name="e2e_test", user_id="test_user"
-    )
-
-    # Simulate multi-turn conversation
-    conversation = [
-        "I need to check my order ORD-001",
-        "I want a refund for it",
-        "The laptop arrived damaged",
-    ]
-
-    all_events = []
-    for msg in conversation:
-        async for event in runner.run_async(
-            session_id=session.id,
-            user_id="test_user",
-            new_message=types.Content(
-                role="user",
-                parts=[types.Part(text=msg)],
-            ),
-        ):
-            all_events.append(event)
-
-    # Verify agent transfers happened
-    authors = {e.author for e in all_events if e.author}
-    assert "order_agent" in authors or "refund_agent" in authors
-
-    # Verify refund was initiated
-    final_text = " ".join(
-        p.text for e in all_events
-        if e.content and e.content.parts
-        for p in e.content.parts if p.text
-    )
-    assert "refund" in final_text.lower()
-
-    # Verify session state was updated
-    updated_session = await session_service.get_session(
-        app_name="e2e_test",
-        user_id="test_user",
-        session_id=session.id,
-    )
-    assert "current_order" in updated_session.state
-```
-
-### [ ] Test Strategy Summary
+For MockModel, InMemoryRunner, and deterministic test patterns, see [22-testing.md](22-testing.md).
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Testing Pyramid for ADK │
-│ │
-│ ┌─────┐ │
-│ / E2E \ Few, slow, expensive │
-│ / (real \ Full conversation flows │
-│ / LLM) \ Multi-turn + transfers │
-│ ─────────────── │
-│ / Integration \ Medium count │
-│ / (real ADK, \ Real pipeline, mock APIs │
-│ / cheap model) \ Single-turn verification │
-│ ───────────────────── │
-│ / Unit Tests \ Many, fast, cheap │
-│ / (mock ToolContext, \ Tools, callbacks, config │
-│ / no LLM, no ADK) \ State logic, validation │
-│ ───────────────────────────── │
+│                    Testing Pyramid for ADK                       │
+│                                                                  │
+│              ┌─────┐                                             │
+│             / E2E   \       Few, slow, expensive                 │
+│            / (real    \     Full conversation flows               │
+│           /   LLM)     \   Multi-turn + transfers                │
+│          ───────────────                                         │
+│         / Integration    \   Medium count                        │
+│        / (real ADK,       \  Real pipeline, mock APIs            │
+│       /   cheap model)     \ Single-turn verification            │
+│      ───────────────────────                                     │
+│     / Unit Tests             \  Many, fast, cheap                │
+│    / (mock ToolContext,       \ Tools, callbacks, config         │
+│   /   no LLM, no ADK)         \State logic, validation          │
+│  ───────────────────────────────                                 │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Q3: What Is the Best Way to Preprocess User Requests (Extract IDs, Enrich Data)?
+### [ ] Q3: What Is the Best Way to Preprocess User Requests (Extract IDs, Enrich Data)?
 
-### [ ] Pattern A: before_agent_callback (Recommended)
+#### [ ] Pattern A: before_agent_callback (Recommended)
 
 Intercept the request before the agent sees it, extract IDs, fetch additional data, and inject it into state:
 
@@ -460,39 +245,39 @@ root_agent = Agent(
 ```
 Request flow with preprocessing:
 ┌──────────────────────────────────────────────────────────────┐
-│ │
-│ User: "Help with order ORD-123, I'm customer CUST-456" │
-│ │ │
-│ ▼ │
-│ ┌──────────────────────────────────────┐ │
-│ │ before_agent_callback │ │
-│ │ │ │
-│ │ 1. Extract "ORD-123" from message │ │
-│ │ 2. Extract "CUST-456" from message │ │
-│ │ 3. Fetch order details from DB │ │
-│ │ 4. Fetch customer profile from DB │ │
-│ │ 5. Store in temp: state │ │
-│ └──────────────────┬───────────────────┘ │
-│ │ │
-│ ▼ │
-│ ┌──────────────────────────────────────┐ │
-│ │ Agent runs with enriched context │ │
-│ │ │ │
-│ │ state["temp:order_context"] = │ │
-│ │ {status: "shipped", items: [...]} │ │
-│ │ │ │
-│ │ state["temp:customer_context"] = │ │
-│ │ {name: "Alice", tier: "premium"} │ │
-│ │ │ │
-│ │ → Agent already knows the context │ │
-│ │ → No need for extra tool calls │ │
-│ │ → Faster, cheaper response │ │
-│ └──────────────────────────────────────┘ │
-│ │
+│                                                              │
+│ User: "Help with order ORD-123, I'm customer CUST-456"       │
+│   │                                                          │
+│   ▼                                                          │
+│   ┌──────────────────────────────────────┐                   │
+│   │ before_agent_callback                │                   │
+│   │                                      │                   │
+│   │ 1. Extract "ORD-123" from message    │                   │
+│   │ 2. Extract "CUST-456" from message   │                   │
+│   │ 3. Fetch order details from DB       │                   │
+│   │ 4. Fetch customer profile from DB    │                   │
+│   │ 5. Store in temp: state              │                   │
+│   └──────────────────┬───────────────────┘                   │
+│                      │                                       │
+│                      ▼                                       │
+│   ┌──────────────────────────────────────┐                   │
+│   │ Agent runs with enriched context     │                   │
+│   │                                      │                   │
+│   │ state["temp:order_context"] =        │                   │
+│   │   {status: "shipped", items: [...]}  │                   │
+│   │                                      │                   │
+│   │ state["temp:customer_context"] =     │                   │
+│   │   {name: "Alice", tier: "premium"}   │                   │
+│   │                                      │                   │
+│   │ → Agent already knows the context    │                   │
+│   │ → No need for extra tool calls       │                   │
+│   │ → Faster, cheaper response           │                   │
+│   └──────────────────────────────────────┘                   │
+│                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Pattern B: Plugin (Reusable Across Agents)
+#### [ ] Pattern B: Plugin (Reusable Across Agents)
 
 ```python
 from google.adk.plugins import BasePlugin
@@ -537,10 +322,10 @@ enrichment = IdEnrichmentPlugin(
     fetchers={"order": fetch_order, "customer": fetch_customer},
 )
 
-app = App(agent=root_agent, plugins=[enrichment])
+app = App(name="my_app", root_agent=root_agent, plugins=[enrichment])
 ```
 
-### [ ] Pattern C: SequentialAgent with Preprocessor Agent
+#### [ ] Pattern C: SequentialAgent with Preprocessor Agent
 
 ```python
 from google.adk import Agent
@@ -576,35 +361,35 @@ root_agent = SequentialAgent(
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ Pattern comparison: │
-│ │
-│ A: before_agent_callback │
-│ ✅ No extra LLM call (cheapest) │
-│ ✅ Deterministic extraction (regex) │
-│ ❌ Only works for known patterns │
-│ │
-│ B: Plugin │
-│ ✅ Reusable across agents │
-│ ✅ No extra LLM call │
-│ ❌ Same limitation as A │
-│ │
-│ C: SequentialAgent │
-│ ✅ LLM handles ambiguous input │
-│ ✅ Can extract complex entities │
-│ ❌ Extra LLM call (slower, costlier) │
-│ │
-│ Recommendation: Use A or B for known ID formats, │
-│ use C when extraction requires understanding. │
+│ Pattern comparison:                                 │
+│                                                     │
+│ A: before_agent_callback                            │
+│   + No extra LLM call (cheapest)                    │
+│   + Deterministic extraction (regex)                │
+│   - Only works for known patterns                   │
+│                                                     │
+│ B: Plugin                                           │
+│   + Reusable across agents                          │
+│   + No extra LLM call                               │
+│   - Same limitation as A                            │
+│                                                     │
+│ C: SequentialAgent                                  │
+│   + LLM handles ambiguous input                     │
+│   + Can extract complex entities                    │
+│   - Extra LLM call (slower, costlier)               │
+│                                                     │
+│ Recommendation: Use A or B for known ID formats,    │
+│ use C when extraction requires understanding.       │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Q4: What Is the Best Way to Pass Messages Between Agents?
+### [ ] Q4: What Is the Best Way to Pass Messages Between Agents?
 
 Four mechanisms:
 
-### [ ] Method 1: Session State (Most Common)
+#### [ ] Method 1: Session State (Most Common)
 
 Agents in the same session share state via `output_key` or direct writes:
 
@@ -633,30 +418,30 @@ root = SequentialAgent(
 ```
 State-based message passing:
 ┌──────────────────────────────────────────────────────────┐
-│ │
-│ Agent A runs │
-│ │ │
-│ │ output_key="research_findings" │
-│ │ Agent produces text → auto-saved to state │
-│ │ │
-│ │ state["research_findings"] = "Quantum computing..." │
-│ │ │
-│ ▼ │
-│ Agent B runs │
-│ │ │
-│ │ Instruction references {research_findings} │
-│ │ ADK replaces placeholder with state value │
-│ │ │
-│ │ Agent sees: "Write article based on: │
-│ │ Quantum computing..." │
-│ │ │
-│ ▼ │
-│ Final output │
-│ │
+│                                                          │
+│ Agent A runs                                             │
+│   │                                                      │
+│   │ output_key="research_findings"                       │
+│   │ Agent produces text → auto-saved to state            │
+│   │                                                      │
+│   │ state["research_findings"] = "Quantum computing..."  │
+│   │                                                      │
+│   ▼                                                      │
+│ Agent B runs                                             │
+│   │                                                      │
+│   │ Instruction references {research_findings}           │
+│   │ ADK replaces placeholder with state value            │
+│   │                                                      │
+│   │ Agent sees: "Write article based on:                 │
+│   │   Quantum computing..."                              │
+│   │                                                      │
+│   ▼                                                      │
+│ Final output                                             │
+│                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Method 2: Tool-Based State Writing
+#### [ ] Method 2: Tool-Based State Writing
 
 For more control over what gets passed:
 
@@ -689,7 +474,7 @@ agent_b = Agent(
 )
 ```
 
-### [ ] Method 3: Agent Transfer (LLM-Driven Routing)
+#### [ ] Method 3: Agent Transfer (LLM-Driven Routing)
 
 Transfer carries full session history:
 
@@ -715,27 +500,27 @@ root = Agent(
 ```
 Agent transfer message passing:
 ┌──────────────────────────────────────────────────────────┐
-│ │
-│ User: "I have a billing question" │
-│ │ │
-│ ▼ │
-│ router agent │
-│ │ LLM: transfer_to_agent("billing") │
-│ │ │
-│ │ ┌─────────────────────────────────────┐ │
-│ │ │ billing agent │ │
-│ │ │ Sees FULL conversation history │ ← shared │
-│ │ │ Sees ALL state │ ← session │
-│ │ │ Responds in same session │ │
-│ │ └─────────────────────────────────────┘ │
-│ │ │
-│ │ When billing is done: │
-│ │ transfer_to_agent("router") ← returns to parent │
-│ │
+│                                                          │
+│ User: "I have a billing question"                        │
+│   │                                                      │
+│   ▼                                                      │
+│ router agent                                             │
+│   │ LLM: transfer_to_agent("billing")                    │
+│   │                                                      │
+│   │ ┌─────────────────────────────────────┐              │
+│   │ │ billing agent                       │              │
+│   │ │ Sees FULL conversation history      │ ← shared     │
+│   │ │ Sees ALL state                      │ ← session    │
+│   │ │ Responds in same session            │              │
+│   │ └─────────────────────────────────────┘              │
+│   │                                                      │
+│   │ When billing is done:                                │
+│   │   transfer_to_agent("router") ← returns to parent    │
+│                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Method 4: AgentTool (Isolated Execution)
+#### [ ] Method 4: AgentTool (Isolated Execution)
 
 Isolated execution without shared history:
 
@@ -759,50 +544,50 @@ main_agent = Agent(
 ```
 AgentTool message passing:
 ┌──────────────────────────────────────────────────────────┐
-│ │
-│ main_agent │
-│ │ │
-│ │ LLM calls: summarizer(request="long text here...") │
-│ │ │ │
-│ │ ▼ │
-│ │ ┌───────────────────────────────────┐ │
-│ │ │ summarizer agent (ISOLATED) │ │
-│ │ │ - New session (empty history) │ │
-│ │ │ - Only sees the request text │ │
-│ │ │ - Returns result as tool output │ │
-│ │ └──────────────────┬────────────────┘ │
-│ │ │ │
-│ │ ▼ │
-│ │ Tool result: "Summary: ..." │
-│ │ main_agent continues with summary │
-│ │
+│                                                          │
+│ main_agent                                               │
+│   │                                                      │
+│   │ LLM calls: summarizer(request="long text here...")   │
+│   │   │                                                  │
+│   │   ▼                                                  │
+│   │   ┌───────────────────────────────────┐              │
+│   │   │ summarizer agent (ISOLATED)       │              │
+│   │   │ - New session (empty history)     │              │
+│   │   │ - Only sees the request text      │              │
+│   │   │ - Returns result as tool output   │              │
+│   │   └──────────────────┬────────────────┘              │
+│   │                      │                               │
+│   │                      ▼                               │
+│   │   Tool result: "Summary: ..."                        │
+│   │   main_agent continues with summary                  │
+│                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Comparison Table
+#### [ ] Comparison Table
 
 ```
 ┌─────────────────────┬───────────┬──────────┬─────────────┬──────────┐
-│ Method │ Shares │ Shares │ Extra LLM │ Best For │
-│ │ history? │ state? │ call? │ │
+│ Method              │ Shares    │ Shares   │ Extra LLM   │ Best For │
+│                     │ history?  │ state?   │ call?       │          │
 ├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ Session State │ Yes │ Yes │ No │ Pipeline │
-│ (output_key) │ │ │ │ stages │
+│ Session State       │ Yes       │ Yes      │ No          │ Pipeline │
+│ (output_key)        │           │          │             │ stages   │
 ├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ Tool State Write │ Yes │ Yes │ No │ Complex │
-│ (ToolContext.state) │ │ │ │ data │
+│ Tool State Write    │ Yes       │ Yes      │ No          │ Complex  │
+│ (ToolContext.state)  │           │          │             │ data     │
 ├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ Agent Transfer │ Yes │ Yes │ Yes (route) │ Dynamic │
-│ (sub_agents) │ │ │ │ routing │
+│ Agent Transfer      │ Yes       │ Yes      │ Yes (route) │ Dynamic  │
+│ (sub_agents)        │           │          │             │ routing  │
 ├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ AgentTool │ No │ No │ Yes │ Isolated │
-│ (tool wrapper) │ (new) │ (new) │ (child) │ helpers │
+│ AgentTool           │ No        │ No       │ Yes         │ Isolated │
+│ (tool wrapper)      │ (new)     │ (new)    │ (child)     │ helpers  │
 └─────────────────────┴───────────┴──────────┴─────────────┴──────────┘
 ```
 
 ---
 
-## Q5: Explain All State Scopes — temp, user, app — and Their Visibility
+### [ ] Q5: Explain All State Scopes — temp, user, app — and Their Visibility
 
 State has four scopes controlled by key prefixes: session (no prefix), `user:`, `app:`, and `temp:` (invocation-only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules and nested diagram.
 

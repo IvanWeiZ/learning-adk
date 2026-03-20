@@ -1,20 +1,33 @@
-# Evaluation — Measuring Agent Quality
+# 15 — Evaluation: Agent Quality Testing
 
-**Source:** [`evaluation/eval_case.py`](../adk-python/src/google/adk/evaluation/eval_case.py) · [`evaluation/eval_set.py`](../adk-python/src/google/adk/evaluation/eval_set.py) · [`evaluation/agent_evaluator.py`](../adk-python/src/google/adk/evaluation/agent_evaluator.py) · [`evaluation/evaluator.py`](../adk-python/src/google/adk/evaluation/evaluator.py)
+> **Source:** [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) · [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) · [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) · [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) | **Prereqs:** [09-tools.md](./09-tools.md), [03-runners.md](./03-runners.md) | **Official docs:** <https://google.github.io/adk-docs/evaluate/>
 
 ---
 
-## What It Is
+## At a Glance
 
-ADK's evaluation framework measures agent behavior: correct responses, right tool calls, right conclusions. Distinct from unit testing (code logic).
+```
+┌─────────────────────────────────────────┐
+│         adk eval / AgentEvaluator       │
+│                                         │
+│  EvalSet (.json)                        │
+│    │  contains EvalCase (scenario)      │
+│    ▼                                    │
+│  Runner (live agent)                    │
+│    │  replays conversation turns        │
+│    ▼                                    │
+│  actual events                          │
+│    │                                    │
+│    ▼                                    │
+│  BaseEvaluator                          │
+│    │  TrajectoryEvaluator               │
+│    │  ResponseEvaluator                 │
+│    ▼                                    │
+│  EvalCaseResult (PASSED / FAILED)       │
+└─────────────────────────────────────────┘
+```
 
-Three concepts:
-
-1. **EvalCase** — a single test scenario (input + expected behavior)
-2. **EvalSet** — a collection of EvalCases (a test suite)
-3. **AgentEvaluator** — runs EvalCases against a live agent and scores results
-
-The CLI command `adk eval` drives this system.
+ADK's evaluation framework measures agent behavior -- correct responses, right tool calls, right conclusions. You define test scenarios as `EvalCase` objects grouped into an `EvalSet`, then `AgentEvaluator` replays them against a live agent and scores the results using configurable metrics (tool trajectory, response quality). This is distinct from unit testing, which validates code logic.
 
 ---
 
@@ -33,7 +46,7 @@ AgentEvaluator (evaluation/agent_evaluator.py — orchestrates runs + scoring)
 
 ---
 
-## Core Data Types
+## Key API
 
 ### [ ] EvalCase — One Test Scenario
 
@@ -41,38 +54,41 @@ AgentEvaluator (evaluation/agent_evaluator.py — orchestrates runs + scoring)
 class EvalCase(BaseModel):
     eval_id: str # unique name for this case
 
-    # The conversation to replay:
-    conversation: list[ConversationTurn]
-    # Each turn has a user message and optionally an expected agent response.
+    # The conversation to replay (each entry is one invocation):
+    conversation: Optional[list[Invocation]] = None
 
-    # What the agent should have done (optional, for trajectory scoring):
-    expected_tool_use: list[ToolUse] | None = None
+    # Scenario description for the conversation:
+    conversation_scenario: Optional[str] = None
 
-    # Reference answer for response quality scoring:
-    reference_answer: str | None = None
+    # Rubrics for scoring (applied across the whole case):
+    rubrics: Optional[list[str]] = None
 
-    # Per-case metric config overrides (inherits from EvalSet if absent):
-    eval_metrics: list[EvalMetric] | None = None
+    # Expected final session state after all turns:
+    final_session_state: Optional[dict[str, Any]] = None
 
     session_input: SessionInput | None = None # pre-seeded state/history
+    creation_timestamp: float
 ```
 
-### [ ] ConversationTurn
+### [ ] Invocation — One Turn in the Conversation
 
 ```python
-class ConversationTurn(BaseModel):
+class Invocation(BaseModel):
+    invocation_id: str # unique ID for this turn
     user_content: types.Content # the user's message for this turn
-    expected_tool_use: list[ToolUse] | None = None
-    reference_answer: str | None = None # expected agent reply for this turn
+    final_response: Optional[types.Content] = None # expected agent reply
+    intermediate_data: Optional[IntermediateData] = None # expected tool calls/responses
+    rubrics: Optional[list[str]] = None # per-turn scoring rubrics
+    creation_timestamp: float
 ```
 
-### [ ] ToolUse — Expected Tool Call
+### [ ] IntermediateData — Expected Tool Calls and Responses
 
 ```python
-class ToolUse(BaseModel):
-    tool_name: str # e.g. "search_web"
-    tool_input: dict[str, Any] | None # expected arguments (None = any args ok)
-    tool_output: str | None # optional: mock output to inject
+class IntermediateData(BaseModel):
+    tool_uses: list[FunctionCall] # expected tool calls (google.genai.types.FunctionCall)
+    tool_responses: list[FunctionResponse] # expected tool responses
+    intermediate_responses: Optional[list[types.Content]] = None
 ```
 
 ### [ ] EvalSet — A Suite of Cases
@@ -80,8 +96,9 @@ class ToolUse(BaseModel):
 ```python
 class EvalSet(BaseModel):
     eval_set_id: str
+    name: str # human-readable name
+    description: Optional[str] = None
     eval_cases: list[EvalCase]
-    eval_metrics: list[EvalMetric] # default metrics for all cases
     creation_timestamp: float
 ```
 
@@ -89,18 +106,54 @@ class EvalSet(BaseModel):
 
 ```python
 class EvalMetric(BaseModel):
-    metric_name: EvalMetricEnum # which metric (see below)
+    metric_name: str # e.g. "tool_trajectory_avg_score", "response_match_score"
     threshold: float # minimum passing score (0.0–1.0)
+    criterion: Optional[str] = None # rubric description for LLM judge
+    custom_function_path: Optional[str] = None # dotted path to custom metric function
 
-class EvalMetricEnum(str, Enum):
+class PrebuiltMetrics:
     TOOL_TRAJECTORY_AVG_SCORE = "tool_trajectory_avg_score"
     RESPONSE_MATCH_SCORE = "response_match_score"
-    # (custom metrics can be registered)
+```
+
+### [ ] EvalCaseResult — What You Get Back
+
+```python
+class EvalCaseResult(BaseModel):
+    eval_set_id: str
+    eval_id: str # matches EvalCase.eval_id
+    final_eval_status: EvalStatus # PASSED | FAILED
+    overall_eval_metric_results: list[EvalMetricResult]
+    eval_metric_result_per_invocation: list[list[EvalMetricResult]] # per-turn results
+    session_id: str # the session used for this run
+    session_details: Optional[dict] = None # full session state after eval
+    user_id: Optional[str] = None
+```
+
+```python
+class EvalMetricResult(BaseModel):
+    metric_name: str
+    score: float # actual score (0.0–1.0)
+    threshold: float # passing threshold
+    eval_status: EvalStatus # PASSED | FAILED
 ```
 
 ---
 
-## AgentEvaluator — Running Evaluations
+## How It Works
+
+### [ ] AgentEvaluator — Running Evaluations
+
+```
+AgentEvaluator.evaluate()
+├── 1. Load EvalSet from .evalset.json
+├── 2. For each EvalCase:
+│   ├── Create Runner + Session
+│   ├── Replay conversation turns
+│   └── Collect actual tool calls + responses
+├── 3. Score with configured evaluators
+└── 4. Return EvalCaseResult per case
+```
 
 `AgentEvaluator` is the main entry point. It:
 1. Replays each `EvalCase` against a real agent (using a `Runner`)
@@ -120,39 +173,16 @@ results = await AgentEvaluator.evaluate(
 
 The returned `results` is a list of `EvalCaseResult` objects, one per case.
 
----
+### [ ] Metrics Deep Dive
 
-## EvalCaseResult — What You Get Back
-
-```python
-class EvalCaseResult(BaseModel):
-    eval_set_id: str
-    eval_id: str # matches EvalCase.eval_id
-    final_eval_status: EvalStatus # PASSED | FAILED
-    eval_metric_results: list[EvalMetricResult]
-    session_id: str # the session used for this run
-```
-
-```python
-class EvalMetricResult(BaseModel):
-    metric_name: str
-    score: float # actual score (0.0–1.0)
-    threshold: float # passing threshold
-    eval_status: EvalStatus # PASSED | FAILED
-```
-
----
-
-## Metrics Deep Dive
-
-### [ ] 1. `tool_trajectory_avg_score`
+#### [ ] 1. `tool_trajectory_avg_score`
 
 Scores whether the agent called the right tools in the right order.
 
 Scoring logic:
 - Each expected `ToolUse` is checked against the actual tool calls in sequence
 - `tool_name` must match exactly
-- `tool_input` is compared if provided (partial match is allowed — only specified keys are checked)
+- `tool_input` is compared if provided (partial match is allowed -- only specified keys are checked)
 - Score = (matched steps) / (total expected steps)
 
 Example: if you expect `[search, summarize]` and agent did `[search, translate, summarize]`, score is 1.0 (both expected steps matched, extras don't penalize).
@@ -175,7 +205,7 @@ Step 2: book_flight → found in actual? NO ✗ (score: 0)
 Final score: (1 + 0) / 2 = 0.5
 ```
 
-### [ ] 2. `response_match_score`
+#### [ ] 2. `response_match_score`
 
 Scores how well the agent's final response matches `reference_answer`.
 
@@ -184,11 +214,13 @@ Uses an LLM judge with a rubric like:
 
 The raw score is normalized to 0.0–1.0.
 
-This is a **model-graded** metric — it's fuzzy by design. Two semantically equivalent phrasings both score high.
+This is a **model-graded** metric -- it's fuzzy by design. Two semantically equivalent phrasings both score high.
 
 ---
 
-## Eval File Format
+## Examples
+
+### [ ] Eval File Format
 
 EvalSets are stored as JSON files with the extension `.evalset.json`:
 
@@ -222,9 +254,7 @@ EvalSets are stored as JSON files with the extension `.evalset.json`:
 }
 ```
 
----
-
-## Running Evals via CLI
+### [ ] Running Evals via CLI
 
 ```bash
 # Run all eval sets in a directory:
@@ -237,11 +267,9 @@ adk eval my_agent_module/ tests/evals/weather.evalset.json
 adk eval --verbose my_agent_module/ tests/evals/
 ```
 
-The CLI exits with code 0 if all cases pass, non-zero if any fail — suitable for CI.
+The CLI exits with code 0 if all cases pass, non-zero if any fail -- suitable for CI.
 
----
-
-## Running Evals Programmatically
+### [ ] Running Evals Programmatically
 
 ```python
 import asyncio
@@ -261,9 +289,7 @@ async def run_evals():
 asyncio.run(run_evals())
 ```
 
----
-
-## Integration with pytest
+### [ ] Integration with pytest
 
 Thin pytest wrapper:
 
@@ -287,9 +313,7 @@ async def test_weather_agent_evals():
 
 Run with: `pytest tests/test_agent_eval.py -v`
 
----
-
-## Writing Good Eval Cases
+### [ ] Writing Good Eval Cases
 
 **Cover the happy path first:**
 ```json
@@ -309,33 +333,36 @@ Run with: `pytest tests/test_agent_eval.py -v`
 This checks that the agent *called* the tool without asserting which exact query it used.
 
 **Set `reference_answer` for open-ended responses, skip it for tool-only cases:**
-- If you only care about tool trajectory → set `expected_tool_use`, leave `reference_answer` null
-- If you only care about the response content → set `reference_answer`, leave `expected_tool_use` null
-- For full coverage → set both
+- If you only care about tool trajectory, set `expected_tool_use`, leave `reference_answer` null
+- If you only care about the response content, set `reference_answer`, leave `expected_tool_use` null
+- For full coverage, set both
 
 ---
 
-## Testing Pyramid for Agents
+## Gotchas
+
+### [ ] Testing Pyramid for Agents
 
 ```
- ┌───────────┐
- │ Evals │ Few, slow, expensive
- │ (LLM as │ Tests: "did the agent give
- │ judge) │ a good answer?"
- ├───────────┤
- │Integration│ Some, medium speed
- │ Tests │ Tests: "did the right tools
- │ │ get called in order?"
- ├───────────┤
- │ Unit Tests│ Many, fast, cheap
- │ (MockModel│ Tests: "does my tool return
- │ based) │ the right data?"
- └───────────┘
+┌─────────────────────────────────────┐
+│  Evals                              │
+│    Few, slow, expensive             │
+│    "Did the agent give              │
+│     a good answer?"                 │
+├─────────────────────────────────────┤
+│  Integration Tests                  │
+│    Some, medium speed               │
+│    "Did the right tools             │
+│     get called in order?"           │
+├─────────────────────────────────────┤
+│  Unit Tests (MockModel based)       │
+│    Many, fast, cheap                │
+│    "Does my tool return             │
+│     the right data?"                │
+└─────────────────────────────────────┘
 ```
 
----
-
-## Eval vs Unit Test — When to Use Each
+### [ ] Eval vs Unit Test — When to Use Each
 
 | Scenario | Use |
 |---|---|
@@ -346,9 +373,7 @@ This checks that the agent *called* the tool without asserting which exact query
 | Callback fires correctly | `pytest` unit test with `AsyncMock` |
 | Agent handles ambiguous input gracefully | Eval with `reference_answer` |
 
----
-
-## Java Comparison
+### [ ] Java Comparison
 
 | Java concept | ADK equivalent |
 |---|---|
@@ -361,12 +386,12 @@ This checks that the agent *called* the tool without asserting which exact query
 
 ---
 
-## Related Files
+## Related
 
-- [`evaluation/eval_case.py`](../adk-python/src/google/adk/evaluation/eval_case.py) — EvalCase, ConversationTurn, ToolUse
-- [`evaluation/eval_set.py`](../adk-python/src/google/adk/evaluation/eval_set.py) — EvalSet, EvalMetric
-- [`evaluation/agent_evaluator.py`](../adk-python/src/google/adk/evaluation/agent_evaluator.py) — main entry point
-- [`evaluation/evaluator.py`](../adk-python/src/google/adk/evaluation/evaluator.py) — BaseEvaluator, metric implementations
+- [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) — EvalCase, ConversationTurn, ToolUse
+- [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) — EvalSet, EvalMetric
+- [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) — main entry point
+- [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) — BaseEvaluator, metric implementations
 - [`python-testing-and-mocking-guide.md`](./python-testing-and-mocking-guide.md) — unit testing with pytest/AsyncMock
 - [`09-tools.md`](./09-tools.md) — tool system (what evals are testing)
 - [`02-when-to-build-what.md`](./02-when-to-build-what.md) — decision guide including when to write evals

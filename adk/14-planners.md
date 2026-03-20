@@ -1,14 +1,29 @@
-# Planners — Guided Reasoning for Agents
+# 14 — Planners: Think Before Acting
 
-**Source:** [`planners/base_planner.py`](../adk-python/src/google/adk/planners/base_planner.py) · [`planners/built_in_planner.py`](../adk-python/src/google/adk/planners/built_in_planner.py) · [`planners/plan_re_act_planner.py`](../adk-python/src/google/adk/planners/plan_re_act_planner.py)
+> **Source:** [`planners/base_planner.py`](https://github.com/google/adk-python/blob/main/src/google/adk/planners/base_planner.py) · [`planners/built_in_planner.py`](https://github.com/google/adk-python/blob/main/src/google/adk/planners/built_in_planner.py) · [`planners/plan_re_act_planner.py`](https://github.com/google/adk-python/blob/main/src/google/adk/planners/plan_re_act_planner.py) | **Prereqs:** [04-agents.md](04-agents.md), [05-flows.md](05-flows.md) | **Official docs:** <https://google.github.io/adk-docs/agents/llm-agents/>
 
 ---
 
-## What It Is
+## At a Glance
 
-A planner gives an `LlmAgent` the ability to produce a structured plan before acting, then execute step by step, re-planning on failure.
+```
+LlmAgent(planner=...)
+│
+▼
+BaseLlmFlow.run_async(ctx)
+│
+├─ PREPROCESS ─► _NlPlanningRequestProcessor
+│ ├─ BuiltInPlanner → flow processor calls apply_thinking_config() directly
+│ └─ PlanReActPlanner → calls build_planning_instruction(), appends to system prompt
+│
+├─ CALL MODEL
+│
+└─ POSTPROCESS ─► _NlPlanningResponse
+  ├─ BuiltInPlanner → no-op (model handles thinking natively)
+  └─ PlanReActPlanner → splits response into thought / action / final_answer
+```
 
-Optional. Default `None` = normal reason-act loop. When set, the planner injects planning instructions into the request and post-processes the response to separate reasoning from actions.
+A planner gives an `LlmAgent` the ability to produce a structured plan before acting, then execute step by step, re-planning on failure. It is optional -- default `None` means normal reason-act loop. When set, the planner injects planning instructions into the request and post-processes the response to separate reasoning from actions.
 
 Use a planner when:
 - Tasks require **multi-step reasoning** (research, analysis, multi-tool workflows)
@@ -28,33 +43,9 @@ BasePlanner (base_planner.py) — abstract, defines the two-method contract
 
 ---
 
-## How Planners Integrate with Flows
+## Key API
 
-Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningResponse` processors inside the LLM flow pipeline (see [05-flows.md](05-flows.md)). The integration works like this:
-
-```
-BaseLlmFlow.run_async(ctx)
-│
-├─ PREPROCESS
-│ ├─ ... (instructions, contents, functions)
-│ └─ _NlPlanningRequestProcessor
-│ ├─ BuiltInPlanner? → apply thinking_config to LlmRequest
-│ └─ PlanReActPlanner? → append planning system instruction
-│
-├─ CALL MODEL
-│
-└─ POSTPROCESS
- ├─ _NlPlanningResponse
- │ ├─ BuiltInPlanner? → no-op (model handles thinking internally)
- │ └─ PlanReActPlanner? → split response into thought/action/final_answer parts
- └─ ... (function calls, agent transfer)
-```
-
-The planner is read from `agent.planner` on the current `InvocationContext`. If the field exists but is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()`.
-
----
-
-## BasePlanner — The Contract
+### [ ] BasePlanner -- The Contract
 
 Every planner implements two abstract methods:
 
@@ -85,20 +76,14 @@ class BasePlanner(ABC):
         """
 ```
 
-### [ ] How the methods are used
-
 | Method | Called by | Purpose |
 |---|---|---|
 | `build_planning_instruction` | `_NlPlanningRequestProcessor` (before model call) | Inject planning-related system instructions or config |
 | `process_planning_response` | `_NlPlanningResponse` (after model call) | Parse response to separate reasoning from actions/answers |
 
----
-
-## BuiltInPlanner — Model-Native Thinking
+### [ ] BuiltInPlanner
 
 `BuiltInPlanner` configures `ThinkingConfig` on the LLM request, delegating to Gemini's native thinking mode. No prompt injection.
-
-### [ ] Configuration
 
 ```python
 class BuiltInPlanner(BasePlanner):
@@ -114,86 +99,71 @@ Key `ThinkingConfig` fields:
 |---|---|---|
 | `thinking_budget` | `int` | Maximum number of thinking tokens the model can use |
 
-### [ ] Behavior
+Behavior:
 
-- **Request phase:** Calls `apply_thinking_config(llm_request)`, which sets `llm_request.config.thinking_config`. If a `thinking_config` was already set in `generate_content_config`, the planner's config overwrites it (with a warning).
+- **Request phase:** The flow processor (`_NlPlanningRequestProcessor`) calls `planner.apply_thinking_config(llm_request)` directly -- it does **not** call `build_planning_instruction()` for `BuiltInPlanner`. The `build_planning_instruction()` method on `BuiltInPlanner` simply returns `None`. `apply_thinking_config` sets `llm_request.config.thinking_config`. If a `thinking_config` was already set in `generate_content_config`, the planner's config overwrites it (with a `debug`-level log).
 - **Response phase:** Returns `None` (no post-processing). The model's thinking output is handled natively by the Gemini API.
 - **Model requirement:** Only works with models that support thinking mode. An error is returned if used with unsupported models.
 
-### [ ] Example
+### [ ] PlanReActPlanner
 
-```python
-from google.adk import Agent
-from google.adk.planners import BuiltInPlanner
-from google.genai import types
-
-agent = Agent(
-    name="research_agent",
-    model="gemini-2.5-flash",
-    instruction="You are a research assistant that thoroughly analyzes questions.",
-    tools=[search_tool, summarize_tool],
-    planner=BuiltInPlanner(
-    thinking_config=types.ThinkingConfig(thinking_budget=2048)
-    ),
-)
-```
-
----
-
-## PlanReActPlanner — Explicit Plan-Then-Act
-
-`PlanReActPlanner` injects a system instruction enforcing Plan-Reasoning-Action-FinalAnswer format, then post-processes responses to label parts as thoughts or actions.
-
-### [ ] Configuration
-
-`PlanReActPlanner` takes no constructor arguments:
+`PlanReActPlanner` injects a system instruction enforcing Plan-Reasoning-Action-FinalAnswer format, then post-processes responses to label parts as thoughts or actions. Takes no constructor arguments:
 
 ```python
 planner = PlanReActPlanner()
 ```
 
-### [ ] Structured Tags
-
-The planner defines five tags that structure the model's output:
+Structured tags that the planner defines:
 
 | Tag | Purpose |
 |---|---|
-| `/*PLANNING*/` | Initial plan — numbered steps decomposing the query |
+| `/*PLANNING*/` | Initial plan -- numbered steps decomposing the query |
 | `/*REPLANNING*/` | Revised plan after a failed or incomplete execution |
 | `/*REASONING*/` | Summary of current state and next steps between tool calls |
 | `/*ACTION*/` | Tool call section |
 | `/*FINAL_ANSWER*/` | The final answer returned to the user |
 
-### [ ] Behavior
+Behavior:
 
 - **Request phase:** `build_planning_instruction()` returns a multi-section system prompt that instructs the model to:
- 1. Create a numbered plan under `/*PLANNING*/`
- 2. Interleave tool calls (`/*ACTION*/`) with reasoning (`/*REASONING*/`)
- 3. Re-plan under `/*REPLANNING*/` if execution fails
- 4. Produce a final answer under `/*FINAL_ANSWER*/`
+  1. Create a numbered plan under `/*PLANNING*/`
+  2. Interleave tool calls (`/*ACTION*/`) with reasoning (`/*REASONING*/`)
+  3. Re-plan under `/*REPLANNING*/` if execution fails
+  4. Produce a final answer under `/*FINAL_ANSWER*/`
 
 - **Response phase:** `process_planning_response()` parses the model's output:
- - Text starting with `/*PLANNING*/`, `/*REASONING*/`, `/*ACTION*/`, or `/*REPLANNING*/` is marked as `thought=True` (hidden from the user by default)
- - Text after the last `/*FINAL_ANSWER*/` tag is preserved as the visible response
- - Function call parts are preserved and grouped together
- - Empty function call names are filtered out
+  - Text starting with `/*PLANNING*/`, `/*REASONING*/`, `/*ACTION*/`, or `/*REPLANNING*/` is marked as `thought=True` (hidden from the user by default)
+  - Text after the last `/*FINAL_ANSWER*/` tag is preserved as the visible response
+  - Function call parts are preserved and grouped together
+  - Empty function call names are filtered out
 
-### [ ] Example
+---
 
-```python
-from google.adk import Agent
-from google.adk.planners import PlanReActPlanner
+## How It Works
 
-agent = Agent(
-    name="data_analyst",
-    model="gemini-2.5-flash",
-    instruction="You are a data analyst. Answer questions using the available tools.",
-    tools=[query_database, create_chart, export_csv],
-    planner=PlanReActPlanner(),
-)
+### [ ] Planner Integration with Flows
+
+```
+BaseLlmFlow.run_async(ctx)
+│
+├─ PREPROCESS
+│ ├─ ... (instructions, contents, functions)
+│ └─ _NlPlanningRequestProcessor
+│     ├─ BuiltInPlanner? → calls apply_thinking_config() directly (NOT build_planning_instruction)
+│     └─ PlanReActPlanner? → calls build_planning_instruction(), appends planning system instruction
+│
+├─ CALL MODEL
+│
+└─ POSTPROCESS
+  ├─ _NlPlanningResponse
+  │ ├─ BuiltInPlanner? → no-op (model handles thinking internally)
+  │ └─ PlanReActPlanner? → split response into thought/action/final_answer parts
+  └─ ... (function calls, agent transfer)
 ```
 
-### [ ] What the model output looks like (conceptual)
+Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningResponse` processors inside the LLM flow pipeline (see [05-flows.md](05-flows.md)). The planner is read from `agent.planner` on the current `InvocationContext`. If the field exists but is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()`.
+
+### [ ] What the Model Output Looks Like (PlanReActPlanner)
 
 ```
 /*PLANNING*/
@@ -221,17 +191,17 @@ What the model outputs vs what the user sees:
 
 RAW MODEL OUTPUT:
 ┌──────────────────────────────────────────────────────┐
-│ /*PLANNING*/ │ ← thought=True
+│ /*PLANNING*/                                         │ ← thought=True
 │ I need to check the weather first, then book a hotel │ (hidden from user)
-│ /*PLANNING*/ │
-│ │
-│ /*ACTION*/ │ ← function call
-│ get_weather(city="Tokyo") │ (executed by ADK)
-│ /*ACTION*/ │
-│ │
-│ /*FINAL_ANSWER*/ │ ← thought=False
-│ The weather in Tokyo is 18°C and sunny! │ (shown to user)
-│ /*FINAL_ANSWER*/ │
+│ /*PLANNING*/                                         │
+│                                                      │
+│ /*ACTION*/                                           │ ← function call
+│ get_weather(city="Tokyo")                            │ (executed by ADK)
+│ /*ACTION*/                                           │
+│                                                      │
+│ /*FINAL_ANSWER*/                                     │ ← thought=False
+│ The weather in Tokyo is 18°C and sunny!              │ (shown to user)
+│ /*FINAL_ANSWER*/                                     │
 └──────────────────────────────────────────────────────┘
 
 WHAT THE USER SEES:
@@ -239,9 +209,7 @@ WHAT THE USER SEES:
  (everything before FINAL_ANSWER is internal reasoning)
 ```
 
----
-
-## When to Use Which
+### [ ] When to Use Which
 
 | Criteria | BuiltInPlanner | PlanReActPlanner |
 |---|---|---|
@@ -254,7 +222,7 @@ WHAT THE USER SEES:
 | **Token overhead** | Thinking tokens (counted separately) | Planning instructions added to system prompt |
 | **Best for** | Simple-to-moderate tasks where model thinking is sufficient | Complex multi-step tasks needing visible, structured plans |
 
-### [ ] Decision guide
+Decision guide:
 
 ```
 Need an agent to reason before acting?
@@ -267,12 +235,47 @@ Need an agent to reason before acting?
 │ └─ → PlanReActPlanner (only option)
 │
 └─ Simple task, no multi-step reasoning needed?
- └─ → No planner (leave planner=None)
+  └─ → No planner (leave planner=None)
 ```
 
 ---
 
-## Writing a Custom Planner
+## Examples
+
+### [ ] BuiltInPlanner
+
+```python
+from google.adk import Agent
+from google.adk.planners import BuiltInPlanner
+from google.genai import types
+
+agent = Agent(
+    name="research_agent",
+    model="gemini-2.5-flash",
+    instruction="You are a research assistant that thoroughly analyzes questions.",
+    tools=[search_tool, summarize_tool],
+    planner=BuiltInPlanner(
+    thinking_config=types.ThinkingConfig(thinking_budget=2048)
+    ),
+)
+```
+
+### [ ] PlanReActPlanner
+
+```python
+from google.adk import Agent
+from google.adk.planners import PlanReActPlanner
+
+agent = Agent(
+    name="data_analyst",
+    model="gemini-2.5-flash",
+    instruction="You are a data analyst. Answer questions using the available tools.",
+    tools=[query_database, create_chart, export_csv],
+    planner=PlanReActPlanner(),
+)
+```
+
+### [ ] Writing a Custom Planner
 
 Subclass `BasePlanner` and implement both methods:
 
@@ -310,10 +313,20 @@ agent = Agent(
 
 ---
 
-## Cross-References
+## Gotchas
 
-- [04-agents.md](04-agents.md) — `LlmAgent.planner` field definition; agent configuration
-- [05-flows.md](05-flows.md) — How the planning processors fit into the request/response pipeline
-- [06-models.md](06-models.md) — Model adapters and `ThinkingConfig` support
-- [02-when-to-build-what.md](02-when-to-build-what.md) — Decision tree for custom `BasePlanner` subclasses
-- [23-advanced-internals.md](23-advanced-internals.md) — Additional planner examples in the advanced topics section
+- `BuiltInPlanner` only works with Gemini models that support thinking mode. Using it with unsupported models returns an error.
+- If `agent.planner` is set to something that is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()` -- it does not raise an error.
+- `BuiltInPlanner` overwrites any existing `thinking_config` in `generate_content_config` (with a `debug`-level log), so do not set both.
+- `PlanReActPlanner` adds planning instructions to the system prompt, consuming tokens on every request even when planning is not needed for simple queries.
+- Empty function call names in `PlanReActPlanner` output are silently filtered out.
+
+---
+
+## Related
+
+- [04-agents.md](04-agents.md) -- `LlmAgent.planner` field definition; agent configuration
+- [05-flows.md](05-flows.md) -- How the planning processors fit into the request/response pipeline
+- [06-models.md](06-models.md) -- Model adapters and `ThinkingConfig` support
+- [02-when-to-build-what.md](02-when-to-build-what.md) -- Decision tree for custom `BasePlanner` subclasses
+- [23-advanced-internals.md](23-advanced-internals.md) -- Additional planner examples in the advanced topics section
