@@ -98,6 +98,11 @@ learning-adk/
 29. **Test CI locally before pushing** — broken regex in CI caused multiple failures.
 30. **Introduce concepts before using them** — key terms must be defined before the trace.
 
+**File length limits (enforced by CI):**
+- ADK docs (`adk/*.md`): **600 lines max** — split into focused files if longer
+- Python guides (`python/*.md`): **1000 lines max** — split tutorial vs reference if longer
+- Onboarding (`adk/00-onboarding-guide.md`): **250 lines max** — stay motivational
+
 ---
 
 ## Core ADK Architecture

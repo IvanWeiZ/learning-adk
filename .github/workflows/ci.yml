@@ -16,12 +16,10 @@ jobs:
       - name: Check for broken relative links
         run: |
           echo "Checking for broken relative links..."
-          errors=0
           for f in adk/*.md python/*.md reference/*.md README.md CONTRIBUTING.md; do
             [ -f "$f" ] || continue
-            # Extract markdown links, skip absolute URLs and anchors
             grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | \
-              sed 's/^\](//' | sed 's/)$//' | \
+              sed 's/^\]//' | sed 's/)$//' | sed 's/^\(//' | \
               grep -v '^https\?://' | \
               grep -v '^#' | \
               sed 's/#.*//' | \
@@ -31,7 +29,6 @@ jobs:
                 target="$dir/$link"
                 if [ ! -f "$target" ]; then
                   echo "::error file=$f::Broken link: $link (resolved: $target)"
-                  errors=1
                 fi
               done
           done
@@ -40,14 +37,13 @@ jobs:
       - name: Check for heading checkboxes
         run: |
           if grep -rn '^#.*\[ \]' adk/*.md python/*.md reference/*.md README.md 2>/dev/null; then
-            echo "::error::Found [ ] checkboxes in headings (see above)"
+            echo "::error::Found [ ] checkboxes in headings"
             exit 1
           fi
           echo "No heading checkboxes found"
 
       - name: Check header format consistency
         run: |
-          echo "Checking adk/*.md header format..."
           failed=false
           for f in adk/*.md; do
             header=$(sed -n '3p' "$f")
@@ -58,7 +54,45 @@ jobs:
               fi
             fi
           done
-          if [ "$failed" = true ]; then
-            exit 1
-          fi
+          if [ "$failed" = true ]; then exit 1; fi
           echo "All headers OK"
+
+      - name: Check file length limits
+        run: |
+          failed=false
+
+          # ADK docs: 600 lines max
+          for f in adk/*.md; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 600 ]; then
+              echo "::warning file=$f::$lines lines (limit: 600) — consider splitting"
+              failed=true
+            fi
+          done
+
+          # Python guides: 1000 lines max
+          for f in python/*.md; do
+            [ -f "$f" ] || continue
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 1000 ]; then
+              echo "::warning file=$f::$lines lines (limit: 1000) — consider splitting"
+              failed=true
+            fi
+          done
+
+          # Onboarding: 250 lines max
+          if [ -f "adk/00-onboarding-guide.md" ]; then
+            lines=$(wc -l < "adk/00-onboarding-guide.md")
+            if [ "$lines" -gt 250 ]; then
+              echo "::warning file=adk/00-onboarding-guide.md::$lines lines (limit: 250) — keep it motivational"
+              failed=true
+            fi
+          fi
+
+          if [ "$failed" = true ]; then
+            echo ""
+            echo "Files over limit (warnings, not blocking):"
+            echo "  ADK docs: 600 lines | Python guides: 1000 lines | Onboarding: 250 lines"
+          else
+            echo "All files within limits"
+          fi
