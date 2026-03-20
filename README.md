@@ -33,17 +33,17 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        User / CLI / API                         │
+│                      USER / CLI / API                           │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Runner ─── session bookkeeping, event streaming, compaction    │
+│  RUNNER ─── session bookkeeping, event streaming, compaction    │
 └──────────────┬──────────────────────────────┬───────────────────┘
                │                              │
                ▼                              ▼
 ┌──────────────────────────┐    ┌─────────────────────────────────┐
-│  Agents                  │    │  Sessions                       │
+│  AGENTS                  │    │  SESSIONS                       │
 │  LlmAgent, LoopAgent,   │◄──►│  InMemory, SQLite, Database,    │
 │  ParallelAgent,          │    │  Vertex AI                      │
 │  SequentialAgent         │    │                                 │
@@ -51,26 +51,37 @@
                │
                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Flow ─── reason-act loop: preprocess → LLM → tools → repeat   │
+│  FLOW ─── reason-act loop: preprocess → LLM → tools → repeat   │
 └──────────────┬─────────────────────────────┬────────────────────┘
                │                             │
                ▼                             ▼
 ┌──────────────────────────┐    ┌────────────────────────────────┐
-│  Models                  │    │  Tools                         │
+│  MODELS                  │    │  TOOLS                         │
 │  Gemini, Anthropic,      │    │  FunctionTool, MCP, OpenAPI,   │
 │  LiteLLM (100+)          │    │  LangChain, CrewAI, 50+ more  │
 └──────────────────────────┘    └────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Events ─── the universal data type flowing through everything  │
+│  EVENTS ─── the universal data type flowing through everything  │
 └─────────────────────────────────────────────────────────────────┘
                │
                ▼
 ┌──────────────┬──────────────┬──────────────┬────────────────────┐
-│  Memory      │  Artifacts   │  Auth        │  Telemetry         │
+│  MEMORY      │  ARTIFACTS   │  AUTH        │  TELEMETRY         │
 └──────────────┴──────────────┴──────────────┴────────────────────┘
 ```
+
+## Key Architectural Patterns
+
+Six patterns that appear throughout ADK:
+
+1. **Async-First** — every agent produces an `AsyncGenerator[Event, None]`
+2. **Context Threading** — `InvocationContext` carries session, state, and credentials through every call
+3. **Adapter/Strategy** — `BaseLlm`, `BaseSessionService`, `BaseTool` define contracts; multiple implementations exist
+4. **Hook/Callback** — `before_agent`, `before_model`, `before_tool` + after/error variants at every layer
+5. **Pipeline/Processor** — `BaseLlmFlow` runs 12 request processors and 3 response processors in order
+6. **Event-Driven Side Effects** — state mutations, transfers, and escalations are carried in `EventActions`, not via direct calls
 
 ## Reading Order
 
@@ -153,17 +164,6 @@ For developers coming from Java or other languages:
 |------|-------|
 | [glossary.md](reference/glossary.md) | ADK terminology |
 | [java-to-python-cheat-sheet.md](reference/java-to-python-cheat-sheet.md) | Side-by-side Java → Python mappings |
-
-## Key Architectural Patterns
-
-Six patterns that appear throughout ADK:
-
-1. **Async-First** — every agent produces an `AsyncGenerator[Event, None]`
-2. **Context Threading** — `InvocationContext` carries session, state, and credentials through every call
-3. **Adapter/Strategy** — `BaseLlm`, `BaseSessionService`, `BaseTool` define contracts; multiple implementations exist
-4. **Hook/Callback** — `before_agent`, `before_model`, `before_tool` + after/error variants at every layer
-5. **Pipeline/Processor** — `BaseLlmFlow` runs 12 request processors and 3 response processors in order
-6. **Event-Driven Side Effects** — state mutations, transfers, and escalations are carried in `EventActions`, not via direct calls
 
 ## Example Agents
 
