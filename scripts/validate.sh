@@ -164,8 +164,10 @@ rm -f "$errfile"
 set +o pipefail
 for f in adk/*.md python/*.md reference/*.md README.md CONTRIBUTING.md; do
   [ -f "$f" ] || continue
-  # Extract markdown links: ](path) — skip URLs, anchors, and code artifacts
-  grep -oP '\]\(\K[^)]+' "$f" 2>/dev/null | \
+  # Extract markdown links: ](path) — skip URLs, anchors, code blocks, and code artifacts
+  # First strip fenced code blocks, then extract links
+  awk '/^```/{skip=!skip; next} !skip{print}' "$f" | \
+  grep -oP '\]\(\K[^)]+' 2>/dev/null | \
     grep -v '^https\?://' | \
     grep -v '^#' | \
     grep -v '\[' | \

@@ -20,7 +20,8 @@ jobs:
           rm -f "$errfile"
           for f in adk/*.md python/*.md reference/*.md README.md CONTRIBUTING.md; do
             [ -f "$f" ] || continue
-            grep -oP '\]\(\K[^)]+' "$f" 2>/dev/null | \
+            awk '/^```/{skip=!skip; next} !skip{print}' "$f" | \
+              grep -oP '\]\(\K[^)]+' 2>/dev/null | \
               grep -v '^https\?://' | \
               grep -v '^#' | \
               grep -v '\[' | \

@@ -2,7 +2,7 @@
 
 For experienced Java developers learning Python for ADK. This guide maps familiar Java concepts to their Python equivalents, with notes on where things differ.
 
-See also: [python-for-adk-learning-plan.md](python/python-for-adk-learning-plan.md) for a structured 2-week curriculum.
+See also: [python-for-adk-learning-plan.md](../python/python-for-adk-learning-plan.md) for a structured 2-week curriculum.
 
 ---
 
@@ -28,7 +28,7 @@ See also: [python-for-adk-learning-plan.md](python/python-for-adk-learning-plan.
 | Java | Python | Notes |
 |---|---|---|
 | `class Foo { }` | `class Foo:` | No braces; body is indented. |
-| `interface IFoo { }` | `class IFoo(ABC):` | Use `abc.ABC` + `@abstractmethod`. → [decorators deep dive](python/python-decorators-metaprogramming-deep-dive.md) |
+| `interface IFoo { }` | `class IFoo(ABC):` | Use `abc.ABC` + `@abstractmethod`. → [decorators deep dive](../python/python-decorators-deep-dive.md) |
 | `class Bar extends Foo` | `class Bar(Foo):` | Single inheritance syntax is the same concept. |
 | `class Bar implements IFoo` | `class Bar(IFoo):` | No `implements`; just inherit from the ABC. |
 | `this.field` | `self.field` | `self` is explicit in all instance methods. |
@@ -56,7 +56,7 @@ See also: [python-for-adk-learning-plan.md](python/python-for-adk-learning-plan.
 | `Object` | `object` | Base of all classes. `Any` for untyped. |
 | `void` | `-> None` | In return type annotation. |
 | `enum Color { RED, GREEN }` | `class Color(Enum):` | `from enum import Enum`. |
-| `record Point(int x, int y)` | `@dataclass` or `BaseModel` | ADK uses Pydantic `BaseModel` extensively. → [pydantic deep dive](python/python-pydantic-deep-dive.md) |
+| `record Point(int x, int y)` | `@dataclass` or `BaseModel` | ADK uses Pydantic `BaseModel` extensively. → [pydantic deep dive](../python/python-pydantic-deep-dive.md) |
 | `sealed interface` | `@final` on subclasses | No direct sealed equivalent. |
 | Annotations (`@NotNull`) | Type hints + runtime validation | Pydantic validates at runtime; type hints alone do not. |
 
@@ -98,7 +98,7 @@ See also: [python-for-adk-learning-plan.md](python/python-for-adk-learning-plan.
 
 | Java | Python | Notes |
 |---|---|---|
-| `CompletableFuture<T>` | `asyncio.Task` / `await` | ADK is async-first. → [asyncio deep dive](python/python-asyncio-deep-dive.md) |
+| `CompletableFuture<T>` | `asyncio.Task` / `await` | ADK is async-first. → [asyncio deep dive](../python/python-asyncio-deep-dive.md) |
 | `ExecutorService` | `asyncio.get_event_loop()` | Single-threaded event loop; no thread pool needed for I/O. |
 | `Future.get()` | `await coroutine` | Never block on a coroutine; always `await`. |
 | `CompletableFuture.allOf()` | `asyncio.gather()` | Run multiple coroutines concurrently. |
@@ -109,13 +109,13 @@ See also: [python-for-adk-learning-plan.md](python/python-for-adk-learning-plan.
 | `volatile` | No equivalent | GIL provides basic visibility; use `asyncio` primitives. |
 | Thread pool for CPU work | `asyncio.to_thread()` | Offload CPU-bound work from the event loop. |
 
-See [17-concurrency.md](adk/17-concurrency.md) for ADK-specific concurrency patterns.
+See [17-concurrency.md](../adk/17-concurrency.md) for ADK-specific concurrency patterns.
 
 ## Testing
 
 | Java | Python | Notes |
 |---|---|---|
-| JUnit 5 | `pytest` | No class required; plain functions work. → [testing guide](python/python-testing-and-mocking-guide.md) |
+| JUnit 5 | `pytest` | No class required; plain functions work. → [testing guide](../python/python-testing-and-mocking-guide.md) |
 | `@Test` | `def test_something():` | Prefix with `test_`. |
 | `@BeforeEach` / `@AfterEach` | `@pytest.fixture` | Fixtures are injected by name. More flexible than JUnit lifecycle. |
 | `@BeforeAll` / `@AfterAll` | `@pytest.fixture(scope="module")` | Or `scope="session"` for across all tests. |
@@ -128,7 +128,7 @@ See [17-concurrency.md](adk/17-concurrency.md) for ADK-specific concurrency patt
 | `@MockBean` (Spring) | `monkeypatch` or `@patch` | pytest's `monkeypatch` fixture or `unittest.mock.patch`. |
 | `@SpringBootTest` | `@pytest.mark.asyncio` | For testing async ADK agents. |
 
-See [22-testing.md](adk/22-testing.md) for ADK-specific testing with `MockModel`.
+See [22-testing.md](../adk/22-testing.md) for ADK-specific testing with `MockModel`.
 
 ## Package / Module System
 
@@ -150,20 +150,20 @@ See [22-testing.md](adk/22-testing.md) for ADK-specific testing with `MockModel`
 
 | Java Concept | ADK Python Equivalent | Notes |
 |---|---|---|
-| Spring Boot Application | `Runner` + `App` | `Runner` is the stateless orchestrator; `App` is the DI container. → [03-runners.md](adk/03-runners.md), [10-apps.md](adk/10-apps.md) |
-| `@RestController` | `LlmAgent` | An agent handles requests and produces responses. → [04-agents.md](adk/04-agents.md) |
-| `@Service` | `FunctionTool` / `BaseTool` | Business logic wrapped as tools for agents. → [09-tools.md](adk/09-tools.md) |
-| DTO / Request Body | Pydantic `BaseModel` | Runtime validation, serialization, schema generation. → [pydantic deep dive](python/python-pydantic-deep-dive.md) |
+| Spring Boot Application | `Runner` + `App` | `Runner` is the stateless orchestrator; `App` is the DI container. → [03-runners.md](../adk/03-runners.md), [10-apps.md](../adk/10-apps.md) |
+| `@RestController` | `LlmAgent` | An agent handles requests and produces responses. → [04-agents.md](../adk/04-agents.md) |
+| `@Service` | `FunctionTool` / `BaseTool` | Business logic wrapped as tools for agents. → [09-tools.md](../adk/09-tools.md) |
+| DTO / Request Body | Pydantic `BaseModel` | Runtime validation, serialization, schema generation. → [pydantic deep dive](../python/python-pydantic-deep-dive.md) |
 | `@Autowired` / DI | Constructor args on `LlmAgent` | Tools, sub-agents, and config are passed directly. No DI framework. |
-| `ApplicationEvent` | `Event` + `EventActions` | Side effects are data, not method calls. → [07-events.md](adk/07-events.md) |
-| `HttpSession` | `Session` + `SessionService` | Session state is a plain dict with scoped keys. → [08-sessions.md](adk/08-sessions.md) |
-| Interceptor / Filter | Callbacks (`before_*` / `after_*`) | Six hook points on `LlmAgent`. → [04-agents.md](adk/04-agents.md) |
-| Spring Profiles | State scoping (`session:` / `user:` / `app:`) | Different state scopes replace environment-based config. → [08-sessions.md](adk/08-sessions.md) |
-| `@Async` + `CompletableFuture` | `async def` + `await` | Everything in ADK is async. → [asyncio deep dive](python/python-asyncio-deep-dive.md) |
-| `@Scheduled` | `LoopAgent` | Iterative execution until a stopping condition. → [04-agents.md](adk/04-agents.md) |
-| `@Transactional` | `EventActions.state_delta` | State changes are committed atomically with the event. → [07-events.md](adk/07-events.md) |
+| `ApplicationEvent` | `Event` + `EventActions` | Side effects are data, not method calls. → [07-events.md](../adk/07-events.md) |
+| `HttpSession` | `Session` + `SessionService` | Session state is a plain dict with scoped keys. → [08-sessions.md](../adk/08-sessions.md) |
+| Interceptor / Filter | Callbacks (`before_*` / `after_*`) | Six hook points on `LlmAgent`. → [04-agents.md](../adk/04-agents.md) |
+| Spring Profiles | State scoping (`session:` / `user:` / `app:`) | Different state scopes replace environment-based config. → [08-sessions.md](../adk/08-sessions.md) |
+| `@Async` + `CompletableFuture` | `async def` + `await` | Everything in ADK is async. → [asyncio deep dive](../python/python-asyncio-deep-dive.md) |
+| `@Scheduled` | `LoopAgent` | Iterative execution until a stopping condition. → [04-agents.md](../adk/04-agents.md) |
+| `@Transactional` | `EventActions.state_delta` | State changes are committed atomically with the event. → [07-events.md](../adk/07-events.md) |
 | Strategy pattern (interface + impls) | `BaseLlm`, `BaseSessionService`, etc. | ABC base + multiple concrete implementations throughout ADK. |
-| JUnit + Mockito | `pytest` + `MockModel` + `AsyncMock` | `MockModel` replaces the LLM for deterministic tests. → [22-testing.md](adk/22-testing.md) |
+| JUnit + Mockito | `pytest` + `MockModel` + `AsyncMock` | `MockModel` replaces the LLM for deterministic tests. → [22-testing.md](../adk/22-testing.md) |
 | `ObjectMapper` (Jackson) | Pydantic `model_dump()` / `model_validate()` | Serialization and deserialization built into models. |
 | Lombok `@Data` | `@dataclass` or `BaseModel` | Auto-generated `__init__`, `__repr__`, `__eq__`. |
 | `Optional.orElse()` | `value if value is not None else default` | Or just `value or default` for falsy-safe cases. |
@@ -179,8 +179,8 @@ See [22-testing.md](adk/22-testing.md) for ADK-specific testing with `MockModel`
 4. **Explicit self** — Always the first parameter in instance methods. Not a keyword; just a convention.
 5. **EAFP over LBYL** — "Easier to Ask Forgiveness than Permission." Use `try/except` rather than checking preconditions.
 6. **No checked exceptions** — Document exceptions in docstrings; callers choose what to catch.
-7. **async/await is foundational** — ADK is built on asyncio. Master it early. → [asyncio deep dive](python/python-asyncio-deep-dive.md)
+7. **async/await is foundational** — ADK is built on asyncio. Master it early. → [asyncio deep dive](../python/python-asyncio-deep-dive.md)
 
 ---
 
-See also: [glossary.md](glossary.md) | [25-onboarding-guide.md](adk/25-onboarding-guide.md) | [20-best-practices.md](adk/20-best-practices.md)
+See also: [glossary.md](glossary.md) | [25-onboarding-guide.md](../adk/00-onboarding-guide.md) | [20-best-practices.md](../adk/20-best-practices.md)
