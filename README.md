@@ -100,6 +100,12 @@ These notes are strongest where official docs are weakest:
 
 Start with the big picture, then follow the execution path layer by layer.
 
+### [ ] Start Here
+
+| # | File | What You Learn |
+|---|------|---------------|
+| 0 | [00-onboarding-guide.md](adk/00-onboarding-guide.md) | **Zero to first agent** — hands-on walkthrough, no prior ADK knowledge needed |
+
 ### [ ] Part 1: The Big Picture
 
 | # | File | What You Learn |
@@ -153,10 +159,7 @@ Start with the big picture, then follow the execution path layer by layer.
 | # | File | What It Covers |
 |---|------|---------------|
 | 24 | [24-faq.md](adk/24-faq.md) | Tool versioning, state scoping, agent messaging |
-| 25 | [25-onboarding-guide.md](adk/25-onboarding-guide.md) | Zero-to-first-agent walkthrough |
-| 26 | [26-adk-2.0-preview.md](adk/26-adk-2.0-preview.md) | ADK 2.0: graph workflows, collaborative agents, dynamic workflows |
-
-> **New here?** Start with [25-onboarding-guide.md](adk/25-onboarding-guide.md) for a hands-on walkthrough before diving into the full series.
+| 26 | [25-adk-2.0-preview.md](adk/25-adk-2.0-preview.md) | ADK 2.0: graph workflows, collaborative agents, dynamic workflows |
 
 ### Python for Java Developers
 

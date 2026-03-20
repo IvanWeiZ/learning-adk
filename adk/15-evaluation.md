@@ -1,6 +1,6 @@
 # 15 — Evaluation: Agent Quality Testing
 
-> **Source:** [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) · [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) · [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) · [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) | **Prereqs:** [09-tools.md](./09-tools.md), [03-runners.md](./03-runners.md) | **Official docs:** <https://google.github.io/adk-docs/evaluate/>
+> **Official docs:** [Evaluation](https://google.github.io/adk-docs/evaluate/) | **Source:** [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) · [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) · [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) · [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) | **Prereqs:** [09-tools.md](09-tools.md), [03-runners.md](03-runners.md)
 
 ---
 
@@ -19,7 +19,7 @@
 │  actual events                          │
 │    │                                    │
 │    ▼                                    │
-│  BaseEvaluator                          │
+│  Evaluator                          │
 │    │  TrajectoryEvaluator               │
 │    │  ResponseEvaluator                 │
 │    ▼                                    │
@@ -37,7 +37,7 @@ ADK's evaluation framework measures agent behavior -- correct responses, right t
 EvalCase (evaluation/eval_case.py — one scenario)
 EvalSet (evaluation/eval_set.py — collection of EvalCases)
 
-BaseEvaluator (evaluation/evaluator.py — abstract scorer)
+Evaluator (evaluation/evaluator.py — abstract scorer)
  ├── TrajectoryEvaluator (scores tool call sequence)
  └── ResponseEvaluator (scores final response text)
 
@@ -146,32 +146,35 @@ class EvalMetricResult(BaseModel):
 
 ```
 AgentEvaluator.evaluate()
-├── 1. Load EvalSet from .evalset.json
+├── 1. Scan for .test.json files in the given path
 ├── 2. For each EvalCase:
 │   ├── Create Runner + Session
-│   ├── Replay conversation turns
+│   ├── Replay conversation invocations
 │   └── Collect actual tool calls + responses
 ├── 3. Score with configured evaluators
-└── 4. Return EvalCaseResult per case
+└── 4. Assert results internally (raises on failure)
 ```
 
 `AgentEvaluator` is the main entry point. It:
-1. Replays each `EvalCase` against a real agent (using a `Runner`)
-2. Collects actual tool calls and final responses
-3. Scores them against expectations using configured evaluators
-4. Returns pass/fail results per metric
+1. Scans for `.test.json` eval files in the given directory
+2. Replays each `EvalCase` against a real agent (using a `Runner`)
+3. Collects actual tool calls and final responses
+4. Scores them against expectations using configured evaluators
+5. **Asserts internally** — does not return results. Failures raise `AssertionError`.
 
 ```python
 from google.adk.evaluation import AgentEvaluator
 
-results = await AgentEvaluator.evaluate(
+# evaluate() asserts internally; it does NOT return results.
+# Default num_runs=2 (runs each case twice for consistency).
+AgentEvaluator.evaluate(
     agent_module="my_package.my_agent", # importable module with 'agent' variable
-    eval_dataset_file_path_or_dir="tests/evals/", # .evalset.json files
-    num_runs=1, # how many times to run each case
+    eval_dataset_file_path_or_dir="tests/evals/", # directory with .test.json files
+    num_runs=2, # default: 2
 )
 ```
 
-The returned `results` is a list of `EvalCaseResult` objects, one per case.
+If any eval case fails its metric thresholds, `evaluate()` raises an `AssertionError`.
 
 ### [ ] Metrics Deep Dive
 
@@ -222,35 +225,42 @@ This is a **model-graded** metric -- it's fuzzy by design. Two semantically equi
 
 ### [ ] Eval File Format
 
-EvalSets are stored as JSON files with the extension `.evalset.json`:
+EvalSets are stored as JSON files with the extension `.test.json`:
 
 ```json
 {
  "eval_set_id": "weather_agent_evals",
- "eval_metrics": [
- { "metric_name": "tool_trajectory_avg_score", "threshold": 0.8 },
- { "metric_name": "response_match_score", "threshold": 0.7 }
- ],
+ "name": "Weather Agent Tests",
+ "description": "Basic weather query scenarios",
  "eval_cases": [
  {
  "eval_id": "basic_weather_query",
+ "creation_timestamp": 1700000000.0,
  "conversation": [
  {
- "user_content": {
- "parts": [{ "text": "What is the weather in Paris?" }],
- "role": "user"
- },
- "expected_tool_use": [
- {
- "tool_name": "get_weather",
- "tool_input": { "city": "Paris" }
+  "invocation_id": "turn_1",
+  "user_content": {
+  "parts": [{ "text": "What is the weather in Paris?" }],
+  "role": "user"
+  },
+  "final_response": {
+  "parts": [{ "text": "The weather in Paris is currently 18°C and partly cloudy." }],
+  "role": "model"
+  },
+  "intermediate_data": {
+  "tool_uses": [
+   { "name": "get_weather", "args": { "city": "Paris" } }
+  ],
+  "tool_responses": [
+   { "name": "get_weather", "response": { "result": { "temp": "18°C", "condition": "partly cloudy" } } }
+  ]
+  },
+  "creation_timestamp": 1700000000.0
+ }
+ ]
  }
  ],
- "reference_answer": "The weather in Paris is currently 18°C and partly cloudy."
- }
- ]
- }
- ]
+ "creation_timestamp": 1700000000.0
 }
 ```
 
@@ -261,7 +271,7 @@ EvalSets are stored as JSON files with the extension `.evalset.json`:
 adk eval my_agent_module/ tests/evals/
 
 # Run a specific eval set file:
-adk eval my_agent_module/ tests/evals/weather.evalset.json
+adk eval my_agent_module/ tests/evals/weather.test.json
 
 # Verbose output (shows per-turn tool calls):
 adk eval --verbose my_agent_module/ tests/evals/
@@ -269,49 +279,28 @@ adk eval --verbose my_agent_module/ tests/evals/
 
 The CLI exits with code 0 if all cases pass, non-zero if any fail -- suitable for CI.
 
-### [ ] Running Evals Programmatically
+### [ ] Running Evals Programmatically (pytest Integration)
 
-```python
-import asyncio
-from google.adk.evaluation import AgentEvaluator
-
-async def run_evals():
-    results = await AgentEvaluator.evaluate(
-        agent_module="my_weather_agent",
-        eval_dataset_file_path_or_dir="tests/evals/",
-    )
-    for r in results:
-        status = r.final_eval_status.value
-        print(f"{r.eval_id}: {status}")
-        for m in r.eval_metric_results:
-            print(f"  {m.metric_name}: {m.score:.2f} (threshold {m.threshold})")
-
-asyncio.run(run_evals())
-```
-
-### [ ] Integration with pytest
-
-Thin pytest wrapper:
+Since `AgentEvaluator.evaluate()` asserts internally, the simplest integration is via pytest:
 
 ```python
 # tests/test_agent_eval.py
 import pytest
-from google.adk.evaluation import AgentEvaluator, EvalStatus
+from google.adk.evaluation import AgentEvaluator
 
 @pytest.mark.asyncio
 async def test_weather_agent_evals():
-    results = await AgentEvaluator.evaluate(
+    # evaluate() asserts internally — if any case fails, pytest catches the AssertionError.
+    await AgentEvaluator.evaluate(
         agent_module="weather_agent",
-        eval_dataset_file_path_or_dir="tests/evals/",
-    )
-    failures = [r for r in results if r.final_eval_status == EvalStatus.FAILED]
-    assert not failures, (
-        f"{len(failures)} eval case(s) failed: "
-        + ", ".join(f.eval_id for f in failures)
+        eval_dataset_file_path_or_dir="tests/evals/", # scans for .test.json files
+        num_runs=2, # default: runs each case twice
     )
 ```
 
 Run with: `pytest tests/test_agent_eval.py -v`
+
+No need to inspect return values — `evaluate()` raises on failure, which pytest reports as a test failure.
 
 ### [ ] Writing Good Eval Cases
 
@@ -326,15 +315,15 @@ Run with: `pytest tests/test_agent_eval.py -v`
 { "eval_id": "ambiguous_city_name", ... }
 ```
 
-**Use `tool_input: null` when argument values are flexible:**
+**Use empty `args` when argument values are flexible:**
 ```json
-{ "tool_name": "search_web", "tool_input": null }
+{ "name": "search_web", "args": {} }
 ```
 This checks that the agent *called* the tool without asserting which exact query it used.
 
-**Set `reference_answer` for open-ended responses, skip it for tool-only cases:**
-- If you only care about tool trajectory, set `expected_tool_use`, leave `reference_answer` null
-- If you only care about the response content, set `reference_answer`, leave `expected_tool_use` null
+**Set `final_response` for open-ended responses, skip it for tool-only cases:**
+- If you only care about tool trajectory, set `intermediate_data.tool_uses`, leave `final_response` null
+- If you only care about the response content, set `final_response`, leave `intermediate_data` null
 - For full coverage, set both
 
 ---
@@ -344,22 +333,22 @@ This checks that the agent *called* the tool without asserting which exact query
 ### [ ] Testing Pyramid for Agents
 
 ```
-┌─────────────────────────────────────┐
-│  Evals                              │
-│    Few, slow, expensive             │
-│    "Did the agent give              │
-│     a good answer?"                 │
-├─────────────────────────────────────┤
-│  Integration Tests                  │
-│    Some, medium speed               │
-│    "Did the right tools             │
-│     get called in order?"           │
-├─────────────────────────────────────┤
-│  Unit Tests (MockModel based)       │
-│    Many, fast, cheap                │
-│    "Does my tool return             │
-│     the right data?"                │
-└─────────────────────────────────────┘
+Testing Pyramid for Agents:
+│
+├── Unit Tests (MockModel)
+│      many, fast, cheap
+│      "Does my tool return the right data?"
+│      "Does my callback fire correctly?"
+│
+├── Integration Tests (InMemoryRunner + MockModel)
+│      some, medium speed
+│      "Did the right tools get called in order?"
+│      "Does the multi-agent pipeline work end-to-end?"
+│
+└── Evals (real LLM)
+       few, slow, expensive
+       "Did the agent give a good answer?"
+       "Is the response safe and grounded?"
 ```
 
 ### [ ] Eval vs Unit Test — When to Use Each
@@ -378,7 +367,7 @@ This checks that the agent *called* the tool without asserting which exact query
 | Java concept | ADK equivalent |
 |---|---|
 | JUnit `@Test` | `EvalCase` |
-| Test suite (`@Suite`) | `EvalSet` / `.evalset.json` |
+| Test suite (`@Suite`) | `EvalSet` / `.test.json` |
 | AssertJ / Hamcrest matchers | `EvalMetric` thresholds |
 | Integration test | Multi-turn `EvalCase` with tool trajectory |
 | Contract test | `tool_trajectory_avg_score` (verifies tool API usage) |
@@ -388,10 +377,10 @@ This checks that the agent *called* the tool without asserting which exact query
 
 ## Related
 
-- [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) — EvalCase, ConversationTurn, ToolUse
+- [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) — EvalCase, Invocation, IntermediateData
 - [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) — EvalSet, EvalMetric
 - [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) — main entry point
-- [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) — BaseEvaluator, metric implementations
+- [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) — Evaluator, metric implementations
 - [`python-testing-and-mocking-guide.md`](./python-testing-and-mocking-guide.md) — unit testing with pytest/AsyncMock
 - [`09-tools.md`](./09-tools.md) — tool system (what evals are testing)
 - [`02-when-to-build-what.md`](./02-when-to-build-what.md) — decision guide including when to write evals

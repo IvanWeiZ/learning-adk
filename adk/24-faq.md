@@ -1,6 +1,6 @@
 # 24 — FAQ: Common Questions & Answers
 
-> **Source:** patterns across all ADK modules | **Prereqs:** 04-agents, 08-sessions, 09-tools | **Official docs:** <https://google.github.io/adk-docs/get-started/quickstart/>
+> **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** patterns across all ADK modules | **Prereqs:** [04-agents.md](04-agents.md), [08-sessions.md](08-sessions.md), [09-tools.md](09-tools.md)
 
 ## At a Glance
 
@@ -29,6 +29,9 @@ ADK has no built-in tool versioning. Three patterns:
 #### [ ] Pattern A: Version in the Tool Name (Simplest)
 
 Run versions side-by-side. The LLM picks based on description.
+
+**Pros:** zero infrastructure, easy to understand, works immediately
+**Cons:** LLM may ignore instructions and keep calling v1, pollutes tool namespace, no per-user control
 
 ```python
 def search_products_v1(query: str) -> str:
@@ -69,7 +72,10 @@ Migration timeline:
 
 #### [ ] Pattern B: Toolset with Version Selection (Dynamic)
 
-Use a `BaseToolset` to serve different versions based on context:
+Use a `BaseToolset` to serve different versions based on context.
+
+**Pros:** per-user rollout via feature flags, A/B testing, clean tool namespace (LLM sees one tool)
+**Cons:** more code, requires feature flag infrastructure in session state, harder to debug which version ran
 
 ```python
 from google.adk.tools import BaseToolset, FunctionTool
@@ -128,7 +134,10 @@ How it works at runtime:
 
 #### [ ] Pattern C: Callback-Based Migration (Transparent)
 
-Use `before_tool_callback` to silently redirect old tool calls to new implementations:
+Use `before_tool_callback` to silently redirect old tool calls to new implementations.
+
+**Pros:** zero LLM retraining, existing prompts keep working, can transform args on the fly
+**Cons:** hidden indirection (hard to debug), callback runs on every tool call, migration logic lives outside the tool
 
 ```python
 async def version_migration_callback(tool, args, tool_context):
@@ -156,13 +165,16 @@ agent = Agent(
 #### [ ] Summary: When to Use Each Pattern
 
 ```
-┌──────────────────┬─────────────────────────────────────────────┐
-│ Pattern          │ Best For                                    │
-├──────────────────┼─────────────────────────────────────────────┤
-│ A: Named versions│ Simple migration, few tools                 │
-│ B: Toolset       │ Feature flags, A/B testing, per-user        │
-│ C: Callback      │ Transparent migration, no LLM retraining    │
-└──────────────────┴─────────────────────────────────────────────┘
+When to use each pattern:
+│
+├── A: Named versions
+│      Best for: Simple migration, few tools
+│
+├── B: Toolset
+│      Best for: Feature flags, A/B testing, per-user
+│
+└── C: Callback
+       Best for: Transparent migration, no LLM retraining
 ```
 
 ---
@@ -198,6 +210,9 @@ For MockModel, InMemoryRunner, and deterministic test patterns, see [22-testing.
 #### [ ] Pattern A: before_agent_callback (Recommended)
 
 Intercept the request before the agent sees it, extract IDs, fetch additional data, and inject it into state:
+
+**Pros:** runs before LLM (saves tokens), direct state access
+**Cons:** per-agent only, not reusable
 
 ```python
 import re
@@ -279,6 +294,9 @@ Request flow with preprocessing:
 
 #### [ ] Pattern B: Plugin (Reusable Across Agents)
 
+**Pros:** reusable across all agents, runs automatically
+**Cons:** more boilerplate, harder to debug
+
 ```python
 from google.adk.plugins import BasePlugin
 import re
@@ -326,6 +344,9 @@ app = App(name="my_app", root_agent=root_agent, plugins=[enrichment])
 ```
 
 #### [ ] Pattern C: SequentialAgent with Preprocessor Agent
+
+**Pros:** full LLM reasoning for extraction, handles complex cases
+**Cons:** extra LLM call (cost + latency), overkill for regex-level tasks
 
 ```python
 from google.adk import Agent
@@ -393,6 +414,9 @@ Four mechanisms:
 
 Agents in the same session share state via `output_key` or direct writes:
 
+**Pros:** simple, works immediately, persists across turns
+**Cons:** global namespace (key collisions), no type safety
+
 ```python
 # Agent A writes to state
 agent_a = Agent(
@@ -445,6 +469,9 @@ State-based message passing:
 
 For more control over what gets passed:
 
+**Pros:** LLM controls what gets written, natural language interface
+**Cons:** unreliable (LLM may forget to call), extra tool call overhead
+
 ```python
 def save_analysis(
     sentiment: str,
@@ -477,6 +504,9 @@ agent_b = Agent(
 #### [ ] Method 3: Agent Transfer (LLM-Driven Routing)
 
 Transfer carries full session history:
+
+**Pros:** LLM-driven routing, natural conversation flow
+**Cons:** no structured data handoff, target sees full history (privacy)
 
 ```python
 root = Agent(
@@ -524,6 +554,9 @@ Agent transfer message passing:
 
 Isolated execution without shared history:
 
+**Pros:** isolated execution (own branch), structured input_schema
+**Cons:** no shared history, heavier setup
+
 ```python
 from google.adk.tools.agent_tool import AgentTool
 
@@ -567,22 +600,31 @@ AgentTool message passing:
 #### [ ] Comparison Table
 
 ```
-┌─────────────────────┬───────────┬──────────┬─────────────┬──────────┐
-│ Method              │ Shares    │ Shares   │ Extra LLM   │ Best For │
-│                     │ history?  │ state?   │ call?       │          │
-├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ Session State       │ Yes       │ Yes      │ No          │ Pipeline │
-│ (output_key)        │           │          │             │ stages   │
-├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ Tool State Write    │ Yes       │ Yes      │ No          │ Complex  │
-│ (ToolContext.state)  │           │          │             │ data     │
-├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ Agent Transfer      │ Yes       │ Yes      │ Yes (route) │ Dynamic  │
-│ (sub_agents)        │           │          │             │ routing  │
-├─────────────────────┼───────────┼──────────┼─────────────┼──────────┤
-│ AgentTool           │ No        │ No       │ Yes         │ Isolated │
-│ (tool wrapper)      │ (new)     │ (new)    │ (child)     │ helpers  │
-└─────────────────────┴───────────┴──────────┴─────────────┴──────────┘
+Message passing methods compared:
+│
+├── Session State (output_key)
+│      Shares history: Yes
+│      Shares state: Yes
+│      Extra LLM call: No
+│      Best for: Pipeline stages
+│
+├── Tool State Write (ToolContext.state)
+│      Shares history: Yes
+│      Shares state: Yes
+│      Extra LLM call: No
+│      Best for: Complex data
+│
+├── Agent Transfer (sub_agents)
+│      Shares history: Yes
+│      Shares state: Yes
+│      Extra LLM call: Yes (route)
+│      Best for: Dynamic routing
+│
+└── AgentTool (tool wrapper)
+       Shares history: No (new session)
+       Shares state: No (new session)
+       Extra LLM call: Yes (child)
+       Best for: Isolated helpers
 ```
 
 ---
@@ -595,7 +637,7 @@ State has four scopes controlled by key prefixes: session (no prefix), `user:`, 
 
 ## Cross-references
 
-- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you're new
+- [00-onboarding-guide.md](00-onboarding-guide.md) — Start here if you're new
 - [20-best-practices.md](20-best-practices.md) — Common mistakes to avoid
 - [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
 - [08-sessions.md](08-sessions.md) — Session state deep dive

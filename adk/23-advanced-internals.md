@@ -1,26 +1,23 @@
 # 23 — Advanced Internals: Processors, Plugins, A2A
 
-> **Source:** [adk-python](https://github.com/google/adk-python) | **Prereqs:** [25-onboarding-guide.md](25-onboarding-guide.md), [20-best-practices.md](20-best-practices.md), [05-flows.md](05-flows.md) | **Official docs:** <https://google.github.io/adk-docs/agents/>
+> **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [adk-python](https://github.com/google/adk-python) | **Prereqs:** [00-onboarding-guide.md](00-onboarding-guide.md), [20-best-practices.md](20-best-practices.md), [05-flows.md](05-flows.md)
 
 ## At a Glance
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│ ADK Internals — Three Pillars                                        │
-│                                                                      │
-│ ┌────────────────────┐ ┌──────────────────┐ ┌──────────────────┐    │
-│ │ Processor Pipeline │ │ Plugin System    │ │ A2A Protocol     │    │
-│ │                    │ │                  │ │                  │    │
-│ │ 12 request procs   │ │ Wraps agent      │ │ Cross-service    │    │
-│ │   ↓                │ │ lifecycle        │ │ agent comms      │    │
-│ │ LLM call           │ │   ↓              │ │   ↓              │    │
-│ │   ↓                │ │ before/after     │ │ ADK Event        │    │
-│ │ 2 response procs   │ │ every hook       │ │ ↔ A2A Message    │    │
-│ └────────────────────┘ └──────────────────┘ └──────────────────┘    │
-│                                                                      │
-│ + Custom Tools, Toolsets, Auth, Artifacts, Code Executors,           │
-│   Planners, Streaming, Event Compaction, Content Filtering           │
-└──────────────────────────────────────────────────────────────────────┘
+ADK Internals — Three Pillars:
+│
+├── Processor Pipeline
+│      12 request procs → LLM call → 2 response procs
+│
+├── Plugin System
+│      Wraps agent lifecycle with before/after hooks on every layer
+│
+├── A2A Protocol
+│      Cross-service agent communication (ADK Event ↔ A2A Message)
+│
+└── + Custom Tools, Toolsets, Auth, Artifacts, Code Executors,
+      Planners, Streaming, Event Compaction, Content Filtering
 ```
 
 This file covers the internal machinery of ADK: the processor pipeline that builds prompts and handles responses, the plugin system for cross-cutting concerns, custom tool patterns beyond `FunctionTool`, the authentication flow, artifact management, code execution, planners, A2A protocol, event compaction, content filtering, and streaming modes.
@@ -173,27 +170,25 @@ async def _execute_tools_parallel(function_calls, tool_context):
         )
         tasks.append(task)
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*tasks)
     return results
 ```
 
 ```
 LLM returns: [get_weather("Tokyo"), get_weather("London"), get_weather("NYC")]
- │                         │                         │
- ▼                         ▼                         ▼
- ┌──────────┐  ┌──────────┐  ┌──────────┐
- │  Task 1  │  │  Task 2  │  │  Task 3  │
- │  Tokyo   │  │  London  │  │  NYC     │
- └────┬─────┘  └────┬─────┘  └────┬─────┘
-      │              │              │
-      └─────────────────────┼─────────────────────┘
-                            │
-                     asyncio.gather()
-                            │
-                            ▼
-              All 3 results returned together
-              → merged into single event
-              → fed back to LLM in next iteration
+│
+├── Task 1: get_weather("Tokyo")
+│      runs concurrently
+│
+├── Task 2: get_weather("London")
+│      runs concurrently
+│
+├── Task 3: get_weather("NYC")
+│      runs concurrently
+│
+└── asyncio.gather() collects all results
+       → merged into single event
+       → fed back to LLM in next iteration
 ```
 
 ---
@@ -407,25 +402,17 @@ deploy_tool = LongRunningFunctionTool(func=start_deployment)
 
 ```
 Normal tool:                LongRunningFunctionTool:
-┌─────────────┐             ┌─────────────┐
-│ LLM calls   │             │ LLM calls   │
-│ tool        │             │ tool        │
-└──────┬──────┘             └──────┬──────┘
-       │                           │
-       ▼                           ▼
-┌─────────────┐             ┌─────────────┐
-│ Tool runs   │             │ Tool starts │
-│ (blocks)    │             │ async work  │
-│ 5 minutes   │             │ returns ID  │
-└──────┬──────┘             └──────┬──────┘
-       │                           │ (immediate)
-       ▼                           ▼
-┌─────────────┐             ┌─────────────┐
-│ Result sent │             │ LLM gets    │
-│ to LLM      │             │ tracking ID │
-└─────────────┘             │ tells user  │
-                            │ to wait     │
-                            └─────────────┘
+Normal tool:
+│
+├── LLM calls tool
+├── Tool runs (blocks for 5 minutes)
+└── Result sent to LLM
+
+LongRunningFunctionTool:
+│
+├── LLM calls tool
+├── Tool starts async work, returns tracking ID (immediate)
+└── LLM gets tracking ID, tells user to wait
 ```
 
 **AgentTool (wrap an agent as a tool):**
@@ -485,16 +472,31 @@ AgentTool execution flow:
 AgentTool vs sub_agents:
 
 ```
-┌──────────────────────┬──────────────────────────────────────────┐
-│                      │ sub_agents          AgentTool            │
-├──────────────────────┼──────────────────────────────────────────┤
-│ Transfer control?    │ Yes (LLM decides)   No (tool call)      │
-│ Shares session?      │ Yes (same session)  No (new session)    │
-│ Shares history?      │ Yes (sees all msgs) No (isolated)       │
-│ LLM picks when?      │ Based on description Based on tool      │
-│ Returns to parent?   │ Via transfer back   Automatically       │
-│ Use case             │ "Route to specialist" "Use as helper"   │
-└──────────────────────┴──────────────────────────────────────────┘
+AgentTool vs sub_agents comparison:
+│
+├── Transfer control?
+│      sub_agents: Yes (LLM decides)
+│      AgentTool:  No (tool call)
+│
+├── Shares session?
+│      sub_agents: Yes (same session)
+│      AgentTool:  No (new session)
+│
+├── Shares history?
+│      sub_agents: Yes (sees all msgs)
+│      AgentTool:  No (isolated)
+│
+├── LLM picks when?
+│      sub_agents: Based on description
+│      AgentTool:  Based on tool schema
+│
+├── Returns to parent?
+│      sub_agents: Via transfer back
+│      AgentTool:  Automatically
+│
+└── Use case
+       sub_agents: "Route to specialist"
+       AgentTool:  "Use as helper"
 ```
 
 ---
@@ -688,10 +690,9 @@ agent = Agent(
 │ └───────────────────────────────────────────────┘                │
 │                                                                  │
 │ Storage backends:                                                │
-│ ┌─────────────────┐ ┌─────────────────┐ ┌──────────────────┐    │
-│ │ InMemory        │ │ FileArtifact    │ │ GcsArtifact      │    │
-│ │ (dev/test)      │ │ (local disk)    │ │ (Google Cloud)   │    │
-│ └─────────────────┘ └─────────────────┘ └──────────────────┘    │
+│ ├── InMemory        (dev/test)                                   │
+│ ├── FileArtifact    (local disk)                                 │
+│ └── GcsArtifact     (Google Cloud)                               │
 │                                                                  │
 │ Scoping:                                                         │
 │ ├── Session-scoped: tied to one conversation                     │
@@ -1161,7 +1162,7 @@ See the inline code throughout "How It Works" above. Each section contains produ
 
 ## Related
 
-- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you are new
+- [00-onboarding-guide.md](00-onboarding-guide.md) — Start here if you are new
 - [20-best-practices.md](20-best-practices.md) — Common mistakes to avoid
 - [07-events.md](07-events.md) — Event class deep dive
 - [05-flows.md](05-flows.md) — Flow architecture

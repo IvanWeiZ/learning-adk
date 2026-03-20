@@ -1,6 +1,6 @@
 # 20 — Best Practices: Anti-Patterns & Rules
 
-> **Source:** ADK source code (agents, tools, sessions, runners modules) | **Prereqs:** [25-onboarding-guide.md](25-onboarding-guide.md) | **Official docs:** <https://google.github.io/adk-docs/agents/>
+> **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** ADK source code (agents, tools, sessions, runners modules) | **Prereqs:** [00-onboarding-guide.md](00-onboarding-guide.md)
 
 ## At a Glance
 
@@ -316,16 +316,25 @@ async def my_after_tool(tool, args, tool_context, tool_response):
 **Parameter name cheat sheet:**
 
 ```
-┌────────────────────────┬──────────────────────────────────────────┐
-│ Callback               │ Required Parameter Names                 │
-├────────────────────────┼──────────────────────────────────────────┤
-│ before_agent_callback  │ callback_context                         │
-│ after_agent_callback   │ callback_context                         │
-│ before_model_callback  │ callback_context, llm_request            │
-│ after_model_callback   │ callback_context, llm_response           │
-│ before_tool_callback   │ tool, args, tool_context                 │
-│ after_tool_callback    │ tool, args, tool_context, tool_response  │
-└────────────────────────┴──────────────────────────────────────────┘
+Callback parameter names (must be exact):
+│
+├── before_agent_callback
+│      callback_context
+│
+├── after_agent_callback
+│      callback_context
+│
+├── before_model_callback
+│      callback_context, llm_request
+│
+├── after_model_callback
+│      callback_context, llm_response
+│
+├── before_tool_callback
+│      tool, args, tool_context
+│
+└── after_tool_callback
+       tool, args, tool_context, tool_response
 ```
 
 ### [ ] 7. generate_content_config — Don't Duplicate Agent Fields
@@ -695,15 +704,15 @@ One agent with 20 tools and a 2000-word instruction
 
 Split into focused agents with clear responsibilities
 
-┌─────────────┐
-│ coordinator  │
-│  (routes)    │
-└──┬──┬──┬────┘
-   │  │  │
-   ▼  ▼  ▼
-┌────┐┌────┐┌────┐
-│ A  ││ B  ││ C  │  Each: 3-5 tools, focused instruction
-└────┘└────┘└────┘
+coordinator (routes)
+├── Agent A
+│      3-5 tools, focused instruction
+│
+├── Agent B
+│      3-5 tools, focused instruction
+│
+└── Agent C
+       3-5 tools, focused instruction
 ```
 
 **Concrete before/after:**
@@ -875,7 +884,7 @@ Agent not responding correctly?
 
 ## Related
 
-- [25-onboarding-guide.md](25-onboarding-guide.md) — Start here if you're new
+- [00-onboarding-guide.md](00-onboarding-guide.md) — Start here if you're new
 - [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
 - [04-agents.md](04-agents.md) — Agent types deep dive
 - [09-tools.md](09-tools.md) — Tool system reference

@@ -1,6 +1,6 @@
 # 17 — Concurrency: Thread Safety & Parallel Tools
 
-> **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`agents/parallel_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/parallel_agent.py) | **Prereqs:** [08-sessions.md](./08-sessions.md), [09-tools.md](./09-tools.md) | **Official docs:** <https://google.github.io/adk-docs/runtime/>
+> **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`agents/parallel_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/parallel_agent.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [09-tools.md](09-tools.md)
 
 ---
 
@@ -18,13 +18,16 @@
 
  Parallel Tool Execution (asyncio.gather):
     LLM returns: [tool_A, tool_B]
-         │            │
-         ▼            ▼
-    ┌─────────┐ ┌─────────┐
-    │ tool_A  │ │ tool_B  │   concurrent coroutines
-    └────┬────┘ └────┬────┘
-         └─────┬─────┘
-               ▼
+         │
+         ▼
+    concurrent coroutines:
+    ├── tool_A
+    │
+    ├── tool_B
+    │
+    └── both complete
+           │
+           ▼
     deep_merge_dicts (last-write-wins on key conflicts)
 ```
 
@@ -70,31 +73,31 @@ ParallelAgent (agents/parallel_agent.py — runs sub-agents concurrently)
 
 ```
 Parallel Tool Execution — Happy Path:
+│
+├── LLM returns two FunctionCalls in one response
+│      FunctionCall("get_weather", {"city": "Tokyo"})
+│      FunctionCall("get_news", {"topic": "tech"})
+│
+├── ADK runs both concurrently via asyncio.gather()
+│      get_weather runs (200ms)
+│      get_news runs (300ms)
+│      total wall time: 300ms (not 500ms)
+│
+└── Results merged into single FunctionResponse event
+       both results sent back to LLM in next loop iteration
 
- LLM returns: [FunctionCall("get_weather"), FunctionCall("get_news")]
- │ │
- ▼ ▼
- ┌─────────────┐ ┌─────────────┐
- │ get_weather │ │ get_news │
- │ (200ms) │ │ (300ms) │
- └──────┬──────┘ └──────┬──────┘
- │ │
- └─────────┬─────────────────┘
- ▼
- asyncio.gather() merges results
- → single FunctionResponse event
- → back to LLM
-
- Total time: 300ms (not 500ms) — parallel wins!
 
 Collision Scenario — both tools write same state key:
-
- Tool A: ctx.state["result"] = "sunny" (finishes first)
- Tool B: ctx.state["result"] = "breaking" (finishes second)
- │
- ▼
- deep_merge_dicts → last write wins
- state["result"] = "breaking" ← Tool A's write is lost!
+│
+├── Tool A finishes first
+│      ctx.state["result"] = "sunny"
+│
+├── Tool B finishes second
+│      ctx.state["result"] = "breaking news"
+│
+└── deep_merge_dicts → last write wins
+       state["result"] = "breaking news"
+       Tool A's write is silently lost!
 
  Fix: use different state keys per tool
 ```

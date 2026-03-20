@@ -1,30 +1,37 @@
 # 08 — Sessions: Conversation History & State
 
-> **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/session.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/session.py), [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py), [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) | **Prereqs:** 03, 07
+> **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/session.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/session.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) | **Prereqs:** [03-runners.md](03-runners.md), [07-events.md](07-events.md)
 
 ## At a Glance
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                     Session                         │
-│  state {}          events [...]       metadata      │
-│  - key-value       - ordered list     - id, app,    │
-│    dict (scoped      of Event           user_id,    │
-│    by session,       objects             timestamps  │
-│    user, app)                                       │
-└─────────────────────────┬───────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────┐
-│            BaseSessionService (CRUD)                │
-│  create_session / get_session / list / delete       │
-│  append_event — applies state_delta, persists       │
-├─────────────────────────────────────────────────────┤
-│  InMemorySessionService     (dev/tests)             │
-│  SqliteSessionService       (local persistence)     │
-│  DatabaseSessionService     (production DB)         │
-│  VertexAiSessionService     (cloud managed)         │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                                  Session                                     │
+│                                                                              │
+│  state: dict              events: list[Event]           metadata             │
+│  ┌──────────────────┐     ┌──────────────────────┐     ┌──────────────────┐  │
+│  │ key-value store  │     │ ordered conversation │     │ id               │  │
+│  │ scoped by:       │     │ history — every msg, │     │ app_name         │  │
+│  │  session (no pfx)│     │ tool call, response  │     │ user_id          │  │
+│  │  user:  (cross)  │     │ is an Event object   │     │ create/update    │  │
+│  │  app:   (global) │     │                      │     │ timestamps       │  │
+│  │  temp:  (ephemer)│     │                      │     │                  │  │
+│  └──────────────────┘     └──────────────────────┘     └──────────────────┘  │
+└───────────────────────────────────┬───────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                        BaseSessionService (CRUD)                             │
+│                                                                              │
+│  create_session / get_session / list_sessions / delete_session                │
+│  append_event — applies state_delta atomically, persists event               │
+│                                                                               │
+│  Implementations:                                                             │
+│  ├── InMemorySessionService      dev / tests — no persistence, fast           │
+│  ├── SqliteSessionService        local single-process persistence             │
+│  ├── DatabaseSessionService      production — SQLAlchemy, row-level locking   │
+│  └── VertexAiSessionService      GCP managed — Vertex AI Agent Engine         │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 A `Session` is one conversation thread. It stores the full ordered list of `Event`s (conversation history) and a mutable `state` dict (arbitrary key-value data persisted across turns). `BaseSessionService` provides CRUD. Agents access sessions only through `InvocationContext`.

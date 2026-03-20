@@ -1,6 +1,6 @@
 # 19 — Session Security: State & Data Protection
 
-> **Source:** [`sessions/state.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/state.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) · [`sessions/_session_util.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/_session_util.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [07-events.md](07-events.md), [20-best-practices.md](20-best-practices.md) | **Official docs:** <https://google.github.io/adk-docs/sessions/>
+> **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/state.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/state.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) · [`sessions/_session_util.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/_session_util.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [07-events.md](07-events.md), [20-best-practices.md](20-best-practices.md)
 
 ## At a Glance
 
@@ -46,21 +46,20 @@ session = await session_service.get_session(
 
 ```
 Scenario: User A's request arrives with user_id="user_b" (due to a bug)
-
-┌─────────────────────────────────────────────────────────────┐
-│ session_service.get_session(user_id="user_b", session_id=X) │
-│                                                             │
-│ Case 1: Session X belongs to user_b                         │
-│ → Returns user_b's full session (all events, all state)     │
-│ → User A now sees user_b's entire conversation history!     │
-│                                                             │
-│ Case 2: Session X doesn't exist for user_b                  │
-│ → Returns None (no data leak, but broken UX)                │
-│                                                             │
-│ Case 3: auto_create_session=True                            │
-│ → Creates a NEW session under user_b's account              │
-│ → User A's messages now stored in user_b's namespace!       │
-└─────────────────────────────────────────────────────────────┘
+│
+│   session_service.get_session(user_id="user_b", session_id=X)
+│
+├── Case 1: Session X belongs to user_b
+│      returns user_b's full session (all events, all state)
+│      ⚠ User A now sees user_b's entire conversation history!
+│
+├── Case 2: Session X doesn't exist for user_b
+│      returns None
+│      no data leak, but broken UX
+│
+└── Case 3: auto_create_session=True
+       creates a NEW session under user_b's account
+       ⚠ User A's messages now stored in user_b's namespace!
 ```
 
 **Warning: list_sessions Can List ALL Users' Sessions**
@@ -314,16 +313,32 @@ def _merge_state(app_state, user_state, session_state) -> dict[str, Any]:
 **Visibility Matrix**
 
 ```
-┌──────────────────────┬───────────┬───────────┬──────────┬───────────┐
-│ Scope                │ Same      │ Different │ Different│ Persisted │
-│                      │ session   │ session   │ user     │ to disk   │
-│                      │ same user │ same user │          │           │
-├──────────────────────┼───────────┼───────────┼──────────┼───────────┤
-│ Session (no prefix)  │ Yes       │ No        │ No       │ Yes       │
-│ user:                │ Yes       │ Yes       │ No       │ Yes       │
-│ app:                 │ Yes       │ Yes       │ Yes      │ Yes       │
-│ temp:                │ Yes*      │ No        │ No       │ No        │
-└──────────────────────┴───────────┴───────────┴──────────┴───────────┘
+Visibility by scope:
+│
+├── Session (no prefix)
+│      same session, same user: Yes
+│      different session, same user: No
+│      different user: No
+│      persisted to disk: Yes
+│
+├── user:
+│      same session, same user: Yes
+│      different session, same user: Yes
+│      different user: No
+│      persisted to disk: Yes
+│
+├── app:
+│      same session, same user: Yes
+│      different session, same user: Yes
+│      different user: Yes
+│      persisted to disk: Yes
+│
+└── temp:
+       same session, same user: Yes*
+       different session, same user: No
+       different user: No
+       persisted to disk: No
+
 * temp: visible within the same request/invocation only, not across turns
 ```
 
@@ -972,14 +987,23 @@ Detection: Scan log output for conversation patterns. Use structured logging wit
 ### [ ] State Prefix Quick Reference
 
 ```
-┌────────────┬──────────────────────┬──────────────────────────────────┐
-│ Prefix     │ Safe to Store        │ NEVER Store                      │
-├────────────┼──────────────────────┼──────────────────────────────────┤
-│ (none)     │ Cart, step, context  │ Passwords, credit cards, SSNs    │
-│ user:      │ Preferences, refs    │ Secrets, medical data, PII       │
-│ app:       │ Feature flags, config│ ANY user data, ANY tenant data   │
-│ temp:      │ Tokens, cache, scratch│ Data needed after this request  │
-└────────────┴──────────────────────┴──────────────────────────────────┘
+State Prefix Quick Reference:
+│
+├── (none) — session scope
+│      Safe to store: Cart, step, context
+│      NEVER store: Passwords, credit cards, SSNs
+│
+├── user:
+│      Safe to store: Preferences, refs
+│      NEVER store: Secrets, medical data, PII
+│
+├── app:
+│      Safe to store: Feature flags, config
+│      NEVER store: ANY user data, ANY tenant data
+│
+└── temp:
+       Safe to store: Tokens, cache, scratch
+       NEVER store: Data needed after this request
 ```
 
 ---

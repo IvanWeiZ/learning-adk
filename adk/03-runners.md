@@ -1,6 +1,6 @@
 # 03 — Runner: The Stateless Orchestrator
 
-> **Official docs:** [Runner](https://google.github.io/adk-docs/runtime/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) | **Prereqs:** 01, 02
+> **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md), [02-when-to-build-what.md](02-when-to-build-what.md)
 
 ## At a Glance
 
@@ -83,10 +83,12 @@ user message event
 
 ```python
 async def run_live(
-    user_id: str,
-    session_id: str,
+    *,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
     live_request_queue: LiveRequestQueue,
     run_config: Optional[RunConfig] = None,
+    session: Optional[Session] = None,
 ) -> AsyncGenerator[Event, None]:
 ```
 

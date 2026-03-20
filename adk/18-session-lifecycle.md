@@ -1,6 +1,6 @@
 # 18 — Session Lifecycle: Service Timeline & Optimization
 
-> **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [03-runners.md](03-runners.md), [07-events.md](07-events.md) | **Official docs:** <https://google.github.io/adk-docs/sessions/>
+> **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [03-runners.md](03-runners.md), [07-events.md](07-events.md)
 
 ## At a Glance
 
@@ -356,17 +356,27 @@ Need durable sessions across restarts?
 Session service is only one source of latency. The full critical path for a single user turn, with the dominant costs:
 
 ```
- Time →
- ├──────────────────────────────────────────────────────────────────────────┤
+ Critical path for a single user turn (in time order):
+ │
+ ├── get_session
+ │      ~1ms (in-memory)
+ │
+ ├── append_event(user message)
+ │      ~0.1ms
+ │
+ ├── LLM call #1
+ │      500-3000ms  ← dominant cost
+ │
+ ├── tool execution
+ │      10-500ms
+ │
+ ├── LLM call #2
+ │      500-3000ms  ← dominant cost
+ │
+ └── append_event x N (agent events)
+        ~0.3ms total
 
-get_session  append(user)  LLM call #1       tool exec   LLM call #2       append x N
- ┌──┐         ┌─┐         ┌──────────────┐   ┌───┐      ┌──────────────┐   ┌─┐┌─┐┌─┐
- │  │         │ │         │              │   │   │      │              │   │ ││ ││ │
- └──┘         └─┘         └──────────────┘   └───┘      └──────────────┘   └─┘└─┘└─┘
- ~1ms         ~0.1ms      500-3000ms         10-500ms   500-3000ms         ~0.3ms total
- (in-memory)
-              ◄────────────── 80-95% of total time ──────────────►
-
+ LLM calls = 80-95% of total time.
  Takeaway: optimize MODEL calls first. Session I/O barely matters.
 ```
 

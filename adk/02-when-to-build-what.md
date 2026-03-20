@@ -1,6 +1,6 @@
 # 02 — When to Build What in ADK
 
-> **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/), [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/), [`plugins/`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/), [`flows/`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/) | **Prereqs:** 01
+> **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/) · [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/) · [`plugins/`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/) · [`flows/`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md)
 
 ## At a Glance (big-picture diagram first, then one paragraph)
 
@@ -349,52 +349,49 @@ Per-agent hooks. Defined inline, not reusable across agents.
 #### [ ] Callback map
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Agent Callback Flow                         │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  before_agent_callback(callback_context)                           │
-│   ► runs before _run_async_impl                                    │
-│   ► return Content → skip the agent entirely, use returned content │
-│   ► return None → proceed normally                                 │
-│                                                                     │
-│  after_agent_callback(callback_context)                            │
-│   ► runs after _run_async_impl                                     │
-│   ► return Content → append an extra event with this content       │
-│   ► return None → nothing added                                    │
-│                                                                     │
-│  before_model_callback(callback_context, llm_request)              │
-│   ► runs before each LLM call within this agent                   │
-│   ► return LlmResponse → skip LLM call entirely                   │
-│   ► mutate llm_request → modify prompt/tools before sending       │
-│   ► return None → proceed normally                                 │
-│                                                                     │
-│  after_model_callback(callback_context, llm_response)              │
-│   ► runs after each LLM call                                      │
-│   ► return LlmResponse → replace the model's actual response      │
-│   ► return None → use the original response                       │
-│                                                                     │
-│  on_model_error_callback(callback_context, llm_request, error)     │
-│   ► runs when the LLM raises an exception                         │
-│   ► return LlmResponse → recover gracefully with a fallback       │
-│   ► return None → re-raise the error                              │
-│                                                                     │
-│  before_tool_callback(tool, args, tool_context)                    │
-│   ► runs before each tool execution                               │
-│   ► return dict → skip tool execution, use returned dict           │
-│   ► mutate args → modify tool arguments before the call           │
-│   ► return None → proceed normally                                 │
-│                                                                     │
-│  after_tool_callback(tool, args, tool_context, tool_response)      │
-│   ► runs after each tool execution                                │
-│   ► return dict → replace the tool's actual result                │
-│   ► return None → use the original result                         │
-│                                                                     │
-│  on_tool_error_callback(tool, args, tool_context, error)           │
-│   ► runs when a tool raises an exception                          │
-│   ► return dict → recover with a fallback result                  │
-│   ► return None → re-raise the error                              │
-└─────────────────────────────────────────────────────────────────────┘
+Agent Callback Flow:
+│
+├── before_agent_callback(callback_context)
+│      runs before _run_async_impl
+│      return Content → skip the agent entirely, use returned content
+│      return None   → proceed normally
+│
+├── after_agent_callback(callback_context)
+│      runs after _run_async_impl
+│      return Content → append an extra event with this content
+│      return None   → nothing added
+│
+├── before_model_callback(callback_context, llm_request)
+│      runs before each LLM call within this agent
+│      return LlmResponse → skip LLM call entirely
+│      mutate llm_request → modify prompt/tools before sending
+│      return None        → proceed normally
+│
+├── after_model_callback(callback_context, llm_response)
+│      runs after each LLM call
+│      return LlmResponse → replace the model's actual response
+│      return None        → use the original response
+│
+├── on_model_error_callback(callback_context, llm_request, error)
+│      runs when the LLM raises an exception
+│      return LlmResponse → recover gracefully with a fallback
+│      return None        → re-raise the error
+│
+├── before_tool_callback(tool, args, tool_context)
+│      runs before each tool execution
+│      return dict  → skip tool execution, use returned dict
+│      mutate args  → modify tool arguments before the call
+│      return None  → proceed normally
+│
+├── after_tool_callback(tool, args, tool_context, tool_response)
+│      runs after each tool execution
+│      return dict → replace the tool's actual result
+│      return None → use the original result
+│
+└── on_tool_error_callback(tool, args, tool_context, error)
+       runs when a tool raises an exception
+       return dict → recover with a fallback result
+       return None → re-raise the error
 ```
 
 #### [ ] When to use each
@@ -668,9 +665,13 @@ pipeline = SequentialAgent(
 **Use when:** Independent tasks that don't depend on each other's output. Results are merged into the session and a downstream agent synthesizes them.
 
 ```
-┌─ search_agent ─────┐
-├─ calculator_agent ──┤ ► all run at once ► synthesizer_agent
-└─ translator_agent ──┘
+ParallelAgent (all run at once):
+├── search_agent
+├── calculator_agent
+└── translator_agent
+       │
+       ▼
+    synthesizer_agent
 ```
 
 ```python
@@ -704,15 +705,16 @@ full_pipeline = SequentialAgent(
 **Use when:** Iterative refinement, polling, retry loops, or any "keep going until done" pattern.
 
 ```
-┌─────────────────────────────────────┐
-│         refinement_loop             │
-│  ┌──────────┐    ┌──────────┐      │
-│  │  critic   │ ►  │  refiner  │     │
-│  └──────────┘    └──────────┘      │
-│       ▲               │            │
-│       └───────────────┘            │
-│   loops until critic escalates     │
-└─────────────────────────────────────┘
+refinement_loop (LoopAgent):
+│
+├── critic
+│      reviews the draft
+│
+├── refiner
+│      improves based on feedback
+│
+└── loops back to critic
+       until critic calls escalate()
 ```
 
 ```python

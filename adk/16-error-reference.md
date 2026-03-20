@@ -1,27 +1,28 @@
 # 16 — Error Reference: Every Error Path
 
-> **Source:** [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`agents/run_config.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/run_config.py) | **Prereqs:** [01-request-lifecycle.md](./01-request-lifecycle.md), [03-runners.md](./03-runners.md) | **Official docs:** <https://google.github.io/adk-docs/runtime/>
+> **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`agents/run_config.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/run_config.py) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md), [03-runners.md](03-runners.md)
 
 ---
 
 ## At a Glance
 
 ```
-                    Error occurs
-                        │
-          ┌─────────────┼─────────────┐
-          ▼             ▼             ▼
-   ┌────────────┐ ┌──────────┐ ┌──────────┐
-   │  Tier 1    │ │ Tier 2   │ │ Tier 3   │
-   │ RECOVERABLE│ │  FATAL   │ │  SILENT  │
-   └─────┬──────┘ └────┬─────┘ └────┬─────┘
-         │              │            │
-   callback fires  propagates    no exception
-   you can         to caller     no callback
-   intercept       uncaught      data lost
-         │              │            │
-   on_model_error  try/except    check logs
-   on_tool_error   in your code  only clue
+Error occurs in ADK
+│
+├── Tier 1: RECOVERABLE
+│      callback fires — you can intercept and continue
+│      on_model_error_callback → return LlmResponse to suppress
+│      on_tool_error_callback  → return dict to suppress
+│
+├── Tier 2: FATAL
+│      propagates uncaught to run_async() caller
+│      no callback opportunity
+│      handle with try/except in your code
+│
+└── Tier 3: SILENT
+       no exception raised, no callback fired
+       data silently lost or skipped
+       only clue: check logs
 ```
 
 ADK errors fall into three tiers. **Tier 1 (Recoverable):** errors that fire a callback (`on_model_error_callback`, `on_tool_error_callback`), giving your code a chance to intercept and continue. **Tier 2 (Fatal):** errors that propagate uncaught to the `run_async()` caller with no callback opportunity. **Tier 3 (Silent):** errors that produce no exception and no callback -- data is silently lost or skipped, and only log output reveals the problem.

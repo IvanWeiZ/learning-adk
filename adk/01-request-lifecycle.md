@@ -1,160 +1,42 @@
-# 01 — Request-to-Response Lifecycle
+# 01 — Request-to-Response Deep-Dive Trace
 
-> **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py), [`base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py), [`llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py), [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py), [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py), [`google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py) | **Prereqs:** none
+> **What this file is:** A detailed trace of one user message through every ADK layer — from `run_async()` to the final streamed event. For setup and first agent examples, see [00-onboarding-guide.md](00-onboarding-guide.md).
+>
+> **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py) · [`llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py) · [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py) | **Prereqs:** [00-onboarding-guide.md](00-onboarding-guide.md)
 
 ## At a Glance
 
 ```
 runner.run_async(user_id, session_id, new_message)
 │
-├── Runner ─── session bookkeeping (get/create, append_event for each event)
+├── Runner
+│   session bookkeeping: get/create session, append_event for each event
 │
-├── BaseAgent ─── before/after_agent_callback (guard, skip, extra events)
+├── BaseAgent
+│   before_agent_callback → run agent → after_agent_callback
 │
-├── LlmAgent ─── delegates to flow, saves output_key to state
+├── LlmAgent
+│   delegates to BaseLlmFlow, saves output_key to state
 │
-└── BaseLlmFlow ─── reason-act loop
+└── BaseLlmFlow (reason-act loop)
     │
-    ├── preprocess: build LlmRequest (instructions, history, tools)
-    ├── call LLM:   model.generate_content_async(request, stream=...)
-    ├── postprocess: execute tools, handle agent transfer
-    └── loop?        function calls → repeat │ final text → yield Event, EXIT
+    ├── 1. PREPROCESS
+    │      build LlmRequest (instructions, history, tools)
+    │
+    ├── 2. CALL LLM
+    │      model.generate_content_async(request, stream=...)
+    │
+    ├── 3. POSTPROCESS
+    │      execute tools, handle agent transfer
+    │
+    └── 4. LOOP?
+           function calls found → go to step 1
+           final text response  → yield Event, EXIT
 ```
 
 Trace of one user message from `run_async()` to the final streamed event. Five layers participate: Runner handles session bookkeeping (load, persist every event), BaseAgent runs before/after callbacks, LlmAgent delegates to the flow and saves `output_key` if set, BaseLlmFlow runs the reason-act loop (build request, call LLM, dispatch tools, repeat), and SessionSvc commits state atomically on every `append_event()`. The flow loops until the LLM returns no function calls. A tool-using turn typically loops 2x: tool call, then final answer.
 
 Class hierarchy: see [04-agents.md](04-agents.md#class-hierarchy).
-
-## Key API
-
-### [ ] Quick Setup
-
-```bash
-pip install google-adk # installs ADK + google-genai SDK
-export GOOGLE_API_KEY="your-key-here" # get one at https://aistudio.google.com/apikey
-```
-
-### [ ] Core Entry Point
-
-```python
-async for event in runner.run_async(
-    user_id="user_42",
-    session_id=session.id,
-    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),
-):
-    if event.is_final_response():
-        print(event.content.parts[0].text)
-```
-
-> **Additional `run_async` parameters:** Beyond the `user_id`, `session_id`, and `new_message` shown above, `run_async` also accepts an optional `invocation_id` (to resume a previous invocation, e.g., after a long-running tool pauses) and `state_delta` (a `dict` injected into session state alongside the user message event).
-
-### [ ] CallbackContext
-
-```python
-CallbackContext(
-    invocation_id: str,
-    agent_name: str,
-    user_content: Optional[types.Content], # original user message (read-only)
-    state: State, # mutable — writes queue a state_delta
-    session: Session, # read-only view of session
-    user_id: str, # direct @property — same as callback_context.session.user_id
-    actions: EventActions, # accumulated side-effects
-)
-```
-
-### [ ] ToolContext
-
-Same as `CallbackContext` plus:
-- `function_call_id: str` — ID of the in-flight call (`"fc-001"`)
-- `tool_confirmation: ToolConfirmation | None` — populated if confirmation was requested
-
-## Examples
-
-### [ ] The Weather Agent
-
-```python
-from google.adk.agents import LlmAgent
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types # types come from the google-genai SDK
-
-def get_weather(city: str) -> dict:
-    """Returns the current weather for a city."""
-    return {"city": city, "temp_c": 18, "condition": "Partly cloudy"}
-
-weather_agent = LlmAgent(
-    name="weather_agent",
-    model="gemini-2.5-flash",
-    instruction="You are a helpful weather assistant. Use the get_weather tool when asked about weather.",
-    tools=[get_weather],
-)
-
-session_service = InMemorySessionService()
-runner = Runner(agent=weather_agent, app_name="weather_app", session_service=session_service)
-session = await session_service.create_session(app_name="weather_app", user_id="user_42")
-
-# The call that starts everything:
-async for event in runner.run_async(
-    user_id="user_42",
-    session_id=session.id,
-    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),
-):
-    if event.is_final_response():
-        print(event.content.parts[0].text)
-```
-
-User message: **"What's the weather in Tokyo?"**
-
-> **Just want to run something?** Wrap the above in `async def main(): ...` and call `asyncio.run(main())`. Or use `runner.run(...)` (sync wrapper) for scripts. The rest of this file traces what happens inside.
-
-### [ ] What the Caller Receives
-
-`runner.run_async()` yields these events for the Tokyo weather query:
-
-```
-┌───────────┬──────────────────┬─────────────────────────────────────────────┬──────────────────────┐
-│ Event     │ author           │ content summary                             │ is_final_response()  │
-├───────────┼──────────────────┼─────────────────────────────────────────────┼──────────────────────┤
-│ evt-002   │ weather_agent    │ FunctionCall(get_weather, city="Tokyo")     │ False                │
-│ evt-003   │ weather_agent    │ FunctionResponse(get_weather, {temp_c:18})  │ False                │
-│ evt-004a  │ weather_agent    │ "The weather in Tokyo" [partial]            │ False                │
-│ evt-004b  │ weather_agent    │ " is currently 18°C" [partial]             │ False                │
-│ evt-004c  │ weather_agent    │ " with partly cloudy skies." [partial]     │ False                │
-│ evt-004   │ weather_agent    │ "The weather in Tokyo is currently 18°C…"  │ True ← render this   │
-└───────────┴──────────────────┴─────────────────────────────────────────────┴──────────────────────┘
-```
-
-> `evt-001` (the user message) is appended to the session but never yielded — the Runner created it internally.
-
-**Typical handling pattern:**
-
-```python
-async for event in runner.run_async(...):
-    if event.is_final_response() and event.content:
-        print(event.content.parts[0].text)
-    elif event.partial and event.content:
-        print(event.content.parts[0].text, end="", flush=True) # stream to UI
-```
-
-### [ ] Variations
-
-#### [ ] LLM calls two tools in one response
-
-`functions.py` receives a single Event with two `FunctionCall` parts, runs both tools (potentially in parallel), then yields a single Event with two `FunctionResponse` parts. The loop continues with both results in the next `LlmRequest`.
-
-#### [ ] `output_key="result"` set on the agent
-
-After the final Event is yielded, `__maybe_save_output_to_state` runs:
-
-```python
-# LlmAgent._run_async_impl — final event's state_delta is written
-event.actions.state_delta["result"] = "The weather in Tokyo is currently 18°C…"
-# → applied by append_event() → session.state["result"] is now set
-```
-
-#### [ ] Sub-agent transfer (AutoFlow)
-
-The LLM returns a `transfer_to_agent` function call. `auto_flow.py` intercepts it, finds the target agent in the tree, and calls `sub_agent.run_async(ctx)`. The sub-agent runs its own full lifecycle (its own loop), emitting events with its own `author` and a child `branch`.
 
 ## How It Works
 
@@ -222,70 +104,90 @@ CALLER
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Full Sequence Diagram
+### [ ] The Weather Agent
 
-All callbacks and session writes shown in order. A callback returning non-None short-circuits the step it guards.
+```python
+from google.adk.agents import LlmAgent
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
+def get_weather(city: str) -> dict:
+    """Returns the current weather for a city."""
+    return {"city": city, "temp_c": 18, "condition": "Partly cloudy"}
+
+weather_agent = LlmAgent(
+    name="weather_agent",
+    model="gemini-2.5-flash",
+    instruction="You are a helpful weather assistant. Use the get_weather tool when asked about weather.",
+    tools=[get_weather],
+)
+
+session_service = InMemorySessionService()
+runner = Runner(agent=weather_agent, app_name="weather_app", session_service=session_service)
+session = await session_service.create_session(app_name="weather_app", user_id="user_42")
+
+async for event in runner.run_async(
+    user_id="user_42",
+    session_id=session.id,
+    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),
+):
+    if event.is_final_response():
+        print(event.content.parts[0].text)
+```
+
+User message: **"What's the weather in Tokyo?"**
+
+The rest of this file traces exactly what happens inside ADK when this code runs.
+
+### [ ] What the Caller Receives
+
+`runner.run_async()` yields these events for the Tokyo weather query:
 
 ```
-runner.run_async(user_id, session_id, new_message)
+Events yielded by runner.run_async():
 │
-├── 1. RUNNER
-│   ├── get_session()                              ← SESSION READ
-│   ├── append_event(user_msg)                     ← SESSION WRITE
-│   └── agent.run_async(ctx)
+├── evt-002
+│      author: weather_agent
+│      content: FunctionCall(get_weather, city="Tokyo")
+│      is_final_response(): False
 │
-├── 2. BASE AGENT
-│   ├── before_agent_callback
-│   │   └── None → continue  |  Content → yield + skip agent
-│   └── _llm_flow.run_async(ctx)
+├── evt-003
+│      author: weather_agent
+│      content: FunctionResponse(get_weather, {temp_c:18})
+│      is_final_response(): False
 │
-├── 3. LLM FLOW — LOOP (repeats until no function calls)
-│   │
-│   ├── preprocess: build LlmRequest from session.events   ← SESSION READ
-│   │
-│   ├── before_model_callback
-│   │   └── None → call LLM  |  LlmResponse → skip LLM
-│   │
-│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
-│   │   (loop 1: returns FunctionCall)
-│   │
-│   ├── on_model_error_callback  (only on error)
-│   │   └── None → re-raise  |  LlmResponse → suppress
-│   │
-│   ├── after_model_callback
-│   │   └── None → use response  |  LlmResponse → swap
-│   │
-│   ├── ◄── yield evt-002: Event(FunctionCall)             ← SESSION WRITE
-│   │
-│   ├── before_tool_callback
-│   │   └── None → run tool  |  dict → skip tool
-│   │
-│   ├── get_weather(city="Tokyo") ──► {"temp_c": 18, ...}
-│   │
-│   ├── on_tool_error_callback  (only on error)
-│   │   └── None → re-raise  |  dict → suppress error
-│   │
-│   ├── after_tool_callback
-│   │   └── None → keep result  |  dict → replace result
-│   │
-│   ├── ◄── yield evt-003: Event(FunctionResponse)         ← SESSION WRITE
-│   │
-│   ├── preprocess: rebuild LlmRequest (now has fc+fr)     ← SESSION READ
-│   │
-│   ├── before_model_callback (loop 2)
-│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
-│   │   (loop 2: returns text, no more function calls)
-│   ├── after_model_callback
-│   │
-│   ├── ◄── yield evt-004a: Event(partial)
-│   ├── ◄── yield evt-004b: Event(partial)
-│   ├── ◄── yield evt-004c: Event(partial)
-│   └── ◄── yield evt-004:  Event(final)                   ← SESSION WRITE
-│       loop ends — no more function calls
+├── evt-004a
+│      author: weather_agent
+│      content: "The weather in Tokyo" [partial]
+│      is_final_response(): False
 │
-└── 4. BACK TO BASE AGENT
-    └── after_agent_callback
-        └── None → done  |  Content → yield extra event
+├── evt-004b
+│      author: weather_agent
+│      content: " is currently 18°C" [partial]
+│      is_final_response(): False
+│
+├── evt-004c
+│      author: weather_agent
+│      content: " with partly cloudy skies." [partial]
+│      is_final_response(): False
+│
+└── evt-004
+       author: weather_agent
+       content: "The weather in Tokyo is currently 18°C…"
+       is_final_response(): True ← render this
+```
+
+> `evt-001` (the user message) is appended to the session but never yielded — the Runner created it internally.
+
+**Typical handling pattern:**
+
+```python
+async for event in runner.run_async(...):
+    if event.is_final_response() and event.content:
+        print(event.content.parts[0].text)
+    elif event.partial and event.content:
+        print(event.content.parts[0].text, end="", flush=True) # stream to UI
 ```
 
 ### [ ] Step-by-Step Trace
@@ -532,6 +434,81 @@ Session(
         Event(id="evt-004", author="weather_agent", content="The weather in Tokyo is currently 18°C…"),
     ],
 )
+```
+
+### [ ] Full Sequence Diagram
+
+All callbacks and session writes shown in order. A callback returning non-None short-circuits the step it guards.
+
+```
+runner.run_async(user_id, session_id, new_message)
+│
+├── 1. RUNNER
+│   ├── get_session()                              ← SESSION READ
+│   ├── append_event(user_msg)                     ← SESSION WRITE
+│   └── agent.run_async(ctx)
+│
+├── 2. BASE AGENT
+│   ├── before_agent_callback
+│   │      if returns None:    proceed to run the agent
+│   │      if returns Content: skip the agent, yield that content instead
+│   │
+│   └── _llm_flow.run_async(ctx)
+│
+├── 3. LLM FLOW — LOOP (repeats until no function calls)
+│   │
+│   ├── preprocess: build LlmRequest from session.events   ← SESSION READ
+│   │
+│   ├── before_model_callback
+│   │      if returns None:        proceed to call the LLM
+│   │      if returns LlmResponse: skip the LLM call, use this response instead
+│   │
+│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
+│   │      (loop 1: returns FunctionCall)
+│   │
+│   ├── on_model_error_callback  (only fires on LLM error)
+│   │      if returns None:        re-raise the error
+│   │      if returns LlmResponse: suppress error, use this response instead
+│   │
+│   ├── after_model_callback
+│   │      if returns None:        use the LLM's actual response
+│   │      if returns LlmResponse: replace with this response
+│   │
+│   ├── ◄── yield evt-002: Event(FunctionCall)             ← SESSION WRITE
+│   │
+│   ├── before_tool_callback
+│   │      if returns None: proceed to run the tool
+│   │      if returns dict: skip the tool, use this dict as the result
+│   │
+│   ├── get_weather(city="Tokyo") ──► {"temp_c": 18, ...}
+│   │
+│   ├── on_tool_error_callback  (only fires on tool error)
+│   │      if returns None: re-raise the error
+│   │      if returns dict: suppress error, use this dict as the result
+│   │
+│   ├── after_tool_callback
+│   │      if returns None: keep the tool's actual result
+│   │      if returns dict: replace with this dict
+│   │
+│   ├── ◄── yield evt-003: Event(FunctionResponse)         ← SESSION WRITE
+│   │
+│   ├── preprocess: rebuild LlmRequest (now has fc+fr)     ← SESSION READ
+│   │
+│   ├── before_model_callback (loop 2)
+│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
+│   │      (loop 2: returns text, no more function calls)
+│   ├── after_model_callback
+│   │
+│   ├── ◄── yield evt-004a: Event(partial)
+│   ├── ◄── yield evt-004b: Event(partial)
+│   ├── ◄── yield evt-004c: Event(partial)
+│   └── ◄── yield evt-004:  Event(final)                   ← SESSION WRITE
+│          loop ends — no more function calls
+│
+└── 4. BACK TO BASE AGENT
+    └── after_agent_callback
+           if returns None:    done, no extra output
+           if returns Content: yield one more event with that content
 ```
 
 ## Gotchas

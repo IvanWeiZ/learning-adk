@@ -1,6 +1,6 @@
 # 09 — Tools: Pluggable Capabilities
 
-> **Official docs:** [Tools](https://google.github.io/adk-docs/tools-custom/) | **Source:** [`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py), [`tools/base_toolset.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_toolset.py), [`tools/tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py), [`tools/function_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py) | **Prereqs:** 04, 05, 07
+> **Official docs:** [Tools](https://google.github.io/adk-docs/tools-custom/) | **Source:** [`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py) · [`tools/base_toolset.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_toolset.py) · [`tools/tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) · [`tools/function_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py) | **Prereqs:** [04-agents.md](04-agents.md), [05-flows.md](05-flows.md), [07-events.md](07-events.md)
 
 ## At a Glance
 
@@ -215,35 +215,60 @@ When `is_long_running=True`, the tool returns an operation ID. ADK:
 2. The client polls for completion using the operation ID
 3. On the next invocation, the result is provided as a function response and the agent resumes
 
-#### [ ] Long-Running Tool Lifecycle Across 2 Invocations
+####Long-Running Tool Lifecycle Across 2 Invocations
 
 ```
-INVOCATION 1 — tool starts, runner pauses
-├── User: "Export my report as PDF"
-├── LLM: FunctionCall(name="export_report", args={"report_id": "r-42"})
-├── export_report.run_async() executes
-│   └── returns {"job_id": "job-r-42-pdf", "status": "started"}
+════════════════════════════════════════════════════════════
+  INVOCATION 1 — tool starts, runner pauses
+════════════════════════════════════════════════════════════
+
+├── User
+│      "Export my report as PDF"
+│
+├── LLM responds
+│      FunctionCall(name="export_report", args={"report_id": "r-42"})
+│
+├── Tool executes
+│      export_report.run_async()
+│      returns {"job_id": "job-r-42-pdf", "status": "started"}
+│
 ├── Flow detects is_long_running=True
-│   └── sets event.long_running_tool_ids = {"fc-001"}
-├── Event yielded:
-│   ├── content: FunctionResponse(name="export_report", response={"job_id": "..."})
-│   ├── long_running_tool_ids: {"fc-001"}
-│   └── is_final_response() = True  ← runner pauses here
-└── Runner yields this event to caller, invocation ends
-    └── Client receives job_id, starts polling external system
+│      sets event.long_running_tool_ids = {"fc-001"}
+│
+├── Event yielded to caller
+│      content:              FunctionResponse("export_report", {"job_id": "..."})
+│      long_running_tool_ids: {"fc-001"}
+│      is_final_response():  True ← runner pauses here
+│
+└── Invocation ends
+       Client receives job_id
+       Client starts polling the external system
 
---- time passes, client polls, job completes ---
+─── time passes, client polls, job completes ───
 
-INVOCATION 2 — client sends result, agent resumes
-├── Client calls runner.run_async() with:
-│   └── new_message containing FunctionResponse(
-│         id="fc-001",  ← matches the original function call ID
-│         name="export_report",
-│         response={"job_id": "job-r-42-pdf", "status": "done", "url": "https://..."}
-│       )
+════════════════════════════════════════════════════════════
+  INVOCATION 2 — client sends result, agent resumes
+════════════════════════════════════════════════════════════
+
+├── Client calls runner.run_async() with new_message:
+│      FunctionResponse(
+│          id   = "fc-001"        ← matches original call ID
+│          name = "export_report"
+│          response = {
+│              "job_id": "job-r-42-pdf",
+│              "status": "done",
+│              "url":    "https://storage.example.com/report.pdf"
+│          }
+│      )
+│
 ├── LLM receives the completed result in its context
-├── LLM: "Your report is ready! Download it at https://..."
-└── is_final_response() = True ← normal completion
+│      sees the tool response as part of conversation history
+│
+├── LLM responds
+│      "Your report is ready! Download it at https://..."
+│
+└── is_final_response() = True
+       normal completion
 ```
 
 ### [ ] Tool Confirmation (Human-in-the-Loop)
@@ -306,6 +331,89 @@ agent = LlmAgent(
     on_tool_error_callback=lambda tool, args, ctx, err: {"error": str(err)},
 )
 ```
+
+### [ ] MCP (Model Context Protocol) Tools
+
+> **Official docs:** [MCP](https://modelcontextprotocol.io/) | **Source:** [`tools/mcp_tool/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/mcp_tool/)
+
+MCP is an open protocol for connecting LLMs to external tools and data sources. ADK's `McpToolset` wraps MCP servers as a `BaseToolset`, making any MCP-compatible tool available to your agents.
+
+```
+How MCP fits into ADK:
+│
+├── MCP Server
+│      external process exposing tools via MCP protocol
+│      (e.g., filesystem, database, API, browser)
+│
+├── Connection
+│      StdioServerParameters  — launch server as subprocess (stdin/stdout)
+│      SseServerParams        — connect to running server via HTTP SSE
+│
+├── McpToolset
+│      wraps MCP connection as a BaseToolset
+│      get_tools() discovers available tools from the MCP server
+│      each tool becomes a BaseTool with auto-generated schema
+│
+└── LlmAgent
+       receives MCP tools alongside regular FunctionTools
+       LLM sees them identically — calls them the same way
+```
+
+```python
+# Example: Connect to an MCP filesystem server via stdio
+from mcp import StdioServerParameters
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+
+# McpToolset wraps an MCP server as a BaseToolset
+filesystem_tools = McpToolset(
+    connection_params=StdioServerParameters(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem", "/tmp/workspace"],
+    ),
+)
+
+agent = LlmAgent(
+    name="file_agent",
+    model="gemini-2.5-flash",
+    instruction="You can read and write files in /tmp/workspace.",
+    tools=[filesystem_tools],  # passed as a toolset, not individual tools
+)
+
+# At runtime:
+# 1. McpToolset.get_tools(ctx) launches the MCP server subprocess
+# 2. Discovers available tools (read_file, write_file, list_directory, etc.)
+# 3. Each tool becomes a BaseTool with FunctionDeclaration from MCP schema
+# 4. LLM calls them like any other tool
+# 5. McpToolset.close() shuts down the subprocess when done
+```
+
+```python
+# Example: Connect to a running MCP server via SSE
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams as SseServerParams
+
+api_tools = McpToolset(
+    connection_params=SseServerParams(
+        url="http://localhost:8080/mcp",
+    ),
+)
+
+agent = LlmAgent(
+    name="api_agent",
+    model="gemini-2.5-flash",
+    tools=[api_tools],
+)
+```
+
+**Key points:**
+- `McpToolset` is a `BaseToolset` — pass it to `tools=[]` directly, not individual tools
+- Tool discovery happens dynamically via `get_tools()` before each LLM call
+- The old `MCPToolset` class name is deprecated — use `McpToolset`
+- MCP servers run as separate processes; `McpToolset.close()` cleans them up
+- Each MCP tool gets a `FunctionDeclaration` auto-generated from MCP's tool schema
+
+---
 
 ## Gotchas
 

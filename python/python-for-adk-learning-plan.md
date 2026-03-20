@@ -391,7 +391,7 @@ my_agents/
 #### [ ] Day 12: Error Handling & Logging
 
 **Why ADK needs this:**
-ADK has error callbacks (`on_model_error_callback`, `on_tool_error_callback`), and production agents need robust error handling and observability.
+ADK's `LlmAgent` has error callbacks (`on_model_error_callback`, `on_tool_error_callback`), and production agents need robust error handling and observability.
 
 **Java to Python:**
 Python has no checked exceptions (everything is unchecked). `logging` module is similar to SLF4J but configured differently. No `log4j.xml` — configuration is programmatic or via `dictConfig`.
@@ -453,7 +453,7 @@ async def test_search_tool_returns_results():
     with mock.patch("my_agents.tools.web_search.fetch") as mock_fetch:
         mock_fetch.return_value = ["result1", "result2"]
         tool = FunctionTool(search_web)
-        result = await tool.run_async({"query": "test"}, mock_context)
+        result = await tool.run_async(args={"query": "test"}, tool_context=mock_context)
         assert len(result) == 2
 ```
 
