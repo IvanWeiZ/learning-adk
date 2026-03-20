@@ -2,7 +2,7 @@
 
 > **Official docs:** [Events](https://google.github.io/adk-docs/events/) | **Source:** [`events/event.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event.py) · [`events/event_actions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event_actions.py) | **Prereqs:** [04-agents.md](04-agents.md), [05-flows.md](05-flows.md)
 
-##At a Glance
+## At a Glance
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -22,7 +22,7 @@
 
 `Event` is the universal data type in ADK. Every action — a user message, an LLM reply, a tool call, a tool result, or an agent transfer — produces an `Event`. A `Session` is simply an ordered list of Events. Each Event carries identity metadata, a content payload (text, function calls, function responses), and an `EventActions` envelope for side-effects like state mutations, agent transfers, and artifact uploads.
 
-##Class Hierarchy
+## Class Hierarchy
 
 ```
 pydantic.BaseModel
@@ -34,7 +34,7 @@ pydantic.BaseModel
 
 `Event` extends `LlmResponse` (contains `content: Optional[types.Content]`). Carries text, function calls, function responses, blobs, or thoughts.
 
-##Key API
+## Key API
 
 ### Event Fields
 
@@ -106,7 +106,7 @@ event.has_trailing_code_execution_result() -> bool
 # True if the last part of content is a code execution result.
 ```
 
-##How It Works
+## How It Works
 
 ### What's Inside an Event
 
@@ -245,7 +245,7 @@ Runner.run_async(user_id, session_id, new_message)
 └── 5. All events stream back to caller via Runner.run_async()
 ```
 
-##Examples
+## Examples
 
 A tool-calling agent produces 4 events for one user turn (see "Events in a Single Turn" diagram above). The key pattern:
 
@@ -254,13 +254,13 @@ A tool-calling agent produces 4 events for one user turn (see "Events in a Singl
 3. Tool executes and returns a `FunctionResponse` (yielded)
 4. LLM synthesizes the final answer — `is_final_response()` returns `True` (yielded, rendered to user)
 
-##Gotchas
+## Gotchas
 
 - `is_final_response()` also returns `True` when `long_running_tool_ids` is set (runner pauses for long-running tools) or when `skip_summarization` is set — not just on the final text response.
 - The user event (evt-001) is persisted but **not yielded** by the runner — you won't see it in the async generator output.
 - `branch` filtering means sibling agents cannot see each other's events — only their own lineage from the root.
 
-##Related
+## Related
 
 - [`events/event_actions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event_actions.py) — `EventActions` definition
 - [`models/llm_response.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_response.py) — parent class

@@ -1,6 +1,6 @@
 # Memory — Long-Term Recall Across Sessions
 
-**Source:** [`memory/base_memory_service.py`](../adk-python/src/google/adk/memory/base_memory_service.py) · [`memory/in_memory_memory_service.py`](../adk-python/src/google/adk/memory/in_memory_memory_service.py) · [`memory/vertex_ai_memory_bank_service.py`](../adk-python/src/google/adk/memory/vertex_ai_memory_bank_service.py)
+> **Official docs:** [Memory](https://google.github.io/adk-docs/runtime/memory/) | **Source:** [`base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) · [`in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) · [`vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md)
 
 ---
 
@@ -296,9 +296,9 @@ agent = LlmAgent(
 
 ## Related Files
 
-- [`memory/base_memory_service.py`](../adk-python/src/google/adk/memory/base_memory_service.py) — abstract interface
-- [`memory/in_memory_memory_service.py`](../adk-python/src/google/adk/memory/in_memory_memory_service.py) — dev implementation
-- [`memory/vertex_ai_memory_bank_service.py`](../adk-python/src/google/adk/memory/vertex_ai_memory_bank_service.py) — production implementation
+- [`memory/base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) — abstract interface
+- [`memory/in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) — dev implementation
+- [`memory/vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) — production implementation
 - [08-sessions.md](08-sessions.md) — session state (within-session persistence)
 - [09-tools.md](09-tools.md) — `ToolContext` provides `search_memory()` for tool-based memory access
 - [10-apps.md](10-apps.md) — App container that holds the memory service

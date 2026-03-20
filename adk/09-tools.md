@@ -215,7 +215,7 @@ When `is_long_running=True`, the tool returns an operation ID. ADK:
 2. The client polls for completion using the operation ID
 3. On the next invocation, the result is provided as a function response and the agent resumes
 
-####Long-Running Tool Lifecycle Across 2 Invocations
+#### Long-Running Tool Lifecycle Across 2 Invocations
 
 ```
 ════════════════════════════════════════════════════════════

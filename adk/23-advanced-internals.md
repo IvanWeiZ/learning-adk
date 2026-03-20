@@ -20,7 +20,7 @@ ADK Internals — Three Pillars:
       Planners, Streaming, Event Compaction, Content Filtering
 ```
 
-This file covers the processor pipeline that builds prompts and handles responses, the reason-act loop, and the plugin system. For custom tools, A2A protocol, code executors, and advanced agent patterns, see [23b-plugins-and-a2a.md](23b-plugins-and-a2a.md).
+This file covers the processor pipeline that builds prompts and handles responses, the reason-act loop, and the plugin system. For custom tools, A2A protocol, code executors, and advanced agent patterns, see [plugins-and-a2a.md](plugins-and-a2a.md).
 
 ## How It Works
 
@@ -310,13 +310,13 @@ app = App(
 - **Plugin callbacks run before agent callbacks** — for `before_*` hooks, plugins execute first. For `after_*` hooks, agent callbacks run first, then plugins. This asymmetry is intentional but easy to forget.
 - **`AutoFlow` silently adds `transfer_to_agent`** — if your agent has `sub_agents`, `AutoFlow` injects a transfer tool. This can conflict if you define your own tool with a similar name.
 
-*Continued in [23b-plugins-and-a2a.md](23b-plugins-and-a2a.md) — custom tools, toolsets, authentication, artifacts, code executors, A2A protocol, streaming, event compaction, content filtering, and advanced agent patterns.*
+*Continued in [plugins-and-a2a.md](plugins-and-a2a.md) — custom tools, toolsets, authentication, artifacts, code executors, A2A protocol, streaming, event compaction, content filtering, and advanced agent patterns.*
 
 ---
 
 ## Related
 
-- [23b-plugins-and-a2a.md](23b-plugins-and-a2a.md) — Custom tools, A2A, code executors, advanced patterns
+- [plugins-and-a2a.md](plugins-and-a2a.md) — Custom tools, A2A, code executors, advanced patterns
 - [00-onboarding-guide.md](00-onboarding-guide.md) — Start here if you are new
 - [20-best-practices.md](20-best-practices.md) — Common mistakes to avoid
 - [07-events.md](07-events.md) — Event class deep dive

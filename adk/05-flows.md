@@ -1,6 +1,6 @@
 # Flows — The Reason-Act Loop
 
-**Source:** [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`flows/llm_flows/single_flow.py`](../adk-python/src/google/adk/flows/llm_flows/single_flow.py) · [`flows/llm_flows/auto_flow.py`](../adk-python/src/google/adk/flows/llm_flows/auto_flow.py)
+> **Official docs:** [Flows](https://google.github.io/adk-docs/runtime/flows/) | **Source:** [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`single_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/single_flow.py) · [`auto_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/auto_flow.py) | **Prereqs:** [04-agents.md](04-agents.md)
 
 ---
 
@@ -189,9 +189,9 @@ When a tool requires OAuth credentials:
 
 ## Related Files
 
-- [`flows/llm_flows/base_llm_flow.py`](../adk-python/src/google/adk/flows/llm_flows/base_llm_flow.py) — the loop
-- [`flows/llm_flows/single_flow.py`](../adk-python/src/google/adk/flows/llm_flows/single_flow.py) — no-routing variant
-- [`flows/llm_flows/auto_flow.py`](../adk-python/src/google/adk/flows/llm_flows/auto_flow.py) — agent-transfer variant
-- [`flows/llm_flows/instructions.py`](../adk-python/src/google/adk/flows/llm_flows/instructions.py) — system prompt building
-- [`flows/llm_flows/contents.py`](../adk-python/src/google/adk/flows/llm_flows/contents.py) — history building
-- [`flows/llm_flows/functions.py`](../adk-python/src/google/adk/flows/llm_flows/functions.py) — tool dispatch
+- [`flows/llm_flows/base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) — the loop
+- [`flows/llm_flows/single_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/single_flow.py) — no-routing variant
+- [`flows/llm_flows/auto_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/auto_flow.py) — agent-transfer variant
+- [`flows/llm_flows/instructions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/instructions.py) — system prompt building
+- [`flows/llm_flows/contents.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/contents.py) — history building
+- [`flows/llm_flows/functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) — tool dispatch
