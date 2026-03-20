@@ -36,7 +36,22 @@ runner.run_async(user_id, session_id, new_message)
 
 Trace of one user message from `run_async()` to the final streamed event. Five layers participate: Runner handles session bookkeeping (load, persist every event), BaseAgent runs before/after callbacks, LlmAgent delegates to the flow and saves `output_key` if set, BaseLlmFlow runs the reason-act loop (build request, call LLM, dispatch tools, repeat), and SessionSvc commits state atomically on every `append_event()`. The flow loops until the LLM returns no function calls. A tool-using turn typically loops 2x: tool call, then final answer.
 
-Class hierarchy: see [04-agents.md](04-agents.md#class-hierarchy).
+## Key Concepts
+
+| Concept | What It Is |
+|---------|-----------|
+| **Runner** | Orchestrates a request: load session → call agent → stream events → save session |
+| **Session** | One conversation: event history + key-value state dict |
+| **Event** | Universal data unit. Every action (user msg, LLM reply, tool call) = one Event |
+| **EventActions** | Side effects on an Event: `state_delta`, `transfer_to_agent`, `escalate` |
+| **Flow** | Reason-act loop inside LlmAgent: build prompt → call LLM → run tools → repeat |
+| **Tool** | Python function the LLM can call. ADK auto-generates the schema |
+| **ToolContext** | Runtime context passed to tools: session state, artifacts, memory, auth |
+| **Callback** | Hooks on LlmAgent: before/after agent, model, tool. Return None = proceed, return value = short-circuit |
+| **InvocationContext** | Thread through every call: carries session, agent, services. Cloned for sub-agents |
+| **MCP** | Model Context Protocol: connect to external tool servers via `McpToolset` |
+
+> Full glossary: [reference/glossary.md](../reference/glossary.md)
 
 ## How It Works
 

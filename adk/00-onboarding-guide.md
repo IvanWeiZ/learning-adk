@@ -112,29 +112,7 @@ Three pieces: **Agent** (what to do) + **Runner** (how to run) + **Session** (wh
 
 ---
 
-## 4. Key Concepts You'll See Everywhere
-
-Before diving deeper, here are the core concepts. You've already used the first three.
-
-| Concept | What It Is | You'll See It In |
-|---------|-----------|-----------------|
-| **Agent** | A blueprint: prompt + model + tools. Stateless — all state lives in the session. Types: `LlmAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent` | Every file |
-| **Runner** | The orchestrator that drives a request: loads session → calls agent → streams events → saves session. Stateless and thread-safe. | [03-runners.md](03-runners.md) |
-| **Session** | One conversation thread. Holds the event history + a key-value state dict. Persisted by a SessionService (InMemory, SQLite, Database, Vertex AI). | [08-sessions.md](08-sessions.md) |
-| **Event** | The universal data unit. Every action — user message, LLM reply, tool call, tool result — produces an Event. A session is just an ordered list of Events. | [07-events.md](07-events.md) |
-| **EventActions** | Side effects carried by an Event: `state_delta` (state changes), `transfer_to_agent` (routing), `escalate` (exit loop). Not via method calls — via data. | [07-events.md](07-events.md) |
-| **Flow** | The reason-act loop inside LlmAgent. Builds a prompt → calls the LLM → runs tools → repeats until the LLM returns text. Two variants: `SingleFlow` and `AutoFlow`. | [05-flows.md](05-flows.md) |
-| **Tool** | Any Python function the LLM can call. ADK auto-generates the schema from type hints + docstring. Advanced: `BaseTool` (custom lifecycle), `BaseToolset` (dynamic), `McpToolset` (MCP protocol). | [09-tools.md](09-tools.md) |
-| **ToolContext** | Passed to every tool at runtime. Gives access to session state, artifacts, memory, and auth credentials. Auto-injected — just add `tool_context: ToolContext` as a parameter. | [09-tools.md](09-tools.md) |
-| **Callback** | Hook functions on LlmAgent that intercept at every layer: before/after agent, model, and tool. Return `None` to proceed, return a value to short-circuit. | [04-agents.md](04-agents.md) |
-| **MCP** | Model Context Protocol — an open standard for connecting LLMs to external tool servers. ADK wraps MCP servers as a `McpToolset`. | [09-tools.md](09-tools.md) |
-| **InvocationContext** | The context object threaded through every call in one `run_async`. Carries session, agent, services, and config. Cloned (not shared) when delegating to sub-agents. | [04-agents.md](04-agents.md) |
-
-> **Full glossary:** [reference/glossary.md](../reference/glossary.md) — every ADK term with links to the relevant deep-dive file.
-
----
-
-## 5. What ADK Handles for You
+## 4. What ADK Handles for You
 
 You don't need to understand any of this to get started — but it's there when you need it:
 
@@ -162,7 +140,7 @@ What you write:                    What ADK handles:
 
 ---
 
-## 6. The Full Architecture (Don't Worry — We'll Explain Each Layer)
+## 5. The Full Architecture (Don't Worry — We'll Explain Each Layer)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -223,7 +201,7 @@ This looks like a lot — but you already touched the two most important boxes: 
 
 ---
 
-## 7. Where to Go Next
+## 6. Where to Go Next
 
 Now that you can build an agent with tools, explore these topics:
 
