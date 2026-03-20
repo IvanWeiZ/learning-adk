@@ -59,7 +59,7 @@ BaseToolset (ABC)
 
 ## Key API
 
-### [ ] BaseTool — The Interface
+### BaseTool — The Interface
 
 ```python
 class BaseTool(ABC):
@@ -83,7 +83,7 @@ class BaseTool(ABC):
         # Override for tools that need special request manipulation (e.g. grounding).
 ```
 
-### [ ] BaseToolset — Dynamic Tool Collections
+### BaseToolset — Dynamic Tool Collections
 
 ```python
 class BaseToolset(ABC):
@@ -100,7 +100,7 @@ class BaseToolset(ABC):
 
 The flow calls `toolset.get_tools(ctx)` before each LLM call. MCP, OpenAPI, LangChain, and CrewAI toolsets use this for dynamic discovery.
 
-### [ ] ToolContext — What Tools Can Do
+### ToolContext — What Tools Can Do
 
 `ToolContext` is passed to every `run_async`. Provides access to state and services:
 
@@ -123,7 +123,7 @@ class ToolContext:
     actions.transfer_to_agent = 'agent_name'
 ```
 
-### [ ] Built-in Tools
+### Built-in Tools
 
 | Tool | Import | What it does |
 |------|--------|-------------|
@@ -138,7 +138,7 @@ class ToolContext:
 
 ## How It Works
 
-### [ ] Tool Invocation Lifecycle
+### Tool Invocation Lifecycle
 
 ```
 LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
@@ -159,14 +159,14 @@ LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
     └── back to LLM in next loop iteration
 ```
 
-### [ ] Default Error Behavior
+### Default Error Behavior
 
 If your tool function raises an exception and no `on_tool_error_callback` is set:
 - The exception **propagates up** and terminates the entire invocation
 - The LLM does **not** get a chance to retry — the `run_async()` generator raises the exception to your code
 - To handle gracefully: set `on_tool_error_callback` on the agent, or wrap your tool in try/except and return an error dict
 
-### [ ] Tool Resolution in LlmAgent
+### Tool Resolution in LlmAgent
 
 ```
 LlmAgent(tools=[...]) — resolution at each LLM turn
@@ -191,7 +191,7 @@ agent = LlmAgent(tools=[
 
 `GoogleSearchTool` and `VertexAiSearchTool` cannot mix with function tools in one API call. ADK auto-creates a hidden sub-agent for isolation.
 
-### [ ] Long-Running Tools
+### Long-Running Tools
 
 ```
 LongRunningFunctionTool execution
@@ -271,7 +271,7 @@ When `is_long_running=True`, the tool returns an operation ID. ADK:
        normal completion
 ```
 
-### [ ] Tool Confirmation (Human-in-the-Loop)
+### Tool Confirmation (Human-in-the-Loop)
 
 Tools can request human confirmation before executing:
 
@@ -291,7 +291,7 @@ class MyTool(BaseTool):
 
 ## Examples
 
-### [ ] FunctionTool — Wrapping Python Functions
+### FunctionTool — Wrapping Python Functions
 
 Pass a Python function:
 
@@ -315,7 +315,7 @@ def save_note(text: str, tool_context: ToolContext) -> str:
     return 'Note saved.'
 ```
 
-### [ ] Error Handling
+### Error Handling
 
 ```python
 # Option 1: Handle inside the tool (recommended for simple cases)
@@ -332,7 +332,7 @@ agent = LlmAgent(
 )
 ```
 
-### [ ] MCP (Model Context Protocol) Tools
+### MCP (Model Context Protocol) Tools
 
 > **Official docs:** [MCP](https://modelcontextprotocol.io/) | **Source:** [`tools/mcp_tool/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/mcp_tool/)
 

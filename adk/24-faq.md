@@ -22,11 +22,11 @@ Five frequently asked questions that come up when building production ADK agents
 
 ## Core Questions
 
-### [ ] Q1: What Is the Best Way to Do Tool Versioning?
+### Q1: What Is the Best Way to Do Tool Versioning?
 
 ADK has no built-in tool versioning. Three patterns:
 
-#### [ ] Pattern A: Version in the Tool Name (Simplest)
+#### Pattern A: Version in the Tool Name (Simplest)
 
 Run versions side-by-side. The LLM picks based on description.
 
@@ -70,7 +70,7 @@ Migration timeline:
 └──────────────────────────────────────────────────────────┘
 ```
 
-#### [ ] Pattern B: Toolset with Version Selection (Dynamic)
+#### Pattern B: Toolset with Version Selection (Dynamic)
 
 Use a `BaseToolset` to serve different versions based on context.
 
@@ -132,7 +132,7 @@ How it works at runtime:
 └──────────────────────────────────────────────────────────┘
 ```
 
-#### [ ] Pattern C: Callback-Based Migration (Transparent)
+#### Pattern C: Callback-Based Migration (Transparent)
 
 Use `before_tool_callback` to silently redirect old tool calls to new implementations.
 
@@ -162,7 +162,7 @@ agent = Agent(
 )
 ```
 
-#### [ ] Summary: When to Use Each Pattern
+#### Summary: When to Use Each Pattern
 
 ```
 When to use each pattern:
@@ -179,7 +179,7 @@ When to use each pattern:
 
 ---
 
-### [ ] Q2: What Is the Best Way to Test Each ADK Component and E2E?
+### Q2: What Is the Best Way to Test Each ADK Component and E2E?
 
 For MockModel, InMemoryRunner, and deterministic test patterns, see [22-testing.md](22-testing.md).
 
@@ -205,9 +205,9 @@ For MockModel, InMemoryRunner, and deterministic test patterns, see [22-testing.
 
 ---
 
-### [ ] Q3: What Is the Best Way to Preprocess User Requests (Extract IDs, Enrich Data)?
+### Q3: What Is the Best Way to Preprocess User Requests (Extract IDs, Enrich Data)?
 
-#### [ ] Pattern A: before_agent_callback (Recommended)
+#### Pattern A: before_agent_callback (Recommended)
 
 Intercept the request before the agent sees it, extract IDs, fetch additional data, and inject it into state:
 
@@ -292,7 +292,7 @@ Request flow with preprocessing:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-#### [ ] Pattern B: Plugin (Reusable Across Agents)
+#### Pattern B: Plugin (Reusable Across Agents)
 
 **Pros:** reusable across all agents, runs automatically
 **Cons:** more boilerplate, harder to debug
@@ -343,7 +343,7 @@ enrichment = IdEnrichmentPlugin(
 app = App(name="my_app", root_agent=root_agent, plugins=[enrichment])
 ```
 
-#### [ ] Pattern C: SequentialAgent with Preprocessor Agent
+#### Pattern C: SequentialAgent with Preprocessor Agent
 
 **Pros:** full LLM reasoning for extraction, handles complex cases
 **Cons:** extra LLM call (cost + latency), overkill for regex-level tasks
@@ -406,11 +406,11 @@ root_agent = SequentialAgent(
 
 ---
 
-### [ ] Q4: What Is the Best Way to Pass Messages Between Agents?
+### Q4: What Is the Best Way to Pass Messages Between Agents?
 
 Four mechanisms:
 
-#### [ ] Method 1: Session State (Most Common)
+#### Method 1: Session State (Most Common)
 
 Agents in the same session share state via `output_key` or direct writes:
 
@@ -465,7 +465,7 @@ State-based message passing:
 └──────────────────────────────────────────────────────────┘
 ```
 
-#### [ ] Method 2: Tool-Based State Writing
+#### Method 2: Tool-Based State Writing
 
 For more control over what gets passed:
 
@@ -501,7 +501,7 @@ agent_b = Agent(
 )
 ```
 
-#### [ ] Method 3: Agent Transfer (LLM-Driven Routing)
+#### Method 3: Agent Transfer (LLM-Driven Routing)
 
 Transfer carries full session history:
 
@@ -550,7 +550,7 @@ Agent transfer message passing:
 └──────────────────────────────────────────────────────────┘
 ```
 
-#### [ ] Method 4: AgentTool (Isolated Execution)
+#### Method 4: AgentTool (Isolated Execution)
 
 Isolated execution without shared history:
 
@@ -597,7 +597,7 @@ AgentTool message passing:
 └──────────────────────────────────────────────────────────┘
 ```
 
-#### [ ] Comparison Table
+#### Comparison Table
 
 ```
 Message passing methods compared:
@@ -629,7 +629,7 @@ Message passing methods compared:
 
 ---
 
-### [ ] Q5: Explain All State Scopes — temp, user, app — and Their Visibility
+### Q5: Explain All State Scopes — temp, user, app — and Their Visibility
 
 State has four scopes controlled by key prefixes: session (no prefix), `user:`, `app:`, and `temp:` (invocation-only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules and nested diagram.
 

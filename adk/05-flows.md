@@ -62,7 +62,7 @@ BaseLlmFlow (base_llm_flow.py) — abstract, implements the loop
 └─────────────────────────────────────────────┘
 ```
 
-### [ ] Two Iterations in Practice
+### Two Iterations in Practice
 
 ```
 User: "What's the weather in Tokyo?"

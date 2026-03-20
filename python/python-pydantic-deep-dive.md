@@ -2,7 +2,7 @@
 
 > **ADK relevance:** Every ADK data structure (Event, Session, EventActions, tool schemas) is a Pydantic model | **Estimated time:** 4-5 hours
 
-## [ ] At a Glance
+## At a Glance
 
 ```
 +------------------------------------------------------------------+
@@ -27,9 +27,9 @@
 
 Pydantic powers ALL data structures in Google ADK (Event, EventActions, Session, GenerateContentConfig, tool schemas). This guide covers everything from basic model definition through advanced patterns like discriminated unions and JSON schema generation, with Java comparisons throughout.
 
-## [ ] Core Concepts
+## Core Concepts
 
-## [ ] BaseModel Fundamentals
+## BaseModel Fundamentals
 
 #### What is BaseModel?
 
@@ -155,7 +155,7 @@ ConfigReversed(name="my_app")
 
 ---
 
-## [ ] Field() Configuration
+## Field() Configuration
 
 Pydantic's `Field()` function gives you fine-grained control over individual fields, similar to Java's validation annotations (`@NotNull`, `@Min`, `@Pattern`, etc.).
 
@@ -286,7 +286,7 @@ print(doc.model_dump())
 
 ---
 
-## [ ] Validation
+## Validation
 
 Pydantic validates data **on construction**, automatically catching errors before they propagate. This is more like Java's builder pattern with validation.
 
@@ -496,7 +496,7 @@ except Exception as e:
 
 ---
 
-## [ ] Serialization & Deserialization
+## Serialization & Deserialization
 
 Pydantic seamlessly converts between Python objects and JSON/dicts. In Java, you'd use libraries like Jackson or Gson for this.
 
@@ -650,7 +650,7 @@ print(response.model_dump())
 
 ---
 
-## [ ] model_copy(update={...}) - Critical for ADK
+## model_copy(update={...}) - Critical for ADK
 
 This is arguably the most important pattern in ADK. Instead of mutating objects, you create modified copies. This is similar to Java's builder pattern but more concise.
 
@@ -787,7 +787,7 @@ print(f"Root request: {root.request_id}, Child request: {child.request_id}")
 
 ---
 
-## [ ] Nested Models & Composition
+## Nested Models & Composition
 
 Real-world data is hierarchical. Pydantic handles nested validation gracefully.
 
@@ -917,7 +917,7 @@ except Exception as e:
 
 ---
 
-## [ ] Discriminated Unions
+## Discriminated Unions
 
 This is critical for ADK, which uses unions for different event types, tool types, etc. Discriminated unions tell Pydantic which model to use based on a specific field.
 
@@ -1037,7 +1037,7 @@ for tool in registry.tools:
 
 ---
 
-## [ ] Generic Models
+## Generic Models
 
 Create reusable model templates that work with any type. Like Java generics but for models.
 
@@ -1131,7 +1131,7 @@ validated_dict = dict_adapter.validate_python({"x": 10, "y": 20})
 
 ---
 
-## [ ] JSON Schema Generation
+## JSON Schema Generation
 
 This is HOW ADK auto-generates tool definitions! Pydantic converts type hints to JSON Schema that LLMs understand.
 
@@ -1302,7 +1302,7 @@ print(json.dumps({
 
 ---
 
-## [ ] ConfigDict
+## ConfigDict
 
 Global configuration for a model, like Java's @Configuration annotations.
 
@@ -1429,7 +1429,7 @@ print(allow_extra.model_dump())  # {'name': 'you', 'age': 30}
 
 ---
 
-## [ ] Computed Fields
+## Computed Fields
 
 Fields that are derived from other fields and appear in serialization, but aren't stored.
 
@@ -1486,7 +1486,7 @@ print(subscription.is_active)  # True
 
 ---
 
-## [ ] Inheritance
+## Inheritance
 
 Reuse model structure through inheritance, like Java class hierarchies.
 
@@ -1567,7 +1567,7 @@ doc = Document(
 
 ---
 
-## [ ] Custom Types
+## Custom Types
 
 Create custom types that Pydantic validates correctly.
 
@@ -1630,7 +1630,7 @@ print(contact.phone)  # "(555) 012-3456"
 
 ---
 
-## [ ] Performance Tips
+## Performance Tips
 
 #### model_construct() - Skip Validation
 
@@ -1700,7 +1700,7 @@ point = Point(x=10, y=20)
 
 ---
 
-## [ ] ADK-Specific Patterns
+## ADK-Specific Patterns
 
 #### Modeling Events
 
@@ -2084,7 +2084,7 @@ example_adk_flow()
 
 ---
 
-## [ ] ADK in Practice
+## ADK in Practice
 
 Pydantic patterns map directly to ADK components:
 
@@ -2100,7 +2100,7 @@ Pydantic patterns map directly to ADK components:
 | Nested models | `Event.content` -> `Content.parts` -> `Part` hierarchy |
 | `default_factory` | Mutable defaults in `EventActions(state_delta={})` |
 
-## [ ] Common Mistakes
+## Common Mistakes
 
 #### 1. Mutable Default Values
 
@@ -2272,7 +2272,7 @@ immutable.age = 31  # Error: frozen model
 
 ---
 
-## [ ] Java to Pydantic Reference
+## Java to Pydantic Reference
 
 | Java | Pydantic | Notes |
 |------|----------|-------|
@@ -2305,7 +2305,7 @@ immutable.age = 31  # Error: frozen model
 
 ---
 
-## [ ] Quick Reference Card
+## Quick Reference Card
 
 **Key Takeaways:**
 

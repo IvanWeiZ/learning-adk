@@ -52,7 +52,7 @@ BaseSessionService (ABC)
 
 ## Key API
 
-### [ ] Session Data Model
+### Session Data Model
 
 ```python
 class Session(BaseModel):
@@ -66,7 +66,7 @@ class Session(BaseModel):
 
 Intentionally minimal. Complexity lives in the service and Event list.
 
-### [ ] BaseSessionService — The Interface
+### BaseSessionService — The Interface
 
 ```python
 class BaseSessionService(ABC):
@@ -97,7 +97,7 @@ class BaseSessionService(ABC):
 
 `append_event` is called by `Runner` after every event yielded by the agent.
 
-### [ ] GetSessionConfig — Partial Loading
+### GetSessionConfig — Partial Loading
 
 Load only recent events for long conversations:
 
@@ -111,7 +111,7 @@ session = await session_service.get_session(..., config=config)
 
 Sessions have thousands of events but you only need recent context.
 
-### [ ] Implementations
+### Implementations
 
 | Class | Storage | Use Case |
 |-------|---------|----------|
@@ -128,7 +128,7 @@ For selection guidance (pros/cons, decision tree), see [20-best-practices.md](20
 
 ## How It Works
 
-### [ ] How Runner Uses Sessions
+### How Runner Uses Sessions
 
 ```
 Runner.run_async(user_id, session_id, new_message)
@@ -148,7 +148,7 @@ Runner.run_async(user_id, session_id, new_message)
 └── (Optional) compaction: summarize old events, update session
 ```
 
-### [ ] State Delta Lifecycle
+### State Delta Lifecycle
 
 ```
 ctx.state["city"] = "Tokyo"
@@ -165,7 +165,7 @@ ctx.state["city"] = "Tokyo"
     └── database/memory store updated
 ```
 
-### [ ] State Scope Visual
+### State Scope Visual
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -191,7 +191,7 @@ ctx.state["city"] = "Tokyo"
 
 ## Examples
 
-### [ ] Session State
+### Session State
 
 `session.state` is a free-form dict. Written via `EventActions.state_delta`:
 
@@ -206,7 +206,7 @@ agent = LlmAgent(output_key='summary')
 # → final response text is saved to session.state['summary']
 ```
 
-### [ ] State Scoping in Practice
+### State Scoping in Practice
 
 ```python
 # Session-scoped (default) — only this session sees this:

@@ -4,13 +4,13 @@
 
 ---
 
-## [ ] What It Is
+## What It Is
 
 Thin adapter layer between ADK's internal types (`LlmRequest`, `LlmResponse`) and LLM providers (Gemini, Anthropic, LiteLLM). Hides provider-specific calls behind a single interface.
 
 ---
 
-## [ ] Class Hierarchy
+## Class Hierarchy
 
 ```
 BaseLlm (base_llm.py) — abstract interface
@@ -21,7 +21,7 @@ BaseLlm (base_llm.py) — abstract interface
 
 ---
 
-## [ ] BaseLlm — The Interface
+## BaseLlm — The Interface
 
 ```python
 class BaseLlm(BaseModel):
@@ -52,7 +52,7 @@ class BaseLlm(BaseModel):
 
 ---
 
-## [ ] Streaming Contract
+## Streaming Contract
 
 `generate_content_async` with `stream=True` yields:
 
@@ -84,7 +84,7 @@ Streaming Timeline — what goes where:
 
 ---
 
-## [ ] LLMRegistry — Auto-Dispatch
+## LLMRegistry — Auto-Dispatch
 
 `LLMRegistry` maps model name strings to `BaseLlm` subclasses via regex:
 
@@ -135,7 +135,7 @@ Model string resolution:
 
 ---
 
-## [ ] LlmRequest
+## LlmRequest
 
 The request object assembled by the flow before calling the model:
 
@@ -160,7 +160,7 @@ class LlmRequest:
 
 ---
 
-## [ ] LlmResponse
+## LlmResponse
 
 The response object returned by the model:
 
@@ -180,7 +180,7 @@ class LlmResponse:
 
 ---
 
-## [ ] Default Model
+## Default Model
 
 ```python
 LlmAgent.DEFAULT_MODEL = 'gemini-2.5-flash'
@@ -196,7 +196,7 @@ Model inheritance: walks up `parent_agent` chain, falls back to default.
 
 ---
 
-## [ ] Adding a Custom Adapter
+## Adding a Custom Adapter
 
 ```python
 from google.adk.models.base_llm import BaseLlm

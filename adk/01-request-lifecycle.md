@@ -40,7 +40,7 @@ Class hierarchy: see [04-agents.md](04-agents.md#class-hierarchy).
 
 ## How It Works
 
-### [ ] Layer Diagram
+### Layer Diagram
 
 ```
 CALLER
@@ -104,7 +104,7 @@ CALLER
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] The Weather Agent
+### The Weather Agent
 
 ```python
 from google.adk.agents import LlmAgent
@@ -140,7 +140,7 @@ User message: **"What's the weather in Tokyo?"**
 
 The rest of this file traces exactly what happens inside ADK when this code runs.
 
-### [ ] What the Caller Receives
+### What the Caller Receives
 
 `runner.run_async()` yields these events for the Tokyo weather query:
 
@@ -190,9 +190,9 @@ async for event in runner.run_async(...):
         print(event.content.parts[0].text, end="", flush=True) # stream to UI
 ```
 
-### [ ] Step-by-Step Trace
+### Step-by-Step Trace
 
-#### [ ] Step 0 — Session State Before the Request
+#### Step 0 — Session State Before the Request
 
 ```python
 # Session loaded by get_session() — empty for a brand-new conversation
@@ -205,7 +205,7 @@ Session(
 )
 ```
 
-#### [ ] Step 1 — Runner Entry
+#### Step 1 — Runner Entry
 
 **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py)
 
@@ -242,7 +242,7 @@ InvocationContext(
 )
 ```
 
-#### [ ] Step 2 — Agent Callbacks (before_agent_callback)
+#### Step 2 — Agent Callbacks (before_agent_callback)
 
 **Source:** [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py)
 
@@ -256,7 +256,7 @@ BaseAgent.run_async(ctx)
 
 No callbacks configured — both return `None`.
 
-#### [ ] Step 3 — Build LlmRequest (Preprocess)
+#### Step 3 — Build LlmRequest (Preprocess)
 
 **Source:** [`flows/llm_flows/base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py)
 
@@ -290,7 +290,7 @@ LlmRequest(
 
 > **`before_model_callback` fires here** — after this request is built, before the API call. Return `None` to proceed; return an `LlmResponse` to skip the LLM entirely.
 
-#### [ ] Step 4 — LLM Call → Function Call Response
+#### Step 4 — LLM Call → Function Call Response
 
 **Source:** [`models/google_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/google_llm.py)
 
@@ -322,7 +322,7 @@ Event(
 # is_final_response() = False — contains a function call
 ```
 
-#### [ ] Step 5 — Tool Dispatch
+#### Step 5 — Tool Dispatch
 
 **Source:** [`flows/llm_flows/functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py)
 
@@ -362,7 +362,7 @@ Event(
 # is_final_response() = False — contains a function response
 ```
 
-#### [ ] Step 6 — Rebuild LlmRequest (Loop Iteration 2)
+#### Step 6 — Rebuild LlmRequest (Loop Iteration 2)
 
 The flow loops. Session now has 3 events. A new `LlmRequest` includes the full history:
 
@@ -384,7 +384,7 @@ LlmRequest(
 
 > `before_model_callback` fires again before this second LLM call.
 
-#### [ ] Step 7 — Final LLM Response (Streaming)
+#### Step 7 — Final LLM Response (Streaming)
 
 The LLM streams the answer:
 
@@ -421,7 +421,7 @@ Event(
 # is_final_response() = True — text only, partial=False → flow loop exits
 ```
 
-#### [ ] Step 8 — Session After the Request
+#### Step 8 — Session After the Request
 
 ```python
 Session(
@@ -436,7 +436,7 @@ Session(
 )
 ```
 
-### [ ] Full Sequence Diagram
+### Full Sequence Diagram
 
 All callbacks and session writes shown in order. A callback returning non-None short-circuits the step it guards.
 
@@ -513,11 +513,11 @@ runner.run_async(user_id, session_id, new_message)
 
 ## Gotchas
 
-### [ ] Callbacks
+### Callbacks
 
 Plugins run first (stop at first non-None), then agent callbacks. Each can be a function or list.
 
-#### [ ] Signatures and Return Effects
+#### Signatures and Return Effects
 
 ```python
 # ── AGENT ────────────────────────────────────────────────────────────────────
@@ -555,7 +555,7 @@ def on_tool_error_callback(tool: BaseTool, args: dict[str, Any], tool_context: T
 
 For a summary table of each callback's None/non-None effects, see [04-agents.md](04-agents.md).
 
-#### [ ] Plugin-Only Callbacks
+#### Plugin-Only Callbacks
 
 Plugins add four more hooks:
 
@@ -566,23 +566,23 @@ Plugins add four more hooks:
 | `after_run_callback` | After agent loop ends |
 | `on_event_callback` | On every yielded event |
 
-### [ ] Session Service
+### Session Service
 
 **Source:** [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py)
 
-#### [ ] Session Calls Per Invocation
+#### Session Calls Per Invocation
 
 Runner makes one `get_session` call at start, one `append_event` for the user message, and one `append_event` per non-partial event. See [18-session-lifecycle.md](18-session-lifecycle.md) for the complete annotated timeline.
 
 See [18-session-lifecycle.md](18-session-lifecycle.md) for the full `append_event` pseudocode and step-by-step breakdown.
 
-#### [ ] State Key Scopes
+#### State Key Scopes
 
 State keys use prefixes to control scope: no prefix (session), `app:` (all users), `user:` (cross-session), `temp:` (current invocation only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules, persistence behavior, and code examples.
 
 See [08-sessions.md](08-sessions.md) for the backend comparison table and [18-session-lifecycle.md](18-session-lifecycle.md) for latency and concurrency details.
 
-### [ ] Key Invariants
+### Key Invariants
 
 | Invariant | Source |
 |---|---|

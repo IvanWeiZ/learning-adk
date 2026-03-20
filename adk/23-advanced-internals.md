@@ -24,7 +24,7 @@ This file covers the internal machinery of ADK: the processor pipeline that buil
 
 ## How It Works
 
-### [ ] 1. The Processor Pipeline
+### 1. The Processor Pipeline
 
 `BaseLlmFlow` runs **request processors** (build prompt) then **response processors** (handle output) in order for every LLM call.
 
@@ -104,7 +104,7 @@ AutoFlow processors:
 
 ---
 
-### [ ] 2. The Reason-Act Loop — Step by Step
+### 2. The Reason-Act Loop — Step by Step
 
 The core loop in `BaseLlmFlow.run_async()`:
 
@@ -193,7 +193,7 @@ LLM returns: [get_weather("Tokyo"), get_weather("London"), get_weather("NYC")]
 
 ---
 
-### [ ] 3. The Plugin System — Cross-Cutting Concerns
+### 3. The Plugin System — Cross-Cutting Concerns
 
 Plugins wrap the entire agent lifecycle. They execute **before** agent-level callbacks.
 
@@ -304,7 +304,7 @@ app = App(
 
 ---
 
-### [ ] 4. Custom Tools — Beyond FunctionTool
+### 4. Custom Tools — Beyond FunctionTool
 
 **BaseTool subclass (full lifecycle control):**
 
@@ -501,7 +501,7 @@ AgentTool vs sub_agents comparison:
 
 ---
 
-### [ ] 5. Custom Toolsets — Dynamic Tool Collections
+### 5. Custom Toolsets — Dynamic Tool Collections
 
 `BaseToolset` provides tools dynamically at runtime, based on context:
 
@@ -584,7 +584,7 @@ Toolset resolution at runtime:
 
 ---
 
-### [ ] 6. Authentication Flow — How Tools Get Credentials
+### 6. Authentication Flow — How Tools Get Credentials
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -673,7 +673,7 @@ agent = Agent(
 
 ---
 
-### [ ] 7. Artifacts — File Management Across Sessions
+### 7. Artifacts — File Management Across Sessions
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -735,7 +735,7 @@ async def load_previous_report(filename: str, tool_context: ToolContext) -> str:
 
 ---
 
-### [ ] 8. Code Executors — Running Code in Agents
+### 8. Code Executors — Running Code in Agents
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -795,7 +795,7 @@ agent = Agent(
 
 ---
 
-### [ ] 9. Planners — Structured Reasoning
+### 9. Planners — Structured Reasoning
 
 **PlanReActPlanner** — adds explicit planning/reasoning tags to the LLM's response:
 
@@ -863,7 +863,7 @@ agent = Agent(
 
 ---
 
-### [ ] 10. A2A (Agent-to-Agent Protocol) — Cross-Service Communication
+### 10. A2A (Agent-to-Agent Protocol) — Cross-Service Communication
 
 A2A enables agents running in different services to communicate:
 
@@ -914,7 +914,7 @@ executor = A2aAgentExecutor(
 
 ---
 
-### [ ] 11. Event Compaction — Managing Long Conversations
+### 11. Event Compaction — Managing Long Conversations
 
 As conversations grow, the context window fills up. Compaction summarizes old events:
 
@@ -964,7 +964,7 @@ app = App(
 
 ---
 
-### [ ] 12. Content Filtering — How Events Become Context
+### 12. Content Filtering — How Events Become Context
 
 Not every event in the session becomes part of the LLM context. The `contents` processor filters:
 
@@ -1001,7 +1001,7 @@ Not every event in the session becomes part of the LLM context. The `contents` p
 
 ---
 
-### [ ] 13. Function Call ID Management
+### 13. Function Call ID Management
 
 ADK tracks function calls with client-side IDs:
 
@@ -1034,7 +1034,7 @@ Before sending back to LLM, ADK strips the "adk-" prefix:
 
 ---
 
-### [ ] 14. Streaming and Live Mode
+### 14. Streaming and Live Mode
 
 Standard streaming:
 
@@ -1077,7 +1077,7 @@ async def live_tool(
 
 ---
 
-### [ ] 15. Advanced Agent Patterns
+### 15. Advanced Agent Patterns
 
 **Pattern: Guardrail Agent**
 

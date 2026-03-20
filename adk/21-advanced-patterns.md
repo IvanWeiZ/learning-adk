@@ -12,7 +12,7 @@ Production patterns from `contributing/samples/`. Complements the decision tree 
 
 ADK agents can be declared entirely in YAML instead of Python. Each YAML file represents one agent and references sub-agents via `config_path` and tools via dotted Python import paths.
 
-### [ ] Schema format
+### Schema format
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/google/adk-python/refs/heads/main/src/google/adk/agents/config_schemas/AgentConfig.json
@@ -34,13 +34,13 @@ generate_content_config:
  threshold: 'OFF'
 ```
 
-### [ ] Key fields
+### Key fields
 
 - **`agent_class`** — Which agent type to instantiate (e.g., `LlmAgent`).
 - **`config_path`** — Relative path to a child agent's YAML file. ADK loads and wires the hierarchy automatically.
 - **`tools[].name`** — Dotted Python path resolved at load time. For `multi_agent_llm_config.roll_die`, ADK imports `roll_die` from the `multi_agent_llm_config` package's `__init__.py`.
 
-### [ ] Sub-agent YAML
+### Sub-agent YAML
 
 Each sub-agent is its own file with the same schema. Tools reference functions from the parent package:
 
@@ -74,7 +74,7 @@ def roll_die(sides: int) -> int:
 
 Intercepts tool failures, sends reflection guidance to the LLM, retries up to a configurable limit.
 
-### [ ] Basic usage
+### Basic usage
 
 ```python
 from google.adk.plugins.reflect_retry_tool_plugin import (
@@ -93,7 +93,7 @@ plugin = ReflectAndRetryToolPlugin(
 )
 ```
 
-### [ ] Custom error extraction via subclass
+### Custom error extraction via subclass
 
 Override `extract_error_from_result` to detect errors in successful responses:
 
@@ -107,14 +107,14 @@ class CustomRetryPlugin(ReflectAndRetryToolPlugin):
         return None # No error detected
 ```
 
-### [ ] How it works internally
+### How it works internally
 
 1. **`on_tool_error_callback`** catches exceptions and calls `_handle_tool_error`.
 2. **`after_tool_callback`** calls `extract_error_from_result` on successful results, then routes any detected error through the same handler.
 3. **`_handle_tool_error`** increments a per-tool counter under `asyncio.Lock`, builds a `ToolFailureResponse` with structured reflection guidance, and returns it as the function response the LLM sees.
 4. On success, the failure counter for that tool resets — other tools' counters are unaffected.
 
-### [ ] Wiring it to an agent
+### Wiring it to an agent
 
 ```python
 from google.adk.agents import LlmAgent
@@ -133,7 +133,7 @@ runner = Runner(agent=agent, plugins=[ReflectAndRetryToolPlugin(max_retries=3)])
 
 `BaseTool.process_llm_request` modifies `LlmRequest` before the model call. Inject ephemeral content (in prompt but not persisted).
 
-### [ ] Pattern: inject artifact content on-demand
+### Pattern: inject artifact content on-demand
 
 The `QueryLargeDataTool` saves large reports as artifacts, then injects the artifact content into `llm_request.contents` so the model can reference it immediately:
 
@@ -181,7 +181,7 @@ class QueryLargeDataTool(FunctionTool):
                         )
 ```
 
-### [ ] Why not just return the data from the tool?
+### Why not just return the data from the tool?
 
 Function response data persists in session history forever. `process_llm_request` injection is ephemeral (current prompt only).
 
@@ -193,7 +193,7 @@ Function response data persists in session history forever. `process_llm_request
 
 Factory returns a closure that checks `callback_context.state` to decide if an agent runs. With `ParallelAgent`, creates selective activation.
 
-### [ ] The factory pattern
+### The factory pattern
 
 ```python
 from typing import Optional
@@ -222,7 +222,7 @@ def before_agent_callback_check_relevance(
     return callback
 ```
 
-### [ ] Wiring it up
+### Wiring it up
 
 Triage agent writes relevant names to `state["execution_agents"]`. `ParallelAgent` runs all workers; each checks the list and short-circuits if irrelevant:
 
@@ -251,7 +251,7 @@ worker_parallel_agent = ParallelAgent(
 )
 ```
 
-### [ ] Return semantics
+### Return semantics
 
 - **Return `None`** — agent proceeds normally.
 - **Return `types.Content`** — agent is skipped; the returned content becomes the agent's output event.
@@ -264,7 +264,7 @@ worker_parallel_agent = ParallelAgent(
 
 `before_tool_callback` receives `args` by reference. Two modes:
 
-### [ ] Mode 1: Short-circuit (return a dict)
+### Mode 1: Short-circuit (return a dict)
 
 Non-None return replaces the tool response (tool never runs):
 
@@ -275,7 +275,7 @@ def before_tool_cb(tool, args, tool_context):
         return {"error": "Maximum 100 sides allowed"}
 ```
 
-### [ ] Mode 2: Mutate args in place (return None)
+### Mode 2: Mutate args in place (return None)
 
 `None` return lets the tool run. `args` mutations are visible to the tool:
 
@@ -287,7 +287,7 @@ def before_tool_cb(tool, args, tool_context):
     # Return None — tool runs with the modified args
 ```
 
-### [ ] Callback lists
+### Callback lists
 
 Callbacks can be a single callable or list. First non-None return short-circuits:
 
@@ -301,7 +301,7 @@ root_agent = Agent(
 )
 ```
 
-### [ ] after_tool_callback comparison
+### after_tool_callback comparison
 
 `after_tool_callback`: dict return replaces response, `None` passes through:
 
@@ -319,7 +319,7 @@ def after_tool_cb2(tool, args, tool_context, tool_response):
 
 `output_schema=list[Model]` forces JSON array output. With `output_key`, stored in state for downstream agents.
 
-### [ ] Pattern
+### Pattern
 
 ```python
 from google.adk import Agent
@@ -353,13 +353,13 @@ Here are the data you have for Cupertino:
 # Do NOT pass tools=[...] on an agent that uses output_schema.
 ```
 
-### [ ] What happens at runtime
+### What happens at runtime
 
 1. The `output_schema_processor` in the request pipeline tells the LLM to respond with a JSON array matching the `WeatherData` schema.
 2. The LLM response is validated against `list[WeatherData]`.
 3. The validated result is stored in `state["weather_data"]` (via `output_key`), making it available to downstream agents or application code.
 
-### [ ] When to use this
+### When to use this
 
 - Extracting structured records from unstructured text.
 - Multi-item queries where you need a consistent schema per item.
@@ -373,7 +373,7 @@ Here are the data you have for Cupertino:
 
 `require_confirmation`: `True` (always) or callable (runtime decision).
 
-### [ ] Conditional confirmation with a callable
+### Conditional confirmation with a callable
 
 Callable receives tool args. Returns `True` to confirm, `False` to proceed:
 
@@ -406,7 +406,7 @@ root_agent = Agent(
 
 Amounts <= 1000 execute immediately; above 1000 pause for approval.
 
-### [ ] Manual confirmation via tool_context
+### Manual confirmation via tool_context
 
 For complex flows, use `tool_context.request_confirmation` directly:
 
@@ -430,7 +430,7 @@ def request_time_off(days: int, tool_context: ToolContext):
     return {"status": "ok", "approved_days": min(approved_days, days)}
 ```
 
-### [ ] Resumability
+### Resumability
 
 Enable resumability for confirmation flows:
 

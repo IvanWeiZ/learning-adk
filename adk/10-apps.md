@@ -94,7 +94,7 @@ ResumabilityConfig:
 
 ## Key API
 
-### [ ] App Fields
+### App Fields
 
 ```python
 class App(BaseModel):
@@ -106,7 +106,7 @@ class App(BaseModel):
     resumability_config: Optional[ResumabilityConfig] = None
 ```
 
-### [ ] BasePlugin Interface
+### BasePlugin Interface
 
 All 11 callbacks. Plugins execute in registration order. A non-`None` return short-circuits remaining plugins and agent callbacks.
 
@@ -186,7 +186,7 @@ class BasePlugin(ABC):
         ... # return dict to recover from a tool error
 ```
 
-### [ ] Plugin Callback Execution Chain
+### Plugin Callback Execution Chain
 
 ```
 User message arrives
@@ -238,7 +238,7 @@ before_run_callback (Plugin 1 → Plugin 2 → ...)
 after_run_callback (Plugin 1 → Plugin 2 → ...)
 ```
 
-### [ ] EventsCompactionConfig
+### EventsCompactionConfig
 
 ```python
 from google.adk.apps.app import EventsCompactionConfig
@@ -250,7 +250,7 @@ EventsCompactionConfig(
 )
 ```
 
-### [ ] ContextCacheConfig
+### ContextCacheConfig
 
 ```python
 from google.adk.agents.context_cache_config import ContextCacheConfig
@@ -264,7 +264,7 @@ ContextCacheConfig(
 
 Requires `static_instruction` on `LlmAgent`. No effect without it.
 
-### [ ] ResumabilityConfig
+### ResumabilityConfig
 
 ```python
 from google.adk.apps.app import ResumabilityConfig
@@ -274,7 +274,7 @@ ResumabilityConfig(is_resumable=True)
 
 ## How It Works
 
-### [ ] Basic Usage
+### Basic Usage
 
 ```python
 from google.adk.apps import App
@@ -289,7 +289,7 @@ app = App(name='my_app', root_agent=agent)
 runner = Runner(app=app, session_service=InMemorySessionService())
 ```
 
-### [ ] Plugins — App-Wide Lifecycle Hooks
+### Plugins — App-Wide Lifecycle Hooks
 
 Plugins are app-wide hooks around every agent call.
 
@@ -299,7 +299,7 @@ Use cases:
 - Global guardrails / safety checks
 - Injecting shared context into every agent
 
-### [ ] Event Compaction — History Summarization
+### Event Compaction — History Summarization
 
 Compaction summarizes old events into a single compact event, keeping the list bounded.
 
@@ -325,7 +325,7 @@ AFTER compaction (overlap_size=2):
  ◄──── 1 summary event ──────────► ◄── kept verbatim ──►
 ```
 
-### [ ] Resumability — Pause/Resume Long-Running Tools
+### Resumability — Pause/Resume Long-Running Tools
 
 When an agent calls a `is_long_running=True` tool:
 1. The invocation pauses and yields a "paused" event
@@ -336,7 +336,7 @@ Requires idempotent tool calls.
 
 ## Examples
 
-### [ ] Custom Logging Plugin
+### Custom Logging Plugin
 
 ```python
 class MyLoggingPlugin(BasePlugin):
@@ -350,7 +350,7 @@ class MyLoggingPlugin(BasePlugin):
 app = App(name='my_app', root_agent=agent, plugins=[MyLoggingPlugin()])
 ```
 
-### [ ] App with Compaction
+### App with Compaction
 
 ```python
 from google.adk.apps.app import EventsCompactionConfig
@@ -366,7 +366,7 @@ app = App(
 )
 ```
 
-### [ ] App with Context Cache
+### App with Context Cache
 
 ```python
 from google.adk.agents.context_cache_config import ContextCacheConfig
@@ -382,7 +382,7 @@ app = App(
 )
 ```
 
-### [ ] App with Resumability
+### App with Resumability
 
 ```python
 from google.adk.apps.app import ResumabilityConfig
@@ -396,7 +396,7 @@ app = App(
 
 ## Gotchas
 
-### [ ] App vs. Bare Agent
+### App vs. Bare Agent
 
 | Feature | `app=App(...)` | `agent=..., app_name=...` |
 |---------|---------------|--------------------------|
@@ -415,7 +415,7 @@ Do you need plugins, compaction, context caching, or resumability?
  No  → use Runner(agent=agent, app_name="my_app", ...)
 ```
 
-### [ ] App Name Constraints
+### App Name Constraints
 
 Must be a valid Python identifier (not `"user"`). Scopes sessions.
 

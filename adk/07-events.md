@@ -36,7 +36,7 @@ pydantic.BaseModel
 
 ##Key API
 
-### [ ] Event Fields
+### Event Fields
 
 ```python
 class Event(LlmResponse):
@@ -63,7 +63,7 @@ class Event(LlmResponse):
     custom_metadata: Optional[dict[str, Any]] # arbitrary metadata; Runner merges RunConfig.custom_metadata here
 ```
 
-### [ ] EventActions — The Side-Effect Envelope
+### EventActions — The Side-Effect Envelope
 
 Side-effects stored on `event.actions`:
 
@@ -86,7 +86,7 @@ class EventActions(BaseModel):
 
 `state_delta` is how agents write to persistent session state.
 
-### [ ] Key Methods on Event
+### Key Methods on Event
 
 ```python
 event.is_final_response() -> bool
@@ -108,7 +108,7 @@ event.has_trailing_code_execution_result() -> bool
 
 ##How It Works
 
-### [ ] What's Inside an Event
+### What's Inside an Event
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -146,7 +146,7 @@ event.has_trailing_code_execution_result() -> bool
 
 A `Session` is an ordered list of Events.
 
-### [ ] Events in a Single Turn
+### Events in a Single Turn
 
 A tool-calling agent produces 4 events for one user turn:
 
@@ -171,7 +171,7 @@ User sends: "What's the weather in Tokyo?"
 - **evt-003**: Tool executes and returns a `FunctionResponse` with the weather data.
 - **evt-004**: LLM synthesizes the final answer. `is_final_response()` returns `True`, signaling the caller to render this event.
 
-### [ ] The Branch Field
+### The Branch Field
 
 Sibling agents don't see each other's history. `branch` encodes the root-to-current path:
 
@@ -181,7 +181,7 @@ root_agent.search_agent.summarizer_agent
 
 The flow filters events by branch so each agent sees only its own lineage.
 
-#### [ ] Branch Filtering: Which Agent Sees Which Events
+#### Branch Filtering: Which Agent Sees Which Events
 
 ```
 Session events (all stored together):
@@ -221,7 +221,7 @@ write_agent (branch="write_agent"):
   (never sees search_agent events — different sibling branch)
 ```
 
-### [ ] How Events Flow End-to-End
+### How Events Flow End-to-End
 
 ```
 Runner.run_async(user_id, session_id, new_message)

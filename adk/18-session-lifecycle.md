@@ -30,7 +30,7 @@ The session service loads context before execution, persists events during execu
 
 ## How It Works
 
-### [ ] The BaseSessionService Interface
+### The BaseSessionService Interface
 
 `BaseSessionService` defines 5 methods — 4 abstract, 1 concrete with a default implementation:
 
@@ -42,7 +42,7 @@ The session service loads context before execution, persists events during execu
 | `delete_session` | Yes | `async def delete_session(*, app_name, user_id, session_id) -> None` | Deletes a session. |
 | `append_event` | No (concrete) | `async def append_event(session, event) -> Event` | Appends an event to the session. Has a default implementation that subclasses call via `super()`. |
 
-### [ ] The `append_event` Base Implementation
+### The `append_event` Base Implementation
 
 This is the critical method. Every subclass calls `super().append_event()` first:
 
@@ -59,7 +59,7 @@ async def append_event(self, session: Session, event: Event) -> Event:
 
 **Why temp state is special:** `temp:`-prefixed keys are written to the in-memory session so downstream agents in the same invocation can read them, but they are trimmed from `state_delta` before persistence — they vanish on session reload.
 
-### [ ] Complete Call Timeline in the Runner
+### Complete Call Timeline in the Runner
 
 For a standard `run_async` invocation, here is every point where the session service is called:
 
@@ -125,7 +125,7 @@ if event.partial is not True:
 
 **Where:** `rewind_async()` — creates a special event with `rewind_before_invocation_id` and a computed `state_delta` that reverses previous state changes.
 
-### [ ] How State Gets Committed
+### How State Gets Committed
 
 **State Scoping**
 
@@ -148,7 +148,7 @@ Agent code sets state                State._delta accumulates
                                subclass: write to storage (memory / database)
 ```
 
-### [ ] InMemorySessionService vs DatabaseSessionService
+### InMemorySessionService vs DatabaseSessionService
 
 | Aspect | InMemorySessionService | DatabaseSessionService |
 |--------|----------------------|----------------------|
@@ -160,7 +160,7 @@ Agent code sets state                State._delta accumulates
 | **Event filtering** | In-memory slicing | SQL WHERE clauses |
 | **append_event cost** | ~microseconds (dict update + deepcopy overhead) | ~milliseconds (DB round-trip + locking) |
 
-### [ ] Locking and Concurrency
+### Locking and Concurrency
 
 **InMemorySessionService**
 
@@ -176,7 +176,7 @@ Two layers:
 
 **Cross-process:** Only the database locking protects across processes. The asyncio locks are per-process only.
 
-### [ ] Optimizing for Latency (When Persistence Is Not Critical)
+### Optimizing for Latency (When Persistence Is Not Critical)
 
 If durability is not required, per-event persistence is overkill. Strategies ranked simplest to most aggressive:
 
@@ -333,7 +333,7 @@ class FireAndForgetSessionService(BaseSessionService):
 
 **Trade-off:** No separate storage copy at all. `get_session` returns the live object. Only safe for single-session-per-process usage.
 
-### [ ] Decision Guide: Which Strategy to Use
+### Decision Guide: Which Strategy to Use
 
 ```
 Need durable sessions across restarts?
@@ -351,7 +351,7 @@ Need durable sessions across restarts?
 
 **The most common production-friendly low-latency setup:** InMemorySessionService (Strategy 1) + `GetSessionConfig(num_recent_events=20)` (Strategy 2). This gives you sub-millisecond `append_event` with bounded memory.
 
-### [ ] Beyond Session Service: Full-Stack Latency Optimization
+### Beyond Session Service: Full-Stack Latency Optimization
 
 Session service is only one source of latency. The full critical path for a single user turn, with the dominant costs:
 
@@ -564,7 +564,7 @@ runner = Runner(agent=agent, app_name="my_app", session_service=session_service)
 
 ## Examples
 
-### [ ] Latency Optimization Cheat Sheet
+### Latency Optimization Cheat Sheet
 
 | Optimization | Latency Saved | Effort | When |
 |---|---|---|---|

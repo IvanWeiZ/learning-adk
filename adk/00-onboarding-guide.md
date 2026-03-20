@@ -2,7 +2,7 @@
 
 > **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** all ADK modules | **Prereqs:** none
 
-## [ ] An Agent Is Just Three Things
+## An Agent Is Just Three Things
 
 ```
 An ADK agent = prompt + model + tools
@@ -26,7 +26,7 @@ Everything else — Runner, Session, Events, Flows — is infrastructure that AD
 
 ---
 
-## [ ] 1. Create an Agent (5 Lines)
+## 1. Create an Agent (5 Lines)
 
 ```python
 from google.adk import Agent
@@ -42,7 +42,7 @@ That's a working AI agent. No tools, no configuration, no boilerplate. ADK wraps
 
 ---
 
-## [ ] 2. Add a Tool (It's Just a Function)
+## 2. Add a Tool (It's Just a Function)
 
 Any Python function becomes an LLM-callable tool:
 
@@ -84,7 +84,7 @@ What happens when the user asks "What's the weather in Tokyo?":
 
 ---
 
-## [ ] 3. Run It
+## 3. Run It
 
 ```python
 import asyncio
@@ -112,7 +112,7 @@ Three pieces: **Agent** (what to do) + **Runner** (how to run) + **Session** (wh
 
 ---
 
-## [ ] 4. What ADK Handles for You
+## 4. What ADK Handles for You
 
 You don't need to understand any of this to get started — but it's there when you need it:
 
@@ -140,7 +140,7 @@ What you write:                    What ADK handles:
 
 ---
 
-## [ ] The Full Architecture (Don't Worry — We'll Explain Each Layer)
+## The Full Architecture (Don't Worry — We'll Explain Each Layer)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -201,7 +201,7 @@ This looks like a lot — but you already touched the two most important boxes: 
 
 ---
 
-## [ ] Where to Go Next
+## Where to Go Next
 
 Now that you can build an agent with tools, explore these topics:
 

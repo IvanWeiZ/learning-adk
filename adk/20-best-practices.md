@@ -12,7 +12,7 @@ This document collects the most common ADK mistakes, anti-patterns, and rules. E
 
 ## How It Works
 
-### [ ] 1. Agent Naming — The #1 Source of Startup Crashes
+### 1. Agent Naming — The #1 Source of Startup Crashes
 
 **The Rules**
 
@@ -68,7 +68,7 @@ root = Agent(
 )
 ```
 
-### [ ] 2. Tool Design — Return Errors, Never Raise Exceptions
+### 2. Tool Design — Return Errors, Never Raise Exceptions
 
 **The Pattern**
 
@@ -128,7 +128,7 @@ When a tool returns an error string:
 └──────────────────────────────────────────────────┘
 ```
 
-### [ ] 3. Tool Docstrings — The LLM's Only Documentation
+### 3. Tool Docstrings — The LLM's Only Documentation
 
 The LLM chooses tools by function name and docstring. Poor docstrings = wrong tool calls.
 
@@ -173,7 +173,7 @@ tools=[get_data, fetch_info, retrieve_results]
 tools=[search_products, get_order_status, check_inventory]
 ```
 
-### [ ] 4. The `output_schema` Trap — It Disables All Tools
+### 4. The `output_schema` Trap — It Disables All Tools
 
 ```python
 from pydantic import BaseModel
@@ -237,7 +237,7 @@ Workaround for structured output WITH tools:
 └── Wire them with SequentialAgent or output_key
 ```
 
-### [ ] 5. Agent Reuse — One Parent Only
+### 5. Agent Reuse — One Parent Only
 
 Each agent instance belongs to one parent (enforced at runtime):
 
@@ -280,7 +280,7 @@ parent_b = Agent(
 )
 ```
 
-### [ ] 6. Callback Parameter Naming — Must Be Exact
+### 6. Callback Parameter Naming — Must Be Exact
 
 ADK injects by parameter name. Wrong names = broken callbacks.
 
@@ -337,7 +337,7 @@ Callback parameter names (must be exact):
        tool, args, tool_context, tool_response
 ```
 
-### [ ] 7. generate_content_config — Don't Duplicate Agent Fields
+### 7. generate_content_config — Don't Duplicate Agent Fields
 
 ADK rejects duplicated config:
 
@@ -384,7 +384,7 @@ agent = Agent(
 )
 ```
 
-### [ ] 8. State Management — Avoid These Traps
+### 8. State Management — Avoid These Traps
 
 **Trap 1: Forgetting State Prefix Behavior**
 
@@ -440,7 +440,7 @@ agent_a = Agent(name="a", output_key="result_a")
 agent_b = Agent(name="b", output_key="result_b")
 ```
 
-### [ ] 9. Model Inheritance — Don't Over-Specify
+### 9. Model Inheritance — Don't Over-Specify
 
 ```
 Model resolution order:
@@ -472,7 +472,7 @@ root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
 ])
 ```
 
-### [ ] 10. Instruction Design — Dynamic vs Static
+### 10. Instruction Design — Dynamic vs Static
 
 **Dynamic Instructions with Placeholders**
 
@@ -530,7 +530,7 @@ agent = Agent(
 )
 ```
 
-### [ ] 11. Session Backend Selection
+### 11. Session Backend Selection
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -560,7 +560,7 @@ agent = Agent(
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] 12. Testing Agents — Use Real Components, Mock External APIs
+### 12. Testing Agents — Use Real Components, Mock External APIs
 
 ```python
 import pytest
@@ -603,7 +603,7 @@ async def test_weather_agent_bad():
         pass # Don't do this — you're testing your mocks, not your agent
 ```
 
-### [ ] 13. Async Best Practices
+### 13. Async Best Practices
 
 **Never Block the Event Loop**
 
@@ -652,7 +652,7 @@ agent = Agent(
 )
 ```
 
-### [ ] 14. Description Field — Critical for Agent Transfer
+### 14. Description Field — Critical for Agent Transfer
 
 The LLM uses `description` to pick transfer targets. Bad descriptions = wrong routing:
 
@@ -684,7 +684,7 @@ sub_agents=[
 ]
 ```
 
-### [ ] 15. Common Architecture Anti-Patterns
+### 15. Common Architecture Anti-Patterns
 
 **Anti-Pattern 1: God Agent**
 
@@ -788,7 +788,7 @@ def tool_b(tool_context: ToolContext) -> str:
 
 ## Examples
 
-### [ ] Summary: Top 10 Rules
+### Summary: Top 10 Rules
 
 | # | Rule | Why |
 |---|------|-----|
@@ -803,7 +803,7 @@ def tool_b(tool_context: ToolContext) -> str:
 | 9 | Use specific `description` fields for sub-agents | LLM uses them for routing |
 | 10 | Keep agent hierarchy shallow (2-3 levels) | Each level = more LLM calls |
 
-### [ ] Performance Checklist
+### Performance Checklist
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
@@ -833,7 +833,7 @@ def tool_b(tool_context: ToolContext) -> str:
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Debugging Checklist
+### Debugging Checklist
 
 Check in order:
 

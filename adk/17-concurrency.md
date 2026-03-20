@@ -52,7 +52,7 @@ ParallelAgent (agents/parallel_agent.py — runs sub-agents concurrently)
 
 ## Key API
 
-### [ ] What's Safe
+### What's Safe
 
 | Operation | Safe? | Notes |
 |---|---|---|
@@ -69,7 +69,7 @@ ParallelAgent (agents/parallel_agent.py — runs sub-agents concurrently)
 
 ## How It Works
 
-### [ ] Parallel Tool Execution
+### Parallel Tool Execution
 
 ```
 Parallel Tool Execution — Happy Path:
@@ -108,32 +108,32 @@ Collision Scenario — both tools write same state key:
 - `return_exceptions=True` is **not** used -- one failing tool re-raises immediately while the others keep running in the background. This is a potential resource leak.
 - State deltas from parallel tools are merged via `deep_merge_dicts`. On key conflicts the last-merged tool's value wins silently.
 
-### [ ] Session Locking
+### Session Locking
 
-#### [ ] DatabaseSessionService — Two-Layer Locking
+#### DatabaseSessionService — Two-Layer Locking
 
 1. **In-process asyncio lock** keyed by `(app_name, user_id, session_id)` with reference counting. Ensures only one coroutine within a single process touches a session at a time.
 2. **Database row-level locking** (`SELECT FOR UPDATE`) on MySQL and PostgreSQL only. SQLite does not support this, so cross-process safety is not guaranteed with SQLite.
 3. **Staleness detection:** compares `update_time` timestamps on load and reloads the session if the stored version is newer than the in-memory copy.
 
-#### [ ] InMemorySessionService — No Locking
+#### InMemorySessionService — No Locking
 
 - The docstring is explicit: "not suitable for multi-threaded production environments."
 - `get_session` returns a `copy.deepcopy` of the stored session, preventing callers from mutating internal storage directly.
 - Concurrent `append_event` calls are a data race -- no synchronization exists.
 
-### [ ] Plugin Execution
+### Plugin Execution
 
 Plugins run strictly sequentially. `close` is also sequential (anyio/MCP compatibility).
 
-### [ ] ParallelAgent
+### ParallelAgent
 
 - Each sub-agent gets an isolated `InvocationContext` with unique `branch`.
 - Events serialize via `asyncio.Queue` + resume-signal.
 - Sub-agents share one `Session`; event delivery is serialized through the queue.
 - **Known race:** parallel sub-agents that write the same `output_key` produce a last-write-wins result.
 
-### [ ] Thread Pool (ToolThreadPoolConfig)
+### Thread Pool (ToolThreadPoolConfig)
 
 ```
 ToolThreadPoolConfig — sync vs async tool execution paths

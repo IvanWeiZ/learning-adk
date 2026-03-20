@@ -44,7 +44,7 @@ Tool runs
 
 ## Key Classes
 
-### [ ] AuthCredentialTypes
+### AuthCredentialTypes
 
 An enum defining the five supported credential types:
 
@@ -57,7 +57,7 @@ class AuthCredentialTypes(str, Enum):
     SERVICE_ACCOUNT = "serviceAccount"
 ```
 
-### [ ] AuthCredential
+### AuthCredential
 
 The core credential container. Which fields are populated depends on `auth_type`:
 
@@ -71,7 +71,7 @@ class AuthCredential(BaseModel):
     oauth2: OAuth2Auth | None = None # for OAUTH2 and OPEN_ID_CONNECT types
 ```
 
-### [ ] HttpAuth and HttpCredentials
+### HttpAuth and HttpCredentials
 
 For HTTP authentication schemes (Basic, Bearer, etc.):
 
@@ -87,7 +87,7 @@ class HttpAuth(BaseModel):
     additional_headers: dict[str, str] | None = None
 ```
 
-### [ ] OAuth2Auth
+### OAuth2Auth
 
 Holds all the fields needed for an OAuth2 flow lifecycle:
 
@@ -114,7 +114,7 @@ class OAuth2Auth(BaseModel):
     ] | None = "client_secret_basic"
 ```
 
-### [ ] ServiceAccount
+### ServiceAccount
 
 For Google Cloud service account authentication:
 
@@ -129,7 +129,7 @@ class ServiceAccount(BaseModel):
 
 Validation: `service_account_credential` is required when `use_default_credential` is `False`. `audience` is required when `use_id_token` is `True`.
 
-### [ ] AuthScheme and AuthSchemeType
+### AuthScheme and AuthSchemeType
 
 `AuthScheme` is a union of OpenAPI `SecurityScheme` (from FastAPI's models) and ADK's `OpenIdConnectWithConfig`:
 
@@ -152,7 +152,7 @@ class OpenIdConnectWithConfig(SecurityBase):
     scopes: list[str] | None = None
 ```
 
-### [ ] AuthConfig
+### AuthConfig
 
 The configuration object that ties scheme + credential together and gets passed through the auth flow:
 
@@ -169,7 +169,7 @@ class AuthConfig(BaseModel):
 - `exchanged_auth_credential`: Filled in by ADK during the flow. For OAuth, this gets the `auth_uri` and `state` added, then later the access token after exchange.
 - `credential_key`: Stable key for storing/loading this credential. If not provided, one is auto-generated from a hash of the scheme and credential.
 
-### [ ] AuthHandler
+### AuthHandler
 
 Internal orchestrator (not used directly by tool authors):
 
@@ -196,7 +196,7 @@ class AuthHandler:
 
 ## The OAuth Round-Trip Flow
 
-### [ ] Visual: Two-Invocation Sequence
+### Visual: Two-Invocation Sequence
 
 ```
 ADK Agent User / Browser
@@ -217,7 +217,7 @@ Invocation 2:
  → Final response to user
 ```
 
-### [ ] Before / After: What Auth Does for Your Tool
+### Before / After: What Auth Does for Your Tool
 
 ```python
 # WITHOUT auth — fails when API requires OAuth
@@ -230,7 +230,7 @@ def search_gmail(query: str, credential: AuthCredential) -> dict:
 # Wrap with: AuthenticatedFunctionTool(func=search_gmail, auth_config=...)
 ```
 
-### [ ] Detailed Steps
+### Detailed Steps
 
 The detailed sequence for OAuth2 authorization code flow:
 
@@ -252,7 +252,7 @@ The detailed sequence for OAuth2 authorization code flow:
 
 The `CallbackContext` (and its subclass used in tools) provides these auth methods:
 
-### [ ] request_credential
+### request_credential
 
 ```python
 def request_credential(self, auth_config: AuthConfig) -> None:
@@ -260,7 +260,7 @@ def request_credential(self, auth_config: AuthConfig) -> None:
 
 Triggers the auth flow by storing the request in event actions. Only callable from a tool context (requires `function_call_id`). Raises `ValueError` if `function_call_id` is not set.
 
-### [ ] get_auth_response
+### get_auth_response
 
 ```python
 def get_auth_response(self, auth_config: AuthConfig) -> AuthCredential | None:
@@ -268,7 +268,7 @@ def get_auth_response(self, auth_config: AuthConfig) -> AuthCredential | None:
 
 Retrieves the credential stored after the user completed auth. Returns `None` if the user has not yet responded. Uses the `credential_key` to look up `"temp:{credential_key}"` in session state.
 
-### [ ] save_credential
+### save_credential
 
 ```python
 async def save_credential(self, auth_config: AuthConfig) -> None:
@@ -276,7 +276,7 @@ async def save_credential(self, auth_config: AuthConfig) -> None:
 
 Persists a credential to the credential service (if configured). Useful for long-term storage beyond session state.
 
-### [ ] load_credential
+### load_credential
 
 ```python
 async def load_credential(self, auth_config: AuthConfig) -> AuthCredential | None:
@@ -288,7 +288,7 @@ Loads a previously saved credential from the credential service.
 
 ## Code Examples
 
-### [ ] Tool with API Key Auth
+### Tool with API Key Auth
 
 ```python
 from fastapi.openapi.models import SecurityScheme, SecuritySchemeType
@@ -324,7 +324,7 @@ async def call_external_api(
     return {"result": f"Called API with key for query: {query}"}
 ```
 
-### [ ] Tool with OAuth2 Auth
+### Tool with OAuth2 Auth
 
 ```python
 from fastapi.openapi.models import (
@@ -386,7 +386,7 @@ async def list_calendar_events(
     return {"events": ["Meeting at 10am", "Lunch at noon"]}
 ```
 
-### [ ] Tool with HTTP Bearer Token
+### Tool with HTTP Bearer Token
 
 ```python
 from google.adk.auth import (
@@ -406,7 +406,7 @@ bearer_credential = AuthCredential(
 )
 ```
 
-### [ ] Tool with Service Account
+### Tool with Service Account
 
 ```python
 from google.adk.auth import AuthCredential, AuthCredentialTypes, ServiceAccount

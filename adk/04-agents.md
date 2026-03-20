@@ -48,7 +48,7 @@ BaseAgent (base_agent.py) — abstract, common contract
 
 ## Key API
 
-### [ ] BaseAgent — The Contract
+### BaseAgent — The Contract
 
 Every agent must implement one method:
 
@@ -75,7 +75,7 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 
 `@final` means subclasses must **not** override `run_async` — only `_run_async_impl`.
 
-### [ ] BaseAgent Fields
+### BaseAgent Fields
 
 ```python
 name: str # must be a valid Python identifier, unique in tree
@@ -88,7 +88,7 @@ after_agent_callback: ... # runs after _run_async_impl; can append events
 
 **Agent name constraint:** Cannot be `"user"` (reserved for end-user messages). Must be a valid Python identifier. Names must be unique within the tree.
 
-### [ ] LlmAgent Key Methods
+### LlmAgent Key Methods
 
 ```python
 @classmethod
@@ -108,7 +108,7 @@ LlmAgent.canonical_model -> BaseLlm
 
 ## How It Works
 
-### [ ] LlmAgent — The Primary Agent
+### LlmAgent — The Primary Agent
 
 ```
 LlmAgent._run_async_impl(ctx)
@@ -131,7 +131,7 @@ async def _run_async_impl(ctx):
         yield event
 ```
 
-### [ ] Which Flow Does It Use?
+### Which Flow Does It Use?
 
 ADK auto-selects the flow based on three conditions:
 
@@ -149,7 +149,7 @@ Which flow does LlmAgent use?
 
 `AutoFlow` extends `SingleFlow` — it adds agent transfer/delegation on top of the basic reason-act loop.
 
-### [ ] LlmAgent Key Fields
+### LlmAgent Key Fields
 
 ```python
 model: Union[str, BaseLlm] # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
@@ -194,7 +194,7 @@ planner: Optional[BasePlanner] # step-by-step planning / thinking
 code_executor: Optional[BaseCodeExecutor] # run generated code blocks
 ```
 
-### [ ] Callbacks on LlmAgent
+### Callbacks on LlmAgent
 
 LlmAgent adds finer-grained hooks compared to BaseAgent:
 
@@ -226,7 +226,7 @@ def on_tool_error_callback(
 ) -> Optional[dict]: ...
 ```
 
-### [ ] InvocationContext — The Shared Thread
+### InvocationContext — The Shared Thread
 
 ```
 ┌──────────────────────────────────────────┐
@@ -267,7 +267,7 @@ class InvocationContext:
 
 Sub-agent calls create a child context via `model_copy()`. Branch and session are shared.
 
-### [ ] Agent Trees and Transfer
+### Agent Trees and Transfer
 
 ```
 root_agent (LlmAgent)
@@ -279,7 +279,7 @@ Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_
 
 The LLM in `root_agent` can say "transfer to search_agent", which triggers `EventActions.transfer_to_agent = 'search_agent'`.
 
-### [ ] How Agent Transfer Works
+### How Agent Transfer Works
 
 ```
 User: "Book me a flight to Tokyo"
@@ -306,7 +306,7 @@ User: "Book me a flight to Tokyo"
     └── Events from travel_agent bubble back to caller
 ```
 
-### [ ] What Gets Shared vs Isolated
+### What Gets Shared vs Isolated
 
 ```
 SHARED (same object reference via model_copy):
@@ -327,7 +327,7 @@ NOT SHARED (unique to each agent):
 └── agent.sub_agents   ← target's own children
 ```
 
-### [ ] What the Target Agent Sees in History
+### What the Target Agent Sees in History
 
 ```
 contents.py builds the target agent's LLM prompt:
@@ -350,7 +350,7 @@ contents.py builds the target agent's LLM prompt:
     → contrast with ParallelAgent which sets unique branches for isolation
 ```
 
-### [ ] How Control Returns and Persists
+### How Control Returns and Persists
 
 ```
 WITHIN an invocation:
@@ -374,7 +374,7 @@ ACROSS invocations (next user message):
     └── tool_context.actions.escalate = True → consumed by LoopAgent only
 ```
 
-### [ ] Branch in Events
+### Branch in Events
 
 `branch` tracks which agent produced each event. This lets each agent see only its own lineage:
 
@@ -395,7 +395,7 @@ ParallelAgent is the only agent type that creates new branches for isolation.
 
 ## Examples
 
-### [ ] Minimal Multi-Agent Example
+### Minimal Multi-Agent Example
 
 ```python
 travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",
@@ -412,7 +412,7 @@ router = LlmAgent(name="router", model="gemini-2.5-flash",
 
 The router LLM sees sub-agents as transfer targets (injected by AutoFlow) and calls `transfer_to_agent()` to route.
 
-### [ ] 3-Layer Agent Tree with Transfer Back
+### 3-Layer Agent Tree with Transfer Back
 
 ```python
 # Layer 3: leaf specialists

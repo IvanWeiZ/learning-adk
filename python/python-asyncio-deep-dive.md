@@ -32,13 +32,13 @@ Python's asyncio provides single-threaded cooperative multitasking for I/O-bound
 
 ## Core Concepts
 
-### [ ] 1. The Mental Model -- Why asyncio Exists
+### 1. The Mental Model -- Why asyncio Exists
 
-#### [ ] The Problem
+#### The Problem
 
 Your ADK agent calls an LLM API (takes 2 seconds), then searches a database (takes 0.5 seconds), then calls another API (takes 1 second). In synchronous code, that's 3.5 seconds of wall time — but your CPU is idle for 99% of it, just waiting for network responses.
 
-#### [ ] Java's Answer: Threads
+#### Java's Answer: Threads
 
 ```java
 // Java uses thread pools — each thread blocks independently
@@ -50,7 +50,7 @@ String llmResult = llmFuture.get();  // blocks this thread, but others continue
 
 Java gives each task its own thread. Simple mental model, but threads are expensive (~1MB stack each), context switching has overhead, and shared mutable state needs locks.
 
-#### [ ] Python's Answer: Cooperative Multitasking (asyncio)
+#### Python's Answer: Cooperative Multitasking (asyncio)
 
 ```python
 # Python uses a SINGLE thread with cooperative scheduling
@@ -63,7 +63,7 @@ async def main():
 
 asyncio runs everything on **one thread**. When a coroutine hits `await` (an I/O wait), it **yields control** back to the event loop, which runs other coroutines. No threads, no locks, no context switching overhead.
 
-#### [ ] The Key Insight
+#### The Key Insight
 
 ```
 Thread-based (Java):           Async (Python):
@@ -83,9 +83,9 @@ Thread-based (Java):           Async (Python):
 
 ---
 
-### [ ] 2. Coroutines — The Building Block
+### 2. Coroutines — The Building Block
 
-#### [ ] Defining Coroutines
+#### Defining Coroutines
 
 ```python
 import asyncio
@@ -108,7 +108,7 @@ async def main():
     result = await coroutine_function()  # NOW returns "I run asynchronously"
 ```
 
-#### [ ] What `await` Actually Does
+#### What `await` Actually Does
 
 ```python
 async def fetch_data(url: str) -> dict:
@@ -126,7 +126,7 @@ async def fetch_data(url: str) -> dict:
 
 Think of `await` as a **polite pause**: "I'm waiting for something; event loop, please run other tasks while I wait."
 
-#### [ ] Coroutines Are Not Magic — They're Generators Under the Hood
+#### Coroutines Are Not Magic — They're Generators Under the Hood
 
 ```python
 # Conceptually, this is what Python does with async/await:
@@ -145,7 +145,7 @@ Think of `await` as a **polite pause**: "I'm waiting for something; event loop, 
 # The event loop acts as the "driver" that sends results back in via .send()
 ```
 
-#### [ ] Awaitable Objects
+#### Awaitable Objects
 
 ```python
 # Three things can be awaited:
@@ -175,9 +175,9 @@ await CustomAwaitable()  # returns 42
 
 ---
 
-### [ ] 3. The Event Loop — How It All Runs
+### 3. The Event Loop — How It All Runs
 
-#### [ ] The Event Loop Is the Scheduler
+#### The Event Loop Is the Scheduler
 
 ```python
 # The event loop is a while-True loop that:
@@ -195,7 +195,7 @@ await CustomAwaitable()  # returns 42
 #         task.step()  # run until next await
 ```
 
-#### [ ] Starting the Event Loop
+#### Starting the Event Loop
 
 ```python
 # Method 1: asyncio.run() — the standard entry point
@@ -219,7 +219,7 @@ finally:
     loop.close()
 ```
 
-#### [ ] Getting the Running Loop
+#### Getting the Running Loop
 
 ```python
 async def some_coroutine():
@@ -236,7 +236,7 @@ async def some_coroutine():
     loop.call_at(loop.time() + 5.0, callback_func, arg1)
 ```
 
-#### [ ] One Loop Per Thread — The Rule
+#### One Loop Per Thread — The Rule
 
 ```python
 # asyncio.run() creates ONE event loop on the current thread
@@ -256,9 +256,9 @@ async def outer():
 
 ---
 
-### [ ] 4. Tasks — Concurrent Execution
+### 4. Tasks — Concurrent Execution
 
-#### [ ] Sequential vs Concurrent — Timeline
+#### Sequential vs Concurrent — Timeline
 
 ```
 Sequential (plain await):
@@ -278,7 +278,7 @@ Concurrent (create_task + await):
     └──────────────────────────────────────────────────────┘
 ```
 
-#### [ ] The Difference Between `await` and `create_task`
+#### The Difference Between `await` and `create_task`
 
 ```python
 import asyncio
@@ -320,7 +320,7 @@ async def concurrent():
 // Concurrent: CompletableFuture.allOf(a, b, c).join();
 ```
 
-#### [ ] Task Naming (For Debugging)
+#### Task Naming (For Debugging)
 
 ```python
 task = asyncio.create_task(
@@ -330,7 +330,7 @@ task = asyncio.create_task(
 print(task.get_name())  # "llm-call-1"
 ```
 
-#### [ ] Task Callbacks
+#### Task Callbacks
 
 ```python
 async def main():
@@ -347,7 +347,7 @@ async def main():
     await task
 ```
 
-#### [ ] Fire and Forget (Background Tasks)
+#### Fire and Forget (Background Tasks)
 
 ```python
 # Sometimes you want to start a task and not await it
@@ -370,9 +370,9 @@ async def handle_request(query: str):
 
 ---
 
-### [ ] 5. Gathering and Waiting
+### 5. Gathering and Waiting
 
-#### [ ] `asyncio.gather` — Run Multiple Coroutines Concurrently
+#### `asyncio.gather` — Run Multiple Coroutines Concurrently
 
 ```python
 async def call_llm(prompt: str) -> str:
@@ -400,7 +400,7 @@ async def main():
     llm_result, db_result, api_result = results
 ```
 
-#### [ ] `gather` with Error Handling
+#### `gather` with Error Handling
 
 ```python
 async def failing_task():
@@ -437,7 +437,7 @@ async def main_safe():
     # Task 2 succeeded: ['result for python']
 ```
 
-#### [ ] `asyncio.wait` — More Control Over Completion
+#### `asyncio.wait` — More Control Over Completion
 
 ```python
 async def main():
@@ -463,7 +463,7 @@ async def main():
     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
 ```
 
-#### [ ] `asyncio.as_completed` — Process Results As They Arrive
+#### `asyncio.as_completed` — Process Results As They Arrive
 
 ```python
 async def main():
@@ -487,11 +487,11 @@ async def main():
 
 ---
 
-### [ ] 6. TaskGroup — Structured Concurrency (Python 3.11+)
+### 6. TaskGroup — Structured Concurrency (Python 3.11+)
 
 TaskGroup is the modern replacement for `gather`. It guarantees that all tasks are cleaned up, even on failure.
 
-#### [ ] Basic Usage
+#### Basic Usage
 
 ```python
 async def main():
@@ -506,7 +506,7 @@ async def main():
     print(task3.result())
 ```
 
-#### [ ] Error Handling with TaskGroup
+#### Error Handling with TaskGroup
 
 ```python
 async def main():
@@ -529,7 +529,7 @@ async def main():
             print(f"Caught TypeError: {exc}")
 ```
 
-#### [ ] Why TaskGroup > gather
+#### Why TaskGroup > gather
 
 ```python
 # Problem with gather: if task2 fails, task1 and task3 keep running
@@ -563,11 +563,11 @@ async def robust():
 
 ---
 
-### [ ] 7. AsyncGenerator and `async for`
+### 7. AsyncGenerator and `async for`
 
 This is the **most important section for ADK**. ADK streams events through async generators.
 
-#### [ ] Sync Generator Recap
+#### Sync Generator Recap
 
 ```python
 # Sync generator: function that yields values lazily
@@ -579,7 +579,7 @@ for num in count_up(5):
     print(num)  # 0, 1, 2, 3, 4
 ```
 
-#### [ ] Async Generator — yield + await
+#### Async Generator — yield + await
 
 ```python
 from typing import AsyncGenerator
@@ -597,7 +597,7 @@ async def main():
         print(page_data)
 ```
 
-#### [ ] The ADK Pattern — Streaming Events
+#### The ADK Pattern — Streaming Events
 
 ```python
 from typing import AsyncGenerator
@@ -641,7 +641,7 @@ async def run(query: str):
         print(f"[{event.event_type}] {event.author}: {event.content}")
 ```
 
-#### [ ] Composing Async Generators (Sequential Agents)
+#### Composing Async Generators (Sequential Agents)
 
 ```python
 # Python does NOT support `async yield from` — you must loop manually
@@ -658,7 +658,7 @@ async def sequential_agents(agents, query) -> AsyncGenerator[Event, None]:
             yield event
 ```
 
-#### [ ] Composing Async Generators (Parallel Agents)
+#### Composing Async Generators (Parallel Agents)
 
 ```python
 import asyncio
@@ -687,7 +687,7 @@ async def parallel_agents(agents, query) -> AsyncGenerator[Event, None]:
             yield event
 ```
 
-#### [ ] Async Generator Cleanup
+#### Async Generator Cleanup
 
 ```python
 async def streaming_llm(prompt: str) -> AsyncGenerator[str, None]:
@@ -708,7 +708,7 @@ async def main():
             break  # triggers the generator's finally block
 ```
 
-#### [ ] Async Comprehensions
+#### Async Comprehensions
 
 ```python
 # List comprehension with async for
@@ -724,9 +724,9 @@ event_stream = (e async for e in agent.run_async(ctx))
 
 ---
 
-### [ ] 8. Async Context Managers (`async with`)
+### 8. Async Context Managers (`async with`)
 
-#### [ ] The Protocol
+#### The Protocol
 
 ```python
 class AsyncDatabaseConnection:
@@ -749,7 +749,7 @@ async def main():
 
 **Java equivalent:** try-with-resources, but async.
 
-#### [ ] Using `contextlib.asynccontextmanager`
+#### Using `contextlib.asynccontextmanager`
 
 ```python
 from contextlib import asynccontextmanager
@@ -769,7 +769,7 @@ async def main():
         session.state["count"] += 1
 ```
 
-#### [ ] Nested Async Context Managers
+#### Nested Async Context Managers
 
 ```python
 # Nesting
@@ -793,7 +793,7 @@ async def main(tool_configs: list):
         # When the block exits, they're all cleaned up in reverse order
 ```
 
-#### [ ] ADK Example: MCP Toolset Connection
+#### ADK Example: MCP Toolset Connection
 
 ```python
 # ADK's McpToolset is a BaseToolset passed directly to an agent
@@ -816,11 +816,11 @@ agent = LlmAgent(
 
 ---
 
-### [ ] 9. Synchronization Primitives
+### 9. Synchronization Primitives
 
 Even though asyncio is single-threaded, you still need synchronization when multiple coroutines share state.
 
-#### [ ] Lock — Mutual Exclusion
+#### Lock — Mutual Exclusion
 
 ```python
 import asyncio
@@ -844,7 +844,7 @@ async def main():
     print(shared_counter)  # 100 (correct with lock, might be <100 without)
 ```
 
-#### [ ] Semaphore — Limit Concurrency
+#### Semaphore — Limit Concurrency
 
 ```python
 # EXTREMELY useful for rate-limiting API calls
@@ -863,7 +863,7 @@ async def main():
     ])
 ```
 
-#### [ ] BoundedSemaphore — Semaphore That Catches Bugs
+#### BoundedSemaphore — Semaphore That Catches Bugs
 
 ```python
 # BoundedSemaphore raises ValueError if you release more than you acquire
@@ -871,7 +871,7 @@ sem = asyncio.BoundedSemaphore(3)
 # Useful for catching programming errors where release is called too many times
 ```
 
-#### [ ] Event — Signal Between Coroutines
+#### Event — Signal Between Coroutines
 
 ```python
 event = asyncio.Event()
@@ -891,7 +891,7 @@ async def main():
     # Both waiters wake up when setter calls event.set()
 ```
 
-#### [ ] Condition — Wait for Complex Conditions
+#### Condition — Wait for Complex Conditions
 
 ```python
 condition = asyncio.Condition()
@@ -912,7 +912,7 @@ async def consumer(name: str):
         print(f"{name} got data: {data}")
 ```
 
-#### [ ] Barrier (Python 3.11+) — Wait for N Coroutines
+#### Barrier (Python 3.11+) — Wait for N Coroutines
 
 ```python
 barrier = asyncio.Barrier(3)  # wait until 3 coroutines arrive
@@ -926,9 +926,9 @@ async def worker(name: str):
 
 ---
 
-### [ ] 10. Queues — Producer/Consumer Patterns
+### 10. Queues — Producer/Consumer Patterns
 
-#### [ ] Basic Queue
+#### Basic Queue
 
 ```python
 import asyncio
@@ -956,7 +956,7 @@ async def main():
     )
 ```
 
-#### [ ] ADK Pattern: Event Queue for Parallel Agents
+#### ADK Pattern: Event Queue for Parallel Agents
 
 ```python
 async def event_bus():
@@ -975,7 +975,7 @@ async def event_bus():
     return publish, subscribe
 ```
 
-#### [ ] Priority Queue
+#### Priority Queue
 
 ```python
 # Events with priority (lower number = higher priority)
@@ -991,9 +991,9 @@ _, event = await pq.get()  # "normal event" (priority 2)
 
 ---
 
-### [ ] 11. Error Handling in Async Code
+### 11. Error Handling in Async Code
 
-#### [ ] Basic Try/Except in Coroutines
+#### Basic Try/Except in Coroutines
 
 ```python
 async def risky_operation():
@@ -1011,7 +1011,7 @@ async def risky_operation():
         raise  # re-raise unexpected errors
 ```
 
-#### [ ] Errors in Tasks
+#### Errors in Tasks
 
 ```python
 async def failing_task():
@@ -1037,7 +1037,7 @@ async def main():
             print(f"Task result: {task.result()}")
 ```
 
-#### [ ] Exception Groups (Python 3.11+)
+#### Exception Groups (Python 3.11+)
 
 ```python
 # When multiple tasks fail simultaneously (e.g., in TaskGroup),
@@ -1058,7 +1058,7 @@ async def main():
             print(f"TypeError: {exc}")
 ```
 
-#### [ ] Error Handling Pattern for ADK Agents
+#### Error Handling Pattern for ADK Agents
 
 ```python
 async def resilient_agent_run(
@@ -1093,9 +1093,9 @@ async def resilient_agent_run(
 
 ---
 
-### [ ] 12. Timeouts and Cancellation
+### 12. Timeouts and Cancellation
 
-#### [ ] `asyncio.wait_for` — Timeout a Single Operation
+#### `asyncio.wait_for` — Timeout a Single Operation
 
 ```python
 async def main():
@@ -1106,7 +1106,7 @@ async def main():
         print("LLM call timed out!")
 ```
 
-#### [ ] `asyncio.timeout` (Python 3.11+) — Timeout a Block
+#### `asyncio.timeout` (Python 3.11+) — Timeout a Block
 
 ```python
 async def main():
@@ -1131,7 +1131,7 @@ async def main():
         print("Missed the deadline!")
 ```
 
-#### [ ] Task Cancellation
+#### Task Cancellation
 
 ```python
 async def long_running_task():
@@ -1160,7 +1160,7 @@ async def main():
     print(task.cancelled())   # True
 ```
 
-#### [ ] Shielding from Cancellation
+#### Shielding from Cancellation
 
 ```python
 async def critical_operation():
@@ -1177,9 +1177,9 @@ async def main():
 
 ---
 
-### [ ] 13. Mixing Sync and Async Code
+### 13. Mixing Sync and Async Code
 
-#### [ ] Calling Sync Code from Async (Common in ADK)
+#### Calling Sync Code from Async (Common in ADK)
 
 ```python
 import asyncio
@@ -1210,7 +1210,7 @@ async def also_good(text: str):
     return result
 ```
 
-#### [ ] Calling Async Code from Sync (Entry Points)
+#### Calling Async Code from Sync (Entry Points)
 
 ```python
 # Scenario: your main() is sync but you need to call async ADK code
@@ -1233,7 +1233,7 @@ def sync_wrapper():
         return future.result()
 ```
 
-#### [ ] The Deadly Sin: Blocking the Event Loop
+#### The Deadly Sin: Blocking the Event Loop
 
 ```python
 import time
@@ -1257,7 +1257,7 @@ asyncio.run(main(), debug=True)
 
 ---
 
-### [ ] 14. asyncio Streams — TCP/Network I/O
+### 14. asyncio Streams — TCP/Network I/O
 
 ```python
 # Low-level network I/O (rarely needed directly in ADK, but good to understand)
@@ -1294,9 +1294,9 @@ async def tcp_server():
 
 ---
 
-### [ ] 15. Debugging asyncio
+### 15. Debugging asyncio
 
-#### [ ] Debug Mode
+#### Debug Mode
 
 ```python
 # Method 1: Environment variable
@@ -1311,7 +1311,7 @@ asyncio.run(main(), debug=True)
 # - More detailed tracebacks
 ```
 
-#### [ ] Common Mistakes and How to Spot Them
+#### Common Mistakes and How to Spot Them
 
 ```python
 # Mistake 1: Forgetting to await
@@ -1344,7 +1344,7 @@ async def main():
     # Fix: always await tasks or add done callbacks
 ```
 
-#### [ ] Inspecting Running Tasks
+#### Inspecting Running Tasks
 
 ```python
 async def debug_tasks():
@@ -1362,9 +1362,9 @@ async def debug_tasks():
 
 ---
 
-### [ ] 16. Performance Patterns and Pitfalls
+### 16. Performance Patterns and Pitfalls
 
-#### [ ] Pattern: Bounded Concurrency for API Calls
+#### Pattern: Bounded Concurrency for API Calls
 
 ```python
 async def process_all_queries(queries: list[str], max_concurrent: int = 10):
@@ -1380,7 +1380,7 @@ async def process_all_queries(queries: list[str], max_concurrent: int = 10):
     return results
 ```
 
-#### [ ] Pattern: Batch Processing with Async
+#### Pattern: Batch Processing with Async
 
 ```python
 async def process_in_batches(items: list, batch_size: int = 10):
@@ -1393,7 +1393,7 @@ async def process_in_batches(items: list, batch_size: int = 10):
     return results
 ```
 
-#### [ ] Pattern: Timeout with Fallback
+#### Pattern: Timeout with Fallback
 
 ```python
 async def llm_with_fallback(prompt: str) -> str:
@@ -1404,7 +1404,7 @@ async def llm_with_fallback(prompt: str) -> str:
         return await secondary_llm(prompt)  # cheaper/faster model
 ```
 
-#### [ ] Pattern: Circuit Breaker
+#### Pattern: Circuit Breaker
 
 ```python
 class CircuitBreaker:
@@ -1442,7 +1442,7 @@ async def safe_llm_call(prompt: str):
     return await breaker.call(call_llm(prompt))
 ```
 
-#### [ ] Pitfall: Creating Too Many Tasks
+#### Pitfall: Creating Too Many Tasks
 
 ```python
 # ❌ BAD: 1 million tasks at once
@@ -1461,9 +1461,9 @@ async def good():
 
 ---
 
-### [ ] 17. ADK-Specific Async Patterns
+### 17. ADK-Specific Async Patterns
 
-#### [ ] Pattern: The ADK Runner Loop
+#### Pattern: The ADK Runner Loop
 
 ```python
 async def runner_loop(agent, session_service, query: str):
@@ -1498,7 +1498,7 @@ async def runner_loop(agent, session_service, query: str):
     await session_service.save_session(session)
 ```
 
-#### [ ] Pattern: Callback Chain (Before/After Hooks)
+#### Pattern: Callback Chain (Before/After Hooks)
 
 ```python
 async def execute_with_callbacks(agent, ctx: InvocationContext):
@@ -1528,7 +1528,7 @@ async def execute_with_callbacks(agent, ctx: InvocationContext):
             yield final_event
 ```
 
-#### [ ] Pattern: Concurrent Tool Execution
+#### Pattern: Concurrent Tool Execution
 
 ```python
 async def execute_tools_concurrently(
@@ -1570,7 +1570,7 @@ async def execute_tools_concurrently(
     return results
 ```
 
-#### [ ] Pattern: Session Locking
+#### Pattern: Session Locking
 
 ```python
 class SessionService:
@@ -1598,7 +1598,7 @@ class SessionService:
 
 ---
 
-### [ ] 18. Complete Reference: Java → Python Async Mapping
+### 18. Complete Reference: Java → Python Async Mapping
 
 | Java | Python asyncio | Notes |
 |------|---------------|-------|
@@ -1624,7 +1624,7 @@ class SessionService:
 | `@Async` (Spring) | `async def` | |
 | `Mono<T>` / `Flux<T>` (Reactor) | Coroutine / AsyncGenerator | Reactive vs coroutine |
 
-#### [ ] Key Mindset Shifts
+#### Key Mindset Shifts
 
 **1. No threads by default.** Java developers instinctively think "concurrent = threads." In asyncio, everything is one thread. Concurrency comes from cooperative yielding at `await` points.
 

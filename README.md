@@ -100,20 +100,20 @@ These notes are strongest where official docs are weakest:
 
 Start with the big picture, then follow the execution path layer by layer.
 
-### [ ] Start Here
+### Start Here
 
 | # | File | What You Learn |
 |---|------|---------------|
 | 0 | [00-onboarding-guide.md](adk/00-onboarding-guide.md) | **Zero to first agent** — hands-on walkthrough, no prior ADK knowledge needed |
 
-### [ ] Part 1: The Big Picture
+### Part 1: The Big Picture
 
 | # | File | What You Learn |
 |---|------|---------------|
 | 1 | [01-request-lifecycle.md](adk/01-request-lifecycle.md) | Full traced request through every layer — the mental model |
 | 2 | [02-when-to-build-what.md](adk/02-when-to-build-what.md) | Decision guide: scenario → ADK component |
 
-### [ ] Part 2: Core Layers (in execution order)
+### Part 2: Core Layers (in execution order)
 
 | # | File | Layer |
 |---|------|-------|
@@ -125,7 +125,7 @@ Start with the big picture, then follow the execution path layer by layer.
 | 8 | [08-sessions.md](adk/08-sessions.md) | State persistence, session backends |
 | 9 | [09-tools.md](adk/09-tools.md) | Tool system, ToolContext, function wrapping |
 
-### [ ] Part 3: Extended Capabilities
+### Part 3: Extended Capabilities
 
 | # | File | What It Adds |
 |---|------|-------------|
@@ -136,7 +136,7 @@ Start with the big picture, then follow the execution path layer by layer.
 | 14 | [14-planners.md](adk/14-planners.md) | Thinking mode, plan-then-act |
 | 15 | [15-evaluation.md](adk/15-evaluation.md) | Agent quality testing |
 
-### [ ] Part 4: Operations & Safety
+### Part 4: Operations & Safety
 
 | # | File | What It Covers |
 |---|------|---------------|
@@ -145,7 +145,7 @@ Start with the big picture, then follow the execution path layer by layer.
 | 18 | [18-session-lifecycle.md](adk/18-session-lifecycle.md) | Session service call timeline, latency optimization |
 | 19 | [19-session-security.md](adk/19-session-security.md) | Security considerations for session/event data |
 
-### [ ] Part 5: Patterns & Practices
+### Part 5: Patterns & Practices
 
 | # | File | What It Covers |
 |---|------|---------------|
@@ -154,7 +154,7 @@ Start with the big picture, then follow the execution path layer by layer.
 | 22 | [22-testing.md](adk/22-testing.md) | MockModel, deterministic testing, pytest patterns |
 | 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, plugins, A2A, auth flow internals |
 
-### [ ] Part 6: Reference
+### Part 6: Reference
 
 | # | File | What It Covers |
 |---|------|---------------|

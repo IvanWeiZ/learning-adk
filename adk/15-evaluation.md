@@ -48,7 +48,7 @@ AgentEvaluator (evaluation/agent_evaluator.py — orchestrates runs + scoring)
 
 ## Key API
 
-### [ ] EvalCase — One Test Scenario
+### EvalCase — One Test Scenario
 
 ```python
 class EvalCase(BaseModel):
@@ -70,7 +70,7 @@ class EvalCase(BaseModel):
     creation_timestamp: float
 ```
 
-### [ ] Invocation — One Turn in the Conversation
+### Invocation — One Turn in the Conversation
 
 ```python
 class Invocation(BaseModel):
@@ -82,7 +82,7 @@ class Invocation(BaseModel):
     creation_timestamp: float
 ```
 
-### [ ] IntermediateData — Expected Tool Calls and Responses
+### IntermediateData — Expected Tool Calls and Responses
 
 ```python
 class IntermediateData(BaseModel):
@@ -91,7 +91,7 @@ class IntermediateData(BaseModel):
     intermediate_responses: Optional[list[types.Content]] = None
 ```
 
-### [ ] EvalSet — A Suite of Cases
+### EvalSet — A Suite of Cases
 
 ```python
 class EvalSet(BaseModel):
@@ -102,7 +102,7 @@ class EvalSet(BaseModel):
     creation_timestamp: float
 ```
 
-### [ ] EvalMetric — What to Measure
+### EvalMetric — What to Measure
 
 ```python
 class EvalMetric(BaseModel):
@@ -116,7 +116,7 @@ class PrebuiltMetrics:
     RESPONSE_MATCH_SCORE = "response_match_score"
 ```
 
-### [ ] EvalCaseResult — What You Get Back
+### EvalCaseResult — What You Get Back
 
 ```python
 class EvalCaseResult(BaseModel):
@@ -142,7 +142,7 @@ class EvalMetricResult(BaseModel):
 
 ## How It Works
 
-### [ ] AgentEvaluator — Running Evaluations
+### AgentEvaluator — Running Evaluations
 
 ```
 AgentEvaluator.evaluate()
@@ -176,9 +176,9 @@ AgentEvaluator.evaluate(
 
 If any eval case fails its metric thresholds, `evaluate()` raises an `AssertionError`.
 
-### [ ] Metrics Deep Dive
+### Metrics Deep Dive
 
-#### [ ] 1. `tool_trajectory_avg_score`
+#### 1. `tool_trajectory_avg_score`
 
 Scores whether the agent called the right tools in the right order.
 
@@ -208,7 +208,7 @@ Step 2: book_flight → found in actual? NO ✗ (score: 0)
 Final score: (1 + 0) / 2 = 0.5
 ```
 
-#### [ ] 2. `response_match_score`
+#### 2. `response_match_score`
 
 Scores how well the agent's final response matches `reference_answer`.
 
@@ -223,7 +223,7 @@ This is a **model-graded** metric -- it's fuzzy by design. Two semantically equi
 
 ## Examples
 
-### [ ] Eval File Format
+### Eval File Format
 
 EvalSets are stored as JSON files with the extension `.test.json`:
 
@@ -264,7 +264,7 @@ EvalSets are stored as JSON files with the extension `.test.json`:
 }
 ```
 
-### [ ] Running Evals via CLI
+### Running Evals via CLI
 
 ```bash
 # Run all eval sets in a directory:
@@ -279,7 +279,7 @@ adk eval --verbose my_agent_module/ tests/evals/
 
 The CLI exits with code 0 if all cases pass, non-zero if any fail -- suitable for CI.
 
-### [ ] Running Evals Programmatically (pytest Integration)
+### Running Evals Programmatically (pytest Integration)
 
 Since `AgentEvaluator.evaluate()` asserts internally, the simplest integration is via pytest:
 
@@ -302,7 +302,7 @@ Run with: `pytest tests/test_agent_eval.py -v`
 
 No need to inspect return values — `evaluate()` raises on failure, which pytest reports as a test failure.
 
-### [ ] Writing Good Eval Cases
+### Writing Good Eval Cases
 
 **Cover the happy path first:**
 ```json
@@ -330,7 +330,7 @@ This checks that the agent *called* the tool without asserting which exact query
 
 ## Gotchas
 
-### [ ] Testing Pyramid for Agents
+### Testing Pyramid for Agents
 
 ```
 Testing Pyramid for Agents:
@@ -351,7 +351,7 @@ Testing Pyramid for Agents:
        "Is the response safe and grounded?"
 ```
 
-### [ ] Eval vs Unit Test — When to Use Each
+### Eval vs Unit Test — When to Use Each
 
 | Scenario | Use |
 |---|---|
@@ -362,7 +362,7 @@ Testing Pyramid for Agents:
 | Callback fires correctly | `pytest` unit test with `AsyncMock` |
 | Agent handles ambiguous input gracefully | Eval with `reference_answer` |
 
-### [ ] Java Comparison
+### Java Comparison
 
 | Java concept | ADK equivalent |
 |---|---|

@@ -12,7 +12,7 @@ A single session leak exposes conversation history, credentials, and tool output
 
 ## How It Works
 
-### [ ] Session Isolation — The #1 Source of Privacy Incidents
+### Session Isolation — The #1 Source of Privacy Incidents
 
 **The Core Rule**
 
@@ -135,7 +135,7 @@ async def chat(
     # ...
 ```
 
-### [ ] Session ID Guessability — Don't Let Users Enumerate Sessions
+### Session ID Guessability — Don't Let Users Enumerate Sessions
 
 **The Problem**
 
@@ -207,7 +207,7 @@ if session_id not in self.sessions[app_name][user_id]:
 
 But relying on this alone is insufficient — always use unpredictable IDs as defense in depth.
 
-### [ ] State Prefix Boundaries — Choosing the Right Scope
+### State Prefix Boundaries — Choosing the Right Scope
 
 ADK state scoping is the primary mechanism for controlling data visibility between users. Picking the wrong prefix is one of the most common causes of cross-user data leakage. Understand these boundaries deeply before writing any state.
 
@@ -387,7 +387,7 @@ See [18-session-lifecycle.md](18-session-lifecycle.md) for the exact implementat
 
 ## Examples
 
-### [ ] Best Practice State Usage
+### Best Practice State Usage
 
 ```python
 # TEMP: for secrets and transient data
@@ -419,7 +419,7 @@ tool_context.state["app:model_version"] = "2.5" # App-wide config
 tool_context.state["app:announcement"] = "System upgrade tonight" # Broadcast
 ```
 
-### [ ] Common Mistakes That Cause Data Leaks
+### Common Mistakes That Cause Data Leaks
 
 ```python
 # CATASTROPHIC: User data in app: scope
@@ -455,7 +455,7 @@ def tool_a(tool_context: ToolContext) -> str:
     return "Here are your results..."
 ```
 
-### [ ] The app: State Trap in Multi-Tenant Systems
+### The app: State Trap in Multi-Tenant Systems
 
 `app:` state is shared across every user in the application. In multi-tenant setups, this means across ALL tenants:
 
@@ -482,7 +482,7 @@ tool_context.state["app:tenant_a:billing_plan"] = "enterprise"
 # → Better approach: use separate app_name per tenant (see Multi-Tenant Architecture Patterns)
 ```
 
-### [ ] Event History Leaks in Multi-Agent Systems
+### Event History Leaks in Multi-Agent Systems
 
 **The Branch Isolation Problem**
 
@@ -525,7 +525,7 @@ session = await session_service.get_session(
 # and keep conversations isolated per user
 ```
 
-### [ ] Sensitive Data in Event Content — What Gets Persisted
+### Sensitive Data in Event Content — What Gets Persisted
 
 Everything in events is persisted. Every event yielded by an agent is passed to `session_service.append_event()` and stored permanently. This includes:
 
@@ -594,7 +594,7 @@ def process_payment(payment_method_id: str, amount: float) -> str:
     return "Payment processed"
 ```
 
-### [ ] Session Service Backend Security
+### Session Service Backend Security
 
 **InMemorySessionService — Development Only**
 
@@ -649,7 +649,7 @@ SQLite does **not** support row-level locking, so concurrent writes from multipl
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Session Lifecycle — Creation, Access, and Deletion
+### Session Lifecycle — Creation, Access, and Deletion
 
 **Don't Reuse Sessions Across Users**
 
@@ -723,7 +723,7 @@ async def delete_all_user_data(
     # Also clean up: artifacts, memory service entries, credential store
 ```
 
-### [ ] Callback and Plugin Security
+### Callback and Plugin Security
 
 **Callbacks Can Leak Data Across Sessions**
 
@@ -764,7 +764,7 @@ async def my_before_model(callback_context, llm_request):
     return None
 ```
 
-### [ ] Multi-Tenant Architecture Patterns
+### Multi-Tenant Architecture Patterns
 
 **Pattern 1: One App Per Tenant (Strongest Isolation)**
 
@@ -813,7 +813,7 @@ def get_session_service(tenant_id: str) -> BaseSessionService:
     return service
 ```
 
-### [ ] Incident Scenarios and Mitigations
+### Incident Scenarios and Mitigations
 
 **Scenario 1: User Sees Another User's Conversation**
 
@@ -868,7 +868,7 @@ Detection: Scan log output for conversation patterns. Use structured logging wit
 - **Deleting a session does NOT delete `user:` or `app:` state.** These live in separate storage tables. For full GDPR compliance, you must clean up these tables directly.
 - **SQLite has no row-level locking.** Concurrent writes from multiple processes can corrupt data.
 
-### [ ] ADK's Built-In Safety Mechanisms (Source Code Verified)
+### ADK's Built-In Safety Mechanisms (Source Code Verified)
 
 **What ADK DOES Protect**
 
@@ -936,7 +936,7 @@ Detection: Scan log output for conversation patterns. Use structured logging wit
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] Security Checklist
+### Security Checklist
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -984,7 +984,7 @@ Detection: Scan log output for conversation patterns. Use structured logging wit
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-### [ ] State Prefix Quick Reference
+### State Prefix Quick Reference
 
 ```
 State Prefix Quick Reference:

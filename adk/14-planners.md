@@ -45,7 +45,7 @@ BasePlanner (base_planner.py) — abstract, defines the two-method contract
 
 ## Key API
 
-### [ ] BasePlanner -- The Contract
+### BasePlanner -- The Contract
 
 Every planner implements two abstract methods:
 
@@ -81,7 +81,7 @@ class BasePlanner(ABC):
 | `build_planning_instruction` | `_NlPlanningRequestProcessor` (before model call) | Inject planning-related system instructions or config |
 | `process_planning_response` | `_NlPlanningResponse` (after model call) | Parse response to separate reasoning from actions/answers |
 
-### [ ] BuiltInPlanner
+### BuiltInPlanner
 
 `BuiltInPlanner` configures `ThinkingConfig` on the LLM request, delegating to Gemini's native thinking mode. No prompt injection.
 
@@ -105,7 +105,7 @@ Behavior:
 - **Response phase:** Returns `None` (no post-processing). The model's thinking output is handled natively by the Gemini API.
 - **Model requirement:** Only works with models that support thinking mode. An error is returned if used with unsupported models.
 
-### [ ] PlanReActPlanner
+### PlanReActPlanner
 
 `PlanReActPlanner` injects a system instruction enforcing Plan-Reasoning-Action-FinalAnswer format, then post-processes responses to label parts as thoughts or actions. Takes no constructor arguments:
 
@@ -141,7 +141,7 @@ Behavior:
 
 ## How It Works
 
-### [ ] Planner Integration with Flows
+### Planner Integration with Flows
 
 ```
 BaseLlmFlow.run_async(ctx)
@@ -163,7 +163,7 @@ BaseLlmFlow.run_async(ctx)
 
 Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningResponse` processors inside the LLM flow pipeline (see [05-flows.md](05-flows.md)). The planner is read from `agent.planner` on the current `InvocationContext`. If the field exists but is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()`.
 
-### [ ] What the Model Output Looks Like (PlanReActPlanner)
+### What the Model Output Looks Like (PlanReActPlanner)
 
 ```
 /*PLANNING*/
@@ -209,7 +209,7 @@ WHAT THE USER SEES:
  (everything before FINAL_ANSWER is internal reasoning)
 ```
 
-### [ ] When to Use Which
+### When to Use Which
 
 | Criteria | BuiltInPlanner | PlanReActPlanner |
 |---|---|---|
@@ -242,7 +242,7 @@ Need an agent to reason before acting?
 
 ## Examples
 
-### [ ] BuiltInPlanner
+### BuiltInPlanner
 
 ```python
 from google.adk import Agent
@@ -260,7 +260,7 @@ agent = Agent(
 )
 ```
 
-### [ ] PlanReActPlanner
+### PlanReActPlanner
 
 ```python
 from google.adk import Agent
@@ -275,7 +275,7 @@ agent = Agent(
 )
 ```
 
-### [ ] Writing a Custom Planner
+### Writing a Custom Planner
 
 Subclass `BasePlanner` and implement both methods:
 

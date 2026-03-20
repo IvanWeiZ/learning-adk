@@ -52,7 +52,7 @@ Dies after: run_async()         Lives forever                  Lives across invo
 
 ## Key API
 
-### [ ] `run_async` — Text/Chat Mode
+### `run_async` — Text/Chat Mode
 
 ```python
 async def run_async(
@@ -79,7 +79,7 @@ user message event
        ► final agent response event (partial=False)
 ```
 
-### [ ] `run_live` — Audio/Video Mode
+### `run_live` — Audio/Video Mode
 
 ```python
 async def run_live(
@@ -94,7 +94,7 @@ async def run_live(
 
 Bidirectional streaming for Gemini Live API.
 
-### [ ] `run` — Sync Wrapper
+### `run` — Sync Wrapper
 
 ```python
 def run(...) -> Generator[Event, None, None]:
@@ -106,7 +106,7 @@ Sync wrapper. Runs event loop in background thread. For scripts and CLIs.
 
 ## How It Works
 
-### [ ] Construction
+### Construction
 
 ```python
 runner = Runner(
@@ -128,7 +128,7 @@ runner = Runner(
 )
 ```
 
-### [ ] Internal Flow (run_async)
+### Internal Flow (run_async)
 
 ```
 Runner.run_async(user_id, session_id, new_message)
@@ -154,13 +154,13 @@ Runner.run_async(user_id, session_id, new_message)
       ► Close plugin contexts
 ```
 
-### [ ] Session Auto-Creation
+### Session Auto-Creation
 
 Default `auto_create_session=False` raises `SessionNotFoundError` for unknown sessions.
 
 `auto_create_session=True` silently creates sessions on first use (demos, scripts).
 
-### [ ] RunConfig
+### RunConfig
 
 `RunConfig` is an optional per-invocation configuration:
 
@@ -174,7 +174,7 @@ class RunConfig:
     # save_input_blobs_as_artifacts: bool  # DEPRECATED — use SaveFilesAsArtifactsPlugin
 ```
 
-### [ ] Plugins
+### Plugins
 
 Runner initializes `PluginManager`. Plugins hook into:
 - `before_agent_callback` / `after_agent_callback` (at the Runner level, runs for every agent)
@@ -182,7 +182,7 @@ Runner initializes `PluginManager`. Plugins hook into:
 
 Provide via `App` (preferred) or deprecated `plugins=` on Runner.
 
-### [ ] Event Compaction
+### Event Compaction
 
 ```
 ┌──────────────────────────────────────────┐
