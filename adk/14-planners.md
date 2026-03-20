@@ -85,7 +85,7 @@ class BasePlanner(ABC):
         """
 ```
 
-### How the methods are used
+### [ ] How the methods are used
 
 | Method | Called by | Purpose |
 |---|---|---|
@@ -98,7 +98,7 @@ class BasePlanner(ABC):
 
 `BuiltInPlanner` configures `ThinkingConfig` on the LLM request, delegating to Gemini's native thinking mode. No prompt injection.
 
-### Configuration
+### [ ] Configuration
 
 ```python
 class BuiltInPlanner(BasePlanner):
@@ -114,13 +114,13 @@ Key `ThinkingConfig` fields:
 |---|---|---|
 | `thinking_budget` | `int` | Maximum number of thinking tokens the model can use |
 
-### Behavior
+### [ ] Behavior
 
 - **Request phase:** Calls `apply_thinking_config(llm_request)`, which sets `llm_request.config.thinking_config`. If a `thinking_config` was already set in `generate_content_config`, the planner's config overwrites it (with a warning).
 - **Response phase:** Returns `None` (no post-processing). The model's thinking output is handled natively by the Gemini API.
 - **Model requirement:** Only works with models that support thinking mode. An error is returned if used with unsupported models.
 
-### Example
+### [ ] Example
 
 ```python
 from google.adk import Agent
@@ -144,7 +144,7 @@ agent = Agent(
 
 `PlanReActPlanner` injects a system instruction enforcing Plan-Reasoning-Action-FinalAnswer format, then post-processes responses to label parts as thoughts or actions.
 
-### Configuration
+### [ ] Configuration
 
 `PlanReActPlanner` takes no constructor arguments:
 
@@ -152,7 +152,7 @@ agent = Agent(
 planner = PlanReActPlanner()
 ```
 
-### Structured Tags
+### [ ] Structured Tags
 
 The planner defines five tags that structure the model's output:
 
@@ -164,7 +164,7 @@ The planner defines five tags that structure the model's output:
 | `/*ACTION*/` | Tool call section |
 | `/*FINAL_ANSWER*/` | The final answer returned to the user |
 
-### Behavior
+### [ ] Behavior
 
 - **Request phase:** `build_planning_instruction()` returns a multi-section system prompt that instructs the model to:
  1. Create a numbered plan under `/*PLANNING*/`
@@ -178,7 +178,7 @@ The planner defines five tags that structure the model's output:
  - Function call parts are preserved and grouped together
  - Empty function call names are filtered out
 
-### Example
+### [ ] Example
 
 ```python
 from google.adk import Agent
@@ -193,7 +193,7 @@ agent = Agent(
 )
 ```
 
-### What the model output looks like (conceptual)
+### [ ] What the model output looks like (conceptual)
 
 ```
 /*PLANNING*/
@@ -254,7 +254,7 @@ WHAT THE USER SEES:
 | **Token overhead** | Thinking tokens (counted separately) | Planning instructions added to system prompt |
 | **Best for** | Simple-to-moderate tasks where model thinking is sufficient | Complex multi-step tasks needing visible, structured plans |
 
-### Decision guide
+### [ ] Decision guide
 
 ```
 Need an agent to reason before acting?

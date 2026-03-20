@@ -17,7 +17,7 @@
 
 `Runner` is stateless. All state lives in `Session`. One Runner handles many concurrent invocations safely.
 
-### Who Owns What
+### [ ] Who Owns What
 
 ```
 Runner (stateless) Agent (stateless) Session (stateful)
@@ -56,7 +56,7 @@ runner = Runner(
 
 ## Key Methods
 
-### `run_async` — Text/Chat Mode
+### [ ] `run_async` — Text/Chat Mode
 
 ```python
 async def run_async(
@@ -83,7 +83,7 @@ user message event
  → final agent response event (partial=False)
 ```
 
-### `run_live` — Audio/Video Mode
+### [ ] `run_live` — Audio/Video Mode
 
 ```python
 async def run_live(
@@ -96,7 +96,7 @@ async def run_live(
 
 Bidirectional streaming for Gemini Live API.
 
-### `run` — Sync Wrapper
+### [ ] `run` — Sync Wrapper
 
 ```python
 def run(...) -> Generator[Event, None, None]:

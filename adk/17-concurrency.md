@@ -62,13 +62,13 @@ Collision Scenario — both tools write same state key:
 
 ## Session Locking
 
-### DatabaseSessionService -- Two-Layer Locking
+### [ ] DatabaseSessionService -- Two-Layer Locking
 
 1. **In-process asyncio lock** keyed by `(app_name, user_id, session_id)` with reference counting. Ensures only one coroutine within a single process touches a session at a time.
 2. **Database row-level locking** (`SELECT FOR UPDATE`) on MySQL and PostgreSQL only. SQLite does not support this, so cross-process safety is not guaranteed with SQLite.
 3. **Staleness detection:** compares `update_time` timestamps on load and reloads the session if the stored version is newer than the in-memory copy.
 
-### InMemorySessionService -- No Locking
+### [ ] InMemorySessionService -- No Locking
 
 - The docstring is explicit: "not suitable for multi-threaded production environments."
 - `get_session` returns a `copy.deepcopy` of the stored session, preventing callers from mutating internal storage directly.

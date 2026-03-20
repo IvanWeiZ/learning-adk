@@ -17,7 +17,7 @@
 
 A `Session` is an ordered list of Events.
 
-### What's Inside an Event
+### [ ] What's Inside an Event
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -45,7 +45,7 @@ A `Session` is an ordered list of Events.
 └─────────────────────────────────────────────────────┘
 ```
 
-### Events in a Single Turn
+### [ ] Events in a Single Turn
 
 A tool-calling agent produces 4 events for one user turn:
 

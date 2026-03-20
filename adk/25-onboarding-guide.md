@@ -246,7 +246,7 @@ The `tool_context` parameter is auto-detected by type and excluded from the LLM'
 
 ## 6. Multi-Agent Systems (The Real Power)
 
-### Pattern 1: Agent Transfer (LLM Decides Routing)
+### [ ] Pattern 1: Agent Transfer (LLM Decides Routing)
 
 ```python
 from google.adk import Agent
@@ -308,7 +308,7 @@ User: "Find a flight to Tokyo"
 
 ADK auto-injects `transfer_to_agent` into agents with sub-agents. The LLM uses `description` fields to decide routing.
 
-### Pattern 2: Sequential Pipeline (Fixed Order)
+### [ ] Pattern 2: Sequential Pipeline (Fixed Order)
 
 ```python
 from google.adk import Agent
@@ -369,7 +369,7 @@ User: "I want a large pepperoni pizza"
 └────────────────────────────────────────────────────┘
 ```
 
-### Pattern 3: Parallel Execution (Concurrent Agents)
+### [ ] Pattern 3: Parallel Execution (Concurrent Agents)
 
 ```python
 from google.adk import Agent
@@ -440,7 +440,7 @@ User: "I love how fast the new API is!"
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### Pattern 4: Loop Agent (Iterate Until Done)
+### [ ] Pattern 4: Loop Agent (Iterate Until Done)
 
 ```python
 from google.adk import Agent
@@ -485,7 +485,7 @@ root_agent = LoopAgent(
 
 ## 7. Running Your Agent
 
-### Standard Setup
+### [ ] Standard Setup
 
 ```python
 from google.adk.runners import Runner
@@ -878,7 +878,7 @@ You are here ──────────────────────�
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Learning Paths — Pick Your Track
+### [ ] Learning Paths — Pick Your Track
 
 ```
 Track 1: Quick Start (1 hour)

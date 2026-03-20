@@ -4,7 +4,7 @@
 
 ---
 
-## What It Is
+## [ ] What It Is
 
 A `Session` is one conversation thread. Stores:
 - The full ordered list of `Event`s (conversation history)
@@ -14,7 +14,7 @@ A `Session` is one conversation thread. Stores:
 
 ---
 
-## Session Data Model
+## [ ] Session Data Model
 
 ```python
 class Session(BaseModel):
@@ -30,7 +30,7 @@ Intentionally minimal. Complexity lives in the service and Event list.
 
 ---
 
-## Session State
+## [ ] Session State
 
 `session.state` is a free-form dict. Written via `EventActions.state_delta`:
 
@@ -54,7 +54,7 @@ Scoping is handled by the session service implementations.
 
 ---
 
-## BaseSessionService — The Interface
+## [ ] BaseSessionService — The Interface
 
 ```python
 class BaseSessionService(ABC):
@@ -87,7 +87,7 @@ class BaseSessionService(ABC):
 
 ---
 
-## Implementations
+## [ ] Implementations
 
 | Class | Storage | Use Case |
 |-------|---------|----------|
@@ -100,7 +100,7 @@ Same interface; swap backends by changing the `Runner` constructor argument.
 
 ---
 
-## GetSessionConfig — Partial Loading
+## [ ] GetSessionConfig — Partial Loading
 
 Load only recent events for long conversations:
 
@@ -116,7 +116,7 @@ sessions have thousands of events but you only need recent context.
 
 ---
 
-## How Runner Uses Sessions
+## [ ] How Runner Uses Sessions
 
 ```
 Runner.run_async(user_id, session_id, new_message)
@@ -138,7 +138,7 @@ Runner.run_async(user_id, session_id, new_message)
 
 ---
 
-## State Delta Lifecycle
+## [ ] State Delta Lifecycle
 
 ```
 Your code EventActions Session Service
@@ -160,7 +160,7 @@ session.state["city"] = "Tokyo" ← committed
 Database/Memory store updated
 ```
 
-## State Scope Visual
+## [ ] State Scope Visual
 
 ```
 ┌─ app:config ──────────────────────────────────────────────────┐
@@ -182,7 +182,7 @@ Database/Memory store updated
 
 ---
 
-## State Scoping in Practice
+## [ ] State Scoping in Practice
 
 ```python
 # Session-scoped (default) — only this session sees this:
@@ -197,7 +197,7 @@ tool_context.state['app:feature_flags'] = {'beta': True}
 
 ---
 
-## Related Files
+## [ ] Related Files
 
 - [`sessions/session.py`](../adk-python/src/google/adk/sessions/session.py) — data model
 - [`sessions/base_session_service.py`](../adk-python/src/google/adk/sessions/base_session_service.py) — abstract interface

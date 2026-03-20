@@ -51,7 +51,7 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 
 `@final` means subclasses must **not** override `run_async` — only `_run_async_impl`.
 
-### BaseAgent Fields
+### [ ] BaseAgent Fields
 
 ```python
 name: str # must be a valid Python identifier, unique in tree
@@ -77,11 +77,11 @@ async def _run_async_impl(ctx):
         yield event
 ```
 
-### Which flow does it use?
+### [ ] Which flow does it use?
 
 ADK auto-selects AutoFlow (agent routing) when sub-agents exist, SingleFlow otherwise.
 
-### Key Fields
+### [ ] Key Fields
 
 ```python
 model: Union[str, BaseLlm] # e.g. 'gemini-2.5-flash'. Inherits from parent if empty.
@@ -126,7 +126,7 @@ planner: Optional[BasePlanner] # step-by-step planning / thinking
 code_executor: Optional[BaseCodeExecutor] # run generated code blocks
 ```
 
-### Callbacks on LlmAgent
+### [ ] Callbacks on LlmAgent
 
 LlmAgent adds finer-grained hooks compared to BaseAgent:
 
@@ -158,7 +158,7 @@ def on_tool_error_callback(
 ) -> Optional[dict]: ...
 ```
 
-### Key Methods
+### [ ] Key Methods
 
 ```python
 @classmethod
@@ -212,7 +212,7 @@ root_agent (LlmAgent)
 
 The LLM in `root_agent` can say "transfer to search_agent", which triggers `EventActions.transfer_to_agent = 'search_agent'`.
 
-### How Agent Transfer Works
+### [ ] How Agent Transfer Works
 
 ```
 User: "Book me a flight to Tokyo"
@@ -235,7 +235,7 @@ User: "Book me a flight to Tokyo"
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Branch in Events
+### [ ] Branch in Events
 
 As agents nest, the `branch` field on each event tracks which agent produced it. This lets each agent see only its own lineage when building LLM context:
 
@@ -249,7 +249,7 @@ Event stream with branches:
  evt-005 author="travel_agent" branch="travel_agent" ← final answer
 ```
 
-### Minimal Multi-Agent Example
+### [ ] Minimal Multi-Agent Example
 
 ```python
 travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",

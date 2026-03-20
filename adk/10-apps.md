@@ -4,7 +4,7 @@
 
 ---
 
-## What It Is
+## [ ] What It Is
 
 `App` wraps your root agent with:
 - The root agent
@@ -17,7 +17,7 @@ Without `App`, pass `agent=` and `app_name=` to `Runner`. With `App`, pass `app=
 
 ---
 
-## App Fields
+## [ ] App Fields
 
 ```python
 class App(BaseModel):
@@ -31,7 +31,7 @@ class App(BaseModel):
 
 ---
 
-## Basic Usage
+## [ ] Basic Usage
 
 ```python
 from google.adk.apps import App
@@ -48,7 +48,7 @@ runner = Runner(app=app, session_service=InMemorySessionService())
 
 ---
 
-## Plugins
+## [ ] Plugins
 
 App-wide hooks around every agent call:
 
@@ -81,7 +81,7 @@ app = App(name='my_app', root_agent=agent, plugins=[MyLoggingPlugin()])
 
 ---
 
-## Event Compaction
+## [ ] Event Compaction
 
 Compaction summarizes old events into a single compact event, keeping the list bounded.
 
@@ -123,7 +123,7 @@ AFTER compaction (overlap_size=2):
 
 ---
 
-## Context Cache Config
+## [ ] Context Cache Config
 
 Reduces latency and cost for agents with long `static_instruction`:
 
@@ -145,7 +145,7 @@ Requires `static_instruction` on `LlmAgent`. No effect without it.
 
 ---
 
-## Resumability Config (Experimental)
+## [ ] Resumability Config (Experimental)
 
 Pause on long-running tools, resume later:
 
@@ -168,7 +168,7 @@ Requires idempotent tool calls.
 
 ---
 
-## App vs. Bare Agent
+## [ ] App vs. Bare Agent
 
 | Feature | `app=App(...)` | `agent=..., app_name=...` |
 |---------|---------------|--------------------------|
@@ -189,13 +189,13 @@ Do you need plugins, compaction, context caching, or resumability?
 
 ---
 
-## App Name Constraints
+## [ ] App Name Constraints
 
 Must be a valid Python identifier (not `"user"`). Scopes sessions.
 
 ---
 
-## Related Files
+## [ ] Related Files
 
 - [`apps/app.py`](../adk-python/src/google/adk/apps/app.py) — `App`, `EventsCompactionConfig`, `ResumabilityConfig`
 - [`apps/compaction.py`](../adk-python/src/google/adk/apps/compaction.py) — sliding window compaction logic

@@ -155,7 +155,7 @@ LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
  → back to LLM in next loop iteration
 ```
 
-### Default Error Behavior
+### [ ] Default Error Behavior
 
 If your tool function raises an exception and no `on_tool_error_callback` is set:
 - The exception **propagates up** and terminates the entire invocation

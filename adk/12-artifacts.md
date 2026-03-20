@@ -50,7 +50,7 @@ Fields use camelCase aliases for JSON serialization (`populate_by_name=True`).
 
 All methods are `async` with keyword-only arguments, scoped by `app_name`, `user_id`, and optional `session_id`.
 
-### save_artifact
+### [ ] save_artifact
 
 ```python
 async def save_artifact(
@@ -67,7 +67,7 @@ async def save_artifact(
 
 Saves a new version of the artifact identified by `filename`. Returns the version number (0 for the first save, incremented by 1 after each save). Accepts a `types.Part` or a plain dict (normalized internally via `ensure_part`).
 
-### load_artifact
+### [ ] load_artifact
 
 ```python
 async def load_artifact(
@@ -83,7 +83,7 @@ async def load_artifact(
 
 Loads a specific version. If `version` is `None`, returns the latest version. Returns `None` if not found.
 
-### list_artifact_keys
+### [ ] list_artifact_keys
 
 ```python
 async def list_artifact_keys(
@@ -97,7 +97,7 @@ async def list_artifact_keys(
 
 Returns all artifact filenames. If `session_id` is provided, returns both session-scoped and user-scoped filenames. If `session_id` is `None`, returns only user-scoped filenames.
 
-### delete_artifact
+### [ ] delete_artifact
 
 ```python
 async def delete_artifact(
@@ -112,7 +112,7 @@ async def delete_artifact(
 
 Deletes all versions of an artifact.
 
-### list_versions
+### [ ] list_versions
 
 ```python
 async def list_versions(
@@ -127,7 +127,7 @@ async def list_versions(
 
 Returns a list of version numbers (integers) available for the artifact.
 
-### list_artifact_versions
+### [ ] list_artifact_versions
 
 ```python
 async def list_artifact_versions(
@@ -142,7 +142,7 @@ async def list_artifact_versions(
 
 Returns full `ArtifactVersion` metadata for every version.
 
-### get_artifact_version
+### [ ] get_artifact_version
 
 ```python
 async def get_artifact_version(
@@ -205,11 +205,11 @@ Version Timeline:
 | `file_data` support | Stores as-is (artifact refs) | Not supported (raises error) | Not supported (raises `NotImplementedError`) |
 | Custom metadata | Stored in `ArtifactVersion` | Written to `metadata.json` per version | Stored as GCS blob metadata |
 
-### InMemoryArtifactService
+### [ ] InMemoryArtifactService
 
 Stores artifacts as a `dict[str, list[_ArtifactEntry]]` keyed by path. Suitable for tests and prototyping. Extends `BaseModel` (Pydantic), so its state is serializable.
 
-### FileArtifactService
+### [ ] FileArtifactService
 
 Writes artifacts to a directory tree under `root_dir`:
 
@@ -231,7 +231,7 @@ root_dir/
 
 Filenames can include path separators (`"images/photo.png"`) to create nested directories. Path traversal (`"../../secret.txt"`) is rejected with `InputValidationError`.
 
-### GcsArtifactService
+### [ ] GcsArtifactService
 
 Uses `google.cloud.storage` to read/write blobs. Blob names follow the pattern `{app_name}/{user_id}/{session_id}/{filename}/{version}`. The GCS client is imported lazily inside `__init__`, so the `google-cloud-storage` package is only needed when this backend is used.
 
@@ -331,7 +331,7 @@ runner = Runner(
 
 ## Code Examples
 
-### Saving and loading text artifacts in a tool
+### [ ] Saving and loading text artifacts in a tool
 
 ```python
 from google.adk.agents import Agent
@@ -359,7 +359,7 @@ async def read_report(tool_context: ToolContext) -> dict[str, str]:
     return {"content": part.text}
 ```
 
-### Saving a binary artifact (image)
+### [ ] Saving a binary artifact (image)
 
 ```python
 async def save_chart(
@@ -380,7 +380,7 @@ async def save_chart(
     return {"filename": "chart.png", "version": version}
 ```
 
-### User-scoped artifacts (shared across sessions)
+### [ ] User-scoped artifacts (shared across sessions)
 
 ```python
 async def save_user_preference(
@@ -395,7 +395,7 @@ async def save_user_preference(
     return {"version": version}
 ```
 
-### Listing and inspecting artifact versions
+### [ ] Listing and inspecting artifact versions
 
 ```python
 async def inspect_artifacts(tool_context: ToolContext) -> dict[str, Any]:

@@ -6,7 +6,7 @@
 
 ADK has no built-in tool versioning. Three patterns:
 
-### Pattern A: Version in the Tool Name (Simplest)
+### [ ] Pattern A: Version in the Tool Name (Simplest)
 
 Run versions side-by-side. The LLM picks based on description.
 
@@ -47,7 +47,7 @@ Migration timeline:
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Pattern B: Toolset with Version Selection (Dynamic)
+### [ ] Pattern B: Toolset with Version Selection (Dynamic)
 
 Use a `BaseToolset` to serve different versions based on context:
 
@@ -106,7 +106,7 @@ How it works at runtime:
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Pattern C: Callback-Based Migration (Transparent)
+### [ ] Pattern C: Callback-Based Migration (Transparent)
 
 Use `before_tool_callback` to silently redirect old tool calls to new implementations:
 
@@ -133,7 +133,7 @@ agent = Agent(
 )
 ```
 
-### Summary: When to Use Each Pattern
+### [ ] Summary: When to Use Each Pattern
 
 ```
 ┌──────────────────┬─────────────────────────────────────────────┐
@@ -149,9 +149,9 @@ agent = Agent(
 
 ## Q2: What Is the Best Way to Test Each ADK Component and E2E?
 
-### Unit Testing Individual Components
+### [ ] Unit Testing Individual Components
 
-#### Testing Tools (Isolated)
+#### [ ] Testing Tools (Isolated)
 
 ```python
 import pytest
@@ -200,7 +200,7 @@ Unit test architecture:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-#### Testing Callbacks (Isolated)
+#### [ ] Testing Callbacks (Isolated)
 
 ```python
 import pytest
@@ -222,7 +222,7 @@ async def test_rate_limit_callback():
     assert mock_context.state["temp:last_llm_call"] > 0
 ```
 
-#### Testing Agent Configuration (No LLM Call)
+#### [ ] Testing Agent Configuration (No LLM Call)
 
 ```python
 def test_agent_configuration():
@@ -244,7 +244,7 @@ def test_agent_configuration():
     assert "lookup_order" in order_tools
 ```
 
-#### Testing Plugins (Isolated)
+#### [ ] Testing Plugins (Isolated)
 
 ```python
 @pytest.mark.asyncio
@@ -265,7 +265,7 @@ async def test_metrics_plugin_tracks_tokens():
     assert mock_context.state["user:total_tokens"] == 500
 ```
 
-### Integration Testing (Real ADK, Mock LLM)
+### [ ] Integration Testing (Real ADK, Mock LLM)
 
 ```python
 import pytest
@@ -324,7 +324,7 @@ async def test_agent_uses_tool_correctly():
     assert "tokyo" in final_text.lower() or "22" in final_text
 ```
 
-### E2E Testing (Full Agent System)
+### [ ] E2E Testing (Full Agent System)
 
 ```python
 @pytest.mark.asyncio
@@ -384,7 +384,7 @@ async def test_multi_agent_e2e():
     assert "current_order" in updated_session.state
 ```
 
-### Test Strategy Summary
+### [ ] Test Strategy Summary
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -410,7 +410,7 @@ async def test_multi_agent_e2e():
 
 ## Q3: What Is the Best Way to Preprocess User Requests (Extract IDs, Enrich Data)?
 
-### Pattern A: before_agent_callback (Recommended)
+### [ ] Pattern A: before_agent_callback (Recommended)
 
 Intercept the request before the agent sees it, extract IDs, fetch additional data, and inject it into state:
 
@@ -492,7 +492,7 @@ Request flow with preprocessing:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### Pattern B: Plugin (Reusable Across Agents)
+### [ ] Pattern B: Plugin (Reusable Across Agents)
 
 ```python
 from google.adk.plugins import BasePlugin
@@ -540,7 +540,7 @@ enrichment = IdEnrichmentPlugin(
 app = App(agent=root_agent, plugins=[enrichment])
 ```
 
-### Pattern C: SequentialAgent with Preprocessor Agent
+### [ ] Pattern C: SequentialAgent with Preprocessor Agent
 
 ```python
 from google.adk import Agent
@@ -604,7 +604,7 @@ root_agent = SequentialAgent(
 
 Four mechanisms:
 
-### Method 1: Session State (Most Common)
+### [ ] Method 1: Session State (Most Common)
 
 Agents in the same session share state via `output_key` or direct writes:
 
@@ -656,7 +656,7 @@ State-based message passing:
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Method 2: Tool-Based State Writing
+### [ ] Method 2: Tool-Based State Writing
 
 For more control over what gets passed:
 
@@ -689,7 +689,7 @@ agent_b = Agent(
 )
 ```
 
-### Method 3: Agent Transfer (LLM-Driven Routing)
+### [ ] Method 3: Agent Transfer (LLM-Driven Routing)
 
 Transfer carries full session history:
 
@@ -735,7 +735,7 @@ Agent transfer message passing:
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Method 4: AgentTool (Isolated Execution)
+### [ ] Method 4: AgentTool (Isolated Execution)
 
 Isolated execution without shared history:
 
@@ -779,7 +779,7 @@ AgentTool message passing:
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Comparison Table
+### [ ] Comparison Table
 
 ```
 ┌─────────────────────┬───────────┬──────────┬─────────────┬──────────┐
