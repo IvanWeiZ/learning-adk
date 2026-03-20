@@ -1,48 +1,63 @@
-# Learning ADK — Source-Traced Deep Dives for Google's Agent Development Kit
+<div align="center">
+
+# Learning ADK
+
+### The Unofficial Deep Dive into Google's Agent Development Kit
 
 [![CI](https://github.com/IvanWeiZ/learning-adk/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanWeiZ/learning-adk/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ADK Version](https://img.shields.io/badge/ADK-v1.27.2-blue)](https://github.com/google/adk-python)
+[![Docs](https://img.shields.io/badge/docs-45_files-green)](adk/)
+[![Lines](https://img.shields.io/badge/lines-21%2C000%2B-orange)](#)
 
-The official ADK docs show you the API surface — this repo shows you what happens underneath. Every claim is traced to a specific line in the [ADK source code](https://github.com/google/adk-python), covering internals, gotchas, and patterns that the official docs don't. Built from a Java developer's perspective learning Python and ADK from the ground up.
+**The official docs show you the API. This repo shows you what happens underneath.**
 
-> **Not the official docs.** For API reference and tutorials, see [google.github.io/adk-docs](https://google.github.io/adk-docs/). For working examples, see [ADK samples](https://github.com/google/adk-python/tree/main/contributing/samples/). This repo contains no runnable code — only documentation.
+Every claim traced to a specific line in the [ADK source code](https://github.com/google/adk-python).<br/>
+Built from a Java developer's perspective learning Python and ADK from the ground up.
 
-## What's Inside
+[Get Started](#-quick-start) · [Reading Order](#-reading-order) · [Contributing](CONTRIBUTING.md)
 
-| This repo covers | Official docs typically don't |
+</div>
+
+---
+
+## Why This Exists
+
+The official ADK docs tell you *what* to call. They don't tell you *what happens when you call it*. This repo fills that gap:
+
+| What you'll find here | What the official docs say instead |
 |---|---|
-| Full request lifecycle traced through source | Just shows the API call |
-| `append_event` internals, state delta mechanics | Just says "state is persisted" |
-| Flow selection logic (3 conditions for SingleFlow) | Just says "ADK handles routing" |
-| Branch filtering rules for multi-agent history | Not documented |
-| Agent transfer mechanics (`_get_transfer_targets`) | Just says "agents can transfer" |
-| Processor pipeline ordering (12 request + 3 response) | Not exposed |
-| Error paths, silent failures, recovery points | Only happy path |
-| Concurrency gotchas (last-writer-wins, locking) | Not covered |
+| Full request lifecycle traced through source | "Call `runner.run_async()`" |
+| `append_event` internals, state delta mechanics | "State is persisted" |
+| Flow selection logic (3 conditions for SingleFlow) | "ADK handles routing" |
+| Branch filtering rules for multi-agent history | *(not documented)* |
+| Agent transfer mechanics via `_get_transfer_targets` | "Agents can transfer" |
+| Processor pipeline ordering (12 request + 3 response) | *(not exposed)* |
+| Error paths, silent failures, recovery points | *(only happy path)* |
+| Concurrency gotchas (last-writer-wins, locking) | *(not covered)* |
 
-## Quick Start
+> For the official API reference: [google.github.io/adk-docs](https://google.github.io/adk-docs/) · For working code: [134 ADK samples](https://github.com/google/adk-python/tree/main/contributing/samples/)
 
-**Who this is for:** Developers (especially those coming from Java) who want to understand ADK internals, not just the API surface. 45 files, 21,000+ lines of source-traced documentation.
+---
 
-1. Read [00-onboarding-guide.md](adk/00-onboarding-guide.md) — build your first agent in 5 lines
-2. Read [01-request-lifecycle.md](adk/01-request-lifecycle.md) — trace what happens inside
-3. Pick a topic from the reading order below
-4. Keep [glossary.md](reference/glossary.md) open for unfamiliar terms
+## 🚀 Quick Start
 
-## Architecture
+**Who this is for:** Developers (especially those coming from Java) who want to understand ADK internals, not just the API surface.
 
-| Layer | What It Does |
-|-------|-------------|
-| **User / CLI / API** | Entry point — web UI, command line, or REST API |
-| **Runner** | Session bookkeeping, event streaming, compaction |
-| **Agents** | LlmAgent, LoopAgent, ParallelAgent, SequentialAgent |
-| **Sessions** | InMemory, SQLite, Database, Vertex AI |
-| **Flow** | Reason-act loop: preprocess → LLM → tools → repeat |
-| **Models** | Gemini, Anthropic, LiteLLM (100+ providers) |
-| **Tools** | FunctionTool, MCP, OpenAPI, LangChain, CrewAI, 50+ more |
-| **Events** | The universal data type flowing through everything |
-| **Memory / Artifacts / Auth / Telemetry** | Cross-cutting services |
+```
+1. Read 00-onboarding-guide.md  →  Build your first agent in 5 lines
+2. Read 01-request-lifecycle.md →  Trace what happens inside
+3. Pick a topic below           →  Go as deep as you want
+4. Keep glossary.md open        →  For unfamiliar terms
+```
+
+| Start here | Then go deeper |
+|---|---|
+| [00 — Onboarding Guide](adk/00-onboarding-guide.md) | [01 — Request Lifecycle](adk/01-request-lifecycle.md) |
+
+---
+
+## 🏗 Architecture
 
 ```
 User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ──► Events
@@ -50,9 +65,19 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
             └──────── Session (state + history) ◄──────────┘
 ```
 
-## Key Architectural Patterns
+| Layer | What It Does |
+|-------|-------------|
+| **Runner** | Session bookkeeping, event streaming, compaction |
+| **Agents** | LlmAgent, LoopAgent, ParallelAgent, SequentialAgent |
+| **Flow** | Reason-act loop: preprocess → LLM → tools → repeat |
+| **Models** | Gemini, Anthropic, LiteLLM (100+ providers) |
+| **Tools** | FunctionTool, MCP, OpenAPI, LangChain, CrewAI, 50+ more |
+| **Events** | The universal data type flowing through everything |
+| **Sessions** | InMemory, SQLite, Database, Vertex AI |
+| **Cross-cutting** | Memory, Artifacts, Auth, Telemetry |
 
-Six patterns that appear throughout ADK:
+<details>
+<summary><b>Six architectural patterns that appear everywhere in ADK</b></summary>
 
 1. **Async-First** — every agent produces an `AsyncGenerator[Event, None]`
 2. **Context Threading** — `InvocationContext` carries session, state, and credentials through every call
@@ -61,18 +86,17 @@ Six patterns that appear throughout ADK:
 5. **Pipeline/Processor** — `BaseLlmFlow` runs 12 request processors and 3 response processors in order
 6. **Event-Driven Side Effects** — state mutations, transfers, and escalations are carried in `EventActions`, not via direct calls
 
-## Reading Order
+</details>
 
-### Start Here
+---
 
-| # | File | What You Learn |
-|---|------|---------------|
-| 0 | [00-onboarding-guide.md](adk/00-onboarding-guide.md) | **Zero to first agent** — an agent is just prompt + model + tools |
+## 📖 Reading Order
 
 ### Part 1: The Big Picture
 
 | # | File | What You Learn |
 |---|------|---------------|
+| 0 | [00-onboarding-guide.md](adk/00-onboarding-guide.md) | **Zero to first agent** — an agent is just prompt + model + tools |
 | 1 | [01-request-lifecycle.md](adk/01-request-lifecycle.md) | Full traced request through every layer — the mental model |
 | 2 | [02-when-to-build-what.md](adk/02-when-to-build-what.md) | Decision guide: scenario → ADK component |
 | | [custom-use-cases.md](adk/custom-use-cases.md) | Component code examples |
@@ -100,7 +124,8 @@ Six patterns that appear throughout ADK:
 | 14 | [14-planners.md](adk/14-planners.md) | Thinking mode, plan-then-act |
 | 15 | [15-evaluation.md](adk/15-evaluation.md) | Agent quality testing |
 
-### Part 4: Operations & Safety
+<details>
+<summary><b>Part 4: Operations & Safety</b></summary>
 
 | # | File | What It Covers |
 |---|------|---------------|
@@ -110,7 +135,10 @@ Six patterns that appear throughout ADK:
 | 19 | [19-session-security.md](adk/19-session-security.md) | Security considerations for session/event data |
 | | [security-checklist.md](adk/security-checklist.md) | Audit checklist, threat model, deployment hardening |
 
-### Part 5: Patterns & Practices
+</details>
+
+<details>
+<summary><b>Part 5: Patterns & Practices</b></summary>
 
 | # | File | What It Covers |
 |---|------|---------------|
@@ -122,14 +150,21 @@ Six patterns that appear throughout ADK:
 | 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, reason-act loop |
 | | [plugins-and-a2a.md](adk/plugins-and-a2a.md) | Custom tools, A2A, code executors |
 
-### Part 6: Reference
+</details>
+
+<details>
+<summary><b>Part 6: Reference & FAQ</b></summary>
 
 | # | File | What It Covers |
 |---|------|---------------|
 | 24 | [24-faq.md](adk/24-faq.md) | Tool versioning, state scoping, agent messaging |
 | 25 | [25-adk-2.0-preview.md](adk/25-adk-2.0-preview.md) | ADK 2.0: graph workflows, collaborative agents |
 
-### Python Guides
+</details>
+
+---
+
+## 🐍 Python Guides
 
 For developers coming from Java or other languages:
 
@@ -145,20 +180,13 @@ For developers coming from Java or other languages:
 | [python-testing-and-mocking-guide.md](python/python-testing-and-mocking-guide.md) | pytest, Mock, fixtures, mocking strategies |
 | [python-testing-advanced.md](python/python-testing-advanced.md) | Async testing, parametrize, ADK patterns |
 
-### Quick Reference
+**Quick reference:** [Glossary](reference/glossary.md) · [Java → Python Cheat Sheet](reference/java-to-python-cheat-sheet.md)
 
-| File | Topic |
-|------|-------|
-| [glossary.md](reference/glossary.md) | ADK terminology |
-| [java-to-python-cheat-sheet.md](reference/java-to-python-cheat-sheet.md) | Side-by-side Java → Python mappings |
+---
 
-## Example Agents
+## 🤝 Contributing
 
-100+ working examples in the ADK repo: [`contributing/samples/`](https://github.com/google/adk-python/tree/main/contributing/samples/)
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on fixing errors, adding content, and diagram style.
+Found an error? Want to add a deep dive? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
