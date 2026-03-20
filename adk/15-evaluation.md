@@ -381,6 +381,6 @@ Testing Pyramid for Agents:
 - [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) — EvalSet, EvalMetric
 - [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) — main entry point
 - [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) — Evaluator, metric implementations
-- [`python-testing-and-mocking-guide.md`](./python-testing-and-mocking-guide.md) — unit testing with pytest/AsyncMock
+- [`python-testing-and-mocking-guide.md`](../python/python-testing-and-mocking-guide.md) — unit testing with pytest/AsyncMock
 - [`09-tools.md`](./09-tools.md) — tool system (what evals are testing)
 - [`02-when-to-build-what.md`](./02-when-to-build-what.md) — decision guide including when to write evals
