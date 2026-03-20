@@ -42,14 +42,16 @@ learning-adk/
 │   ├── 22-testing.md                              # MockModel, deterministic testing
 │   ├── 23-advanced-internals.md                   # Processor pipeline, plugins, A2A internals
 │   ├── 24-faq.md                                  # Tool versioning, state scoping
-│   └── 25-onboarding-guide.md                     # Zero-to-first-agent walkthrough
-├── python-for-adk-learning-plan.md                # 2-week Python curriculum
-├── python-asyncio-deep-dive.md                    # Async/await patterns
-├── python-decorators-metaprogramming-deep-dive.md # Decorators and metaprogramming
-├── python-pydantic-deep-dive.md                   # Pydantic v2 reference
-├── python-testing-and-mocking-guide.md            # pytest, AsyncMock, mocking strategies
-├── glossary.md                                    # ADK terminology quick-reference
-└── java-to-python-cheat-sheet.md                  # Side-by-side Java → Python mappings
+│   └── 25-adk-2.0-preview.md                      # ADK 2.0: graph workflows, collaborative agents
+├── python/
+│   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
+│   ├── python-asyncio-deep-dive.md                # Async/await patterns
+│   ├── python-decorators-metaprogramming-deep-dive.md # Decorators and metaprogramming
+│   ├── python-pydantic-deep-dive.md               # Pydantic v2 reference
+│   └── python-testing-and-mocking-guide.md        # pytest, AsyncMock, mocking strategies
+└── reference/
+    ├── glossary.md                                # ADK terminology quick-reference
+    └── java-to-python-cheat-sheet.md              # Side-by-side Java → Python mappings
 ```
 
 **Total:** ~14,000+ lines across 33 Markdown files.
