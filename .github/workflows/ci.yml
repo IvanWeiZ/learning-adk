@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for broken relative links
+        run: |
+          echo "Checking for broken relative links..."
+          broken=0
+          for f in adk/*.md python/*.md reference/*.md; do
+            # Extract relative .md links
+            grep -oP '\[.*?\]\((?!https?://|#)([^)]+\.md)\)' "$f" 2>/dev/null | \
+            grep -oP '\(([^)]+)\)' | tr -d '()' | while read link; do
+              # Resolve relative to file's directory
+              dir=$(dirname "$f")
+              target="$dir/$link"
+              if [ ! -f "$target" ]; then
+                echo "BROKEN: $f -> $link (resolved: $target)"
+                broken=1
+              fi
+            done
+          done
+          if [ "$broken" -eq 1 ]; then
+            echo "Found broken links!"
+            exit 1
+          fi
+          echo "All relative links OK"
+
+      - name: Check for heading checkboxes
+        run: |
+          count=$(grep -rc '^#.*\[ \]' adk/*.md python/*.md reference/*.md README.md 2>/dev/null | grep -v ':0$' | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "Found [ ] checkboxes in headings:"
+            grep -rn '^#.*\[ \]' adk/*.md python/*.md reference/*.md README.md
+            exit 1
+          fi
+          echo "No heading checkboxes found"
+
+      - name: Check header format consistency
+        run: |
+          echo "Checking adk/*.md header format (line 3)..."
+          errors=0
+          for f in adk/*.md; do
+            header=$(sed -n '3p' "$f")
+            if echo "$header" | grep -q '^>' ; then
+              if ! echo "$header" | grep -q 'Official docs:'; then
+                echo "MISSING Official docs: $(basename $f)"
+                errors=1
+              fi
+            fi
+          done
+          if [ "$errors" -eq 1 ]; then
+            exit 1
+          fi
+          echo "All headers OK"
