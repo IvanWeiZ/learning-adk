@@ -54,6 +54,7 @@ learning-adk/
 │   └── testing-examples.md                        # Test examples for callbacks, plugins (split from 22)
 ├── python/
 │   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
+│   ├── python-gotchas-for-java-developers.md      # 13 runtime traps Java devs hit
 │   ├── python-asyncio-deep-dive.md                # Async/await core patterns
 │   ├── python-asyncio-advanced.md                 # Sync primitives, queues, debugging (split)
 │   ├── python-decorators-deep-dive.md             # Decorators, closures, inspect
@@ -67,7 +68,7 @@ learning-adk/
     └── java-to-python-cheat-sheet.md              # Side-by-side Java → Python mappings
 ```
 
-**Total:** ~21,000+ lines across 45 Markdown files.
+**Total:** ~21,500+ lines across 46 Markdown files.
 
 ---
 

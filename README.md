@@ -14,10 +14,10 @@
 
 <table>
 <tr>
-<td align="center"><b>45</b><br/>Deep Dives</td>
-<td align="center"><b>21,000+</b><br/>Lines</td>
+<td align="center"><b>46</b><br/>Deep Dives</td>
+<td align="center"><b>21,500+</b><br/>Lines</td>
 <td align="center"><b>26</b><br/>ADK Topics</td>
-<td align="center"><b>9</b><br/>Python Guides</td>
+<td align="center"><b>10</b><br/>Python Guides</td>
 </tr>
 </table>
 
@@ -233,6 +233,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 | File | Topic |
 |------|-------|
 | [Learning Plan](python/python-for-adk-learning-plan.md) | 2-week curriculum |
+| [Gotchas for Java Devs](python/python-gotchas-for-java-developers.md) | 13 traps that break at runtime |
 | [Asyncio Deep Dive](python/python-asyncio-deep-dive.md) | async/await, event loop |
 | [Asyncio Advanced](python/python-asyncio-advanced.md) | Primitives, queues, debugging |
 | [Decorators](python/python-decorators-deep-dive.md) | Closures, class-based decorators |
