@@ -41,7 +41,7 @@ ADK is async-first and generally safe for concurrent requests across different s
 SessionService
  ├── InMemorySessionService   (no locks — not production-safe for concurrency)
  ├── DatabaseSessionService   (asyncio lock + DB row lock — production-safe)
- └── SQLiteSessionService     (in-process lock only — not cross-process safe)
+ └── SqliteSessionService     (in-process lock only — not cross-process safe)
 
 ParallelAgent (agents/parallel_agent.py — runs sub-agents concurrently)
 

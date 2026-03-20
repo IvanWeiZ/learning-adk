@@ -50,7 +50,7 @@ BaseTool (ABC)
 └── VertexAiSearchTool  — Vertex AI Search
 
 BaseToolset (ABC)
-├── MCPToolset          — Model Context Protocol
+├── McpToolset          — Model Context Protocol
 ├── OpenAPIToolset      — REST APIs via OpenAPI spec
 ├── LangchainTool       — LangChain tool wrapper
 ├── CrewaiTool          — CrewAI tool wrapper
@@ -130,7 +130,7 @@ class ToolContext:
 | `google_search` | `google.adk.tools` | Google Search grounding |
 | `VertexAiSearchTool` | `google.adk.tools` | Vertex AI Search |
 | `BuiltInCodeExecutor` | `google.adk.code_executors` | Model-native code execution |
-| `MCPToolset` | `google.adk.tools.mcp_tool` | Model Context Protocol tools |
+| `McpToolset` | `google.adk.tools.mcp_tool` | Model Context Protocol tools |
 | `OpenAPIToolset` | `google.adk.tools.openapi_tool` | Any REST API via OpenAPI spec |
 | `LangchainTool` | `google.adk.tools.langchain_tool` | Wrap any LangChain tool |
 | `CrewaiTool` | `google.adk.tools.crewai_tool` | Wrap any CrewAI tool |

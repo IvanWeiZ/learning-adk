@@ -58,6 +58,48 @@ learning-adk/
 
 ---
 
+## Lessons Learned (Do NOT Repeat These Mistakes)
+
+**Content accuracy:**
+1. **Verify class names against source** — `BaseEvaluator` → `Evaluator`. `ConversationTurn`, `ToolUse` don't exist. Always grep before writing.
+2. **Verify method signatures** — `run_live(user_id: str)` was wrong (`Optional[str] = None`). `BaseTool.run_async(args, context)` is keyword-only.
+3. **Verify field types** — `branch: str` → `Optional[str]`. `custom_metadata: Optional[dict]` → `dict[str, Any] = Field(default_factory=dict)`.
+4. **Never invent APIs** — ADK has no `@tool` decorator. `CompactionPlugin` doesn't exist. `App(agent=)` → `App(root_agent=)`.
+5. **Mark deprecated APIs** — `save_input_blobs_as_artifacts`, `MCPToolset` are deprecated.
+6. **`AgentEvaluator.evaluate()` is async** — must `await`. Returns None, asserts internally.
+7. **`ToolContext` = `CallbackContext` = `Context`** — aliases, not subclass relationship.
+
+**Diagram quality:**
+8. **No cramped one-liners** — `None → X | Y → Z` is unreadable. Use `if returns None:` on separate lines.
+9. **No stacked box separators** (`├───┤`) — use tree style.
+10. **No side-by-side boxes** — always vertical tree.
+11. **Descriptions on NEXT line** — not on same line as tree node.
+12. **Links in code blocks aren't clickable** — use markdown tables.
+13. **At a Glance must be compact** (5-10 lines) — not a full architecture walkthrough.
+14. **Check box alignment** — edges must match longest content. Test in monospace.
+15. **Use real model IDs** — not `claude-sonnet-4-5` or `gemini-pro`.
+16. **No opaque IDs as labels** — `evt-002` means nothing. Use "Tool Call", "Final Response".
+
+**User preferences:**
+17. **Onboarding = motivation** — under 200 lines. "agent = prompt + model + tools". Don't teach callbacks here.
+18. **No Java comparisons in onboarding** — keep those in deep-dive files.
+19. **New concepts in Big Picture** — MCP, new capabilities must appear in overview.
+20. **Ask about section order** — user changed mind about Examples vs How It Works.
+
+**Process:**
+21. **Agents reintroduce checkboxes** — run `perl -pi -e 's/^(#{2,4}) \[ \] /$1 /g'` after every agent.
+22. **Agents reintroduce removed content** — verify after every agent completes.
+23. **Agents overwrite each other** — never run multiple agents on same file.
+24. **Verify content, not just formatting** — read the rendered output, don't just grep.
+25. **Verify official doc URLs** — WebFetch every URL before using.
+26. **Header format: `Official docs | Source | Prereqs`** — always this order, always on line 3.
+27. **When removing content, verify it exists elsewhere** — move before delete.
+28. **Fix the pattern, not the instance** — search ALL files for same issue.
+29. **Test CI locally before pushing** — broken regex in CI caused multiple failures.
+30. **Introduce concepts before using them** — key terms must be defined before the trace.
+
+---
+
 ## Core ADK Architecture
 
 Understanding these layers is essential for adding or updating documentation:

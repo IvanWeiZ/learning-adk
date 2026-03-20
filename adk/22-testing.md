@@ -1,8 +1,6 @@
 # Testing — Deterministic Unit Tests for ADK Agents
 
-> Unit testing tools and agents. For agent quality evaluation at scale, see [15-evaluation.md](15-evaluation.md). For Python testing fundamentals (pytest, mocking), see [python-testing-and-mocking-guide.md](../python-testing-and-mocking-guide.md).
-
-**Source:** [`tests/unittests/testing_utils.py`](../adk-python/tests/unittests/testing_utils.py) · [`tests/unittests/agents/test_llm_agent_fields.py`](../adk-python/tests/unittests/agents/test_llm_agent_fields.py) · [`tests/unittests/agents/test_llm_agent_callbacks.py`](../adk-python/tests/unittests/agents/test_llm_agent_callbacks.py) · [`tests/unittests/agents/test_llm_agent_output_save.py`](../adk-python/tests/unittests/agents/test_llm_agent_output_save.py) · [`tests/unittests/agents/test_llm_agent_include_contents.py`](../adk-python/tests/unittests/agents/test_llm_agent_include_contents.py) · [`tests/unittests/flows/llm_flows/test_tool_callbacks.py`](../adk-python/tests/unittests/flows/llm_flows/test_tool_callbacks.py) · [`tests/unittests/tools/test_function_tool.py`](../adk-python/tests/unittests/tools/test_function_tool.py)
+> **Official docs:** [Evaluation](https://google.github.io/adk-docs/evaluate/) | **Source:** [`tests/unittests/testing_utils.py`](https://github.com/google/adk-python/blob/main/tests/unittests/testing_utils.py) | **Prereqs:** [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
 ---
 

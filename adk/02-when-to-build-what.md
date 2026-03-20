@@ -108,7 +108,7 @@ Common scenarios mapped to ADK components.
 | Agent needs to trigger a Cloud Run job and wait for the result | `LongRunningFunctionTool` (or `BaseTool` subclass with `is_long_running=True`) |
 | Human-in-the-loop approval before executing an action | `LongRunningFunctionTool` — same pause mechanism as long-running tools. Invocation pauses, user's next message carries the approval. |
 | Agent needs to execute Python code it generates | `BaseCodeExecutor` subclass. Options: `BuiltInCodeExecutor` (model-native), `ContainerCodeExecutor` (Docker), `UnsafeLocalCodeExecutor` (no isolation), `VertexAiCodeExecutor`, `GkeCodeExecutor`, `AgentEngineSandboxCodeExecutor`. |
-| Agent should expose all tools from an MCP server | `MCPToolset` (no code needed) |
+| Agent should expose all tools from an MCP server | `McpToolset` (no code needed) |
 | Agent should only show certain tools based on user role | `BaseToolset` subclass with `get_tools()` that filters by `ctx.state` |
 | Agent connects to a third-party tool platform (LangChain, CrewAI) | `LangchainTool` / `CrewaiTool` wrapper |
 | Agent needs to recall past conversations or search knowledge | `BaseMemoryService` + `load_memory_tool`. Three backends: `InMemoryMemoryService` (dev), `VertexAiRagMemoryService` (production vector search), `VertexAiMemoryBankService` (LLM-distilled memory). Wire via `Runner(memory_service=...)`. See [11-memory.md](11-memory.md). |
