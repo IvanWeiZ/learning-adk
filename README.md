@@ -7,6 +7,8 @@
 > **Not the official docs.** For API reference and tutorials, see [google.github.io/adk-docs](https://google.github.io/adk-docs/).
 >
 > These notes go deeper: every claim is traced to a specific line in the [ADK source code](https://github.com/google/adk-python). They cover the internals, gotchas, and patterns that the official docs don't.
+>
+> **What's NOT here:** runnable code, build artifacts, or package configs. This is a docs-only repo. For working examples, see [ADK samples](https://github.com/google/adk-python/tree/main/contributing/samples/).
 
 ## What's Inside
 
@@ -23,11 +25,12 @@
 
 ## Quick Start
 
-**New to ADK?** Start here:
+**Who this is for:** Developers (especially those coming from Java) who want to understand ADK internals, not just the API surface. 45 files, 21,000+ lines of source-traced documentation.
 
 1. Read [00-onboarding-guide.md](adk/00-onboarding-guide.md) — build your first agent in 5 lines
 2. Read [01-request-lifecycle.md](adk/01-request-lifecycle.md) — trace what happens inside
 3. Pick a topic from the reading order below
+4. Keep [glossary.md](reference/glossary.md) open for unfamiliar terms
 
 ## Architecture
 
@@ -45,8 +48,8 @@
 
 ```
 User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ──► Events
-              │                                           │
-              └──── Session (state + history) ◄────────────┘
+            │                                              │
+            └──────── Session (state + history) ◄──────────┘
 ```
 
 ## Key Architectural Patterns
