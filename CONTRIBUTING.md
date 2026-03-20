@@ -58,9 +58,11 @@ Each node on its own line. Description on the next line, indented. Blank line be
 
 Every `adk/*.md` file should have this header format on line 3:
 
+```text
+> **Official docs:** [Topic](url) | **Source:** [`file.py`](github-url) | **Prereqs:** [Prereq Title](NN-prereq.md)
 ```
-> **Official docs:** [Topic](url) | **Source:** [`file.py`](github-url) | **Prereqs:** [file.md](file.md)
-```
+
+Note: Replace `url`, `github-url`, and `NN-prereq.md` with actual values.
 
 ## ADK Version
 
