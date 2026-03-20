@@ -162,38 +162,26 @@ The rest of this file traces exactly what happens inside ADK when this code runs
 ```
 Events yielded by runner.run_async():
 │
-├── evt-002
-│      author: weather_agent
-│      content: FunctionCall(get_weather, city="Tokyo")
+├── 1. Tool Call
+│      LLM asks to call get_weather(city="Tokyo")
 │      is_final_response(): False
 │
-├── evt-003
-│      author: weather_agent
-│      content: FunctionResponse(get_weather, {temp_c:18})
+├── 2. Tool Result
+│      get_weather returned {temp_c: 18, condition: "Partly cloudy"}
 │      is_final_response(): False
 │
-├── evt-004a
-│      author: weather_agent
-│      content: "The weather in Tokyo" [partial]
-│      is_final_response(): False
+├── 3-5. Streaming Chunks (partial=True)
+│      "The weather in Tokyo"
+│      " is currently 18°C"
+│      " with partly cloudy skies."
+│      is_final_response(): False — don't render these, they're incremental
 │
-├── evt-004b
-│      author: weather_agent
-│      content: " is currently 18°C" [partial]
-│      is_final_response(): False
-│
-├── evt-004c
-│      author: weather_agent
-│      content: " with partly cloudy skies." [partial]
-│      is_final_response(): False
-│
-└── evt-004
-       author: weather_agent
-       content: "The weather in Tokyo is currently 18°C…"
-       is_final_response(): True ← render this
+└── 6. Final Response (partial=False)
+       "The weather in Tokyo is currently 18°C with partly cloudy skies."
+       is_final_response(): True ← this is the one to render
 ```
 
-> `evt-001` (the user message) is appended to the session but never yielded — the Runner created it internally.
+> The user message is appended to the session internally but never yielded to your code.
 
 **Typical handling pattern:**
 
