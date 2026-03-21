@@ -181,27 +181,7 @@ When to use each pattern:
 
 ### Q2: What Is the Best Way to Test Each ADK Component and E2E?
 
-For MockModel, InMemoryRunner, and deterministic test patterns, see [22-testing.md](22-testing.md).
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Testing Pyramid for ADK                       │
-│                                                                  │
-│              ┌─────┐                                             │
-│             / E2E   \       Few, slow, expensive                 │
-│            / (real    \     Full conversation flows               │
-│           /   LLM)     \   Multi-turn + transfers                │
-│          ───────────────                                         │
-│         / Integration    \   Medium count                        │
-│        / (real ADK,       \  Real pipeline, mock APIs            │
-│       /   cheap model)     \ Single-turn verification            │
-│      ───────────────────────                                     │
-│     / Unit Tests             \  Many, fast, cheap                │
-│    / (mock ToolContext,       \ Tools, callbacks, config         │
-│   /   no LLM, no ADK)         \State logic, validation          │
-│  ───────────────────────────────                                 │
-└──────────────────────────────────────────────────────────────────┘
-```
+For MockModel, InMemoryRunner, deterministic test patterns, and complete test examples, see [22-testing.md](22-testing.md) and [22b-testing-examples.md](22b-testing-examples.md).
 
 ---
 

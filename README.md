@@ -216,6 +216,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 |:-:|------|---------------|
 | 24 | [24-faq.md](adk/24-faq.md) | Tool versioning, state scoping, agent messaging |
 | 25 | [25-adk-2.0-preview.md](adk/25-adk-2.0-preview.md) | ADK 2.0: graph workflows, collaborative agents |
+| | [adk-2.0-patterns.md](adk/adk-2.0-patterns.md) | Collaborative agents, dynamic workflows, migration |
 
 </details>
 

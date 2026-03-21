@@ -51,7 +51,8 @@ learning-adk/
 │   ├── debugging-guide.md                         # Debugging checklist, performance (split from 20)
 │   ├── plugins-and-a2a.md                         # Custom tools, A2A, code executors (split from 23)
 │   ├── security-checklist.md                      # Audit checklist, threat model (split from 19)
-│   └── testing-examples.md                        # Test examples for callbacks, plugins (split from 22)
+│   ├── testing-examples.md                        # Test examples for callbacks, plugins (split from 22)
+│   └── adk-2.0-patterns.md                         # Collaborative agents, dynamic workflows (split from 25)
 ├── python/
 │   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
 │   ├── python-gotchas-for-java-developers.md      # 13 runtime traps Java devs hit
