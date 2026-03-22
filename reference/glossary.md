@@ -156,4 +156,4 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 ---
 
-See also: [Architecture overview](../index.md) | [01-request-lifecycle.md](../adk/01-request-lifecycle.md) for a full traced request | [02-when-to-build-what.md](../adk/02-when-to-build-what.md) for decision guide
+See also: [Architecture overview](../README.md) | [01-request-lifecycle.md](../adk/01-request-lifecycle.md) for a full traced request | [02-when-to-build-what.md](../adk/02-when-to-build-what.md) for decision guide
