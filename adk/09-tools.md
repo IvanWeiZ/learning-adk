@@ -4,57 +4,69 @@
 
 ## At a Glance
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      LlmAgent                           │
-│  tools=[func, BaseTool(), BaseToolset()]                │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                 Tool Resolution                         │
-│  func        → auto-wrapped as FunctionTool             │
-│  BaseTool()  → used as-is                               │
-│  BaseToolset → get_tools() called per LLM turn          │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│              FunctionDeclaration                        │
-│  schema sent to LLM → LLM emits FunctionCall           │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│              Tool Execution Pipeline                    │
-│  before_tool_cb → tool.run_async() → after_tool_cb     │
-│  (ToolContext injected)                                 │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│         FunctionResponse → back to LLM                  │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["LlmAgent\ntools=[func, BaseTool(), BaseToolset()]"]
+    B["Tool Resolution\nfunc → auto-wrapped as FunctionTool\nBaseTool() → used as-is\nBaseToolset → get_tools() called per LLM turn"]
+    C["FunctionDeclaration\nschema sent to LLM → LLM emits FunctionCall"]
+    D["Tool Execution Pipeline\nbefore_tool_cb → tool.run_async() → after_tool_cb\nToolContext injected"]
+    E["FunctionResponse → back to LLM"]
+    A --> B --> C --> D --> E
 ```
 
 Tools let agents take actions beyond text generation. The LLM requests a tool call; ADK dispatches, runs, and feeds results back. Tools attach to an agent via `LlmAgent(tools=[...])`. They can be Python callables (auto-wrapped in `FunctionTool`), `BaseTool` instances, or `BaseToolset` instances (dynamic collections of tools).
 
 ## Class Hierarchy
 
-```
-BaseTool (ABC)
-├── FunctionTool        — wraps plain Python functions
-├── AgentTool           — wraps a sub-agent as a tool
-├── LongRunningFunctionTool — async operations with polling
-├── GoogleSearchTool    — Google Search grounding
-└── VertexAiSearchTool  — Vertex AI Search
+```mermaid
+classDiagram
+    class BaseTool {
+        <<ABC>>
+    }
+    class FunctionTool {
+        wraps plain Python functions
+    }
+    class AgentTool {
+        wraps a sub-agent as a tool
+    }
+    class LongRunningFunctionTool {
+        async operations with polling
+    }
+    class GoogleSearchTool {
+        Google Search grounding
+    }
+    class VertexAiSearchTool {
+        Vertex AI Search
+    }
+    BaseTool <|-- FunctionTool
+    BaseTool <|-- AgentTool
+    BaseTool <|-- LongRunningFunctionTool
+    BaseTool <|-- GoogleSearchTool
+    BaseTool <|-- VertexAiSearchTool
 
-BaseToolset (ABC)
-├── McpToolset          — Model Context Protocol
-├── OpenAPIToolset      — REST APIs via OpenAPI spec
-├── LangchainTool       — LangChain tool wrapper
-├── CrewaiTool          — CrewAI tool wrapper
-└── BigQueryToolset     — BigQuery operations
+    class BaseToolset {
+        <<ABC>>
+    }
+    class McpToolset {
+        Model Context Protocol
+    }
+    class OpenAPIToolset {
+        REST APIs via OpenAPI spec
+    }
+    class LangchainTool {
+        LangChain tool wrapper
+    }
+    class CrewaiTool {
+        CrewAI tool wrapper
+    }
+    class BigQueryToolset {
+        BigQuery operations
+    }
+    BaseToolset <|-- McpToolset
+    BaseToolset <|-- OpenAPIToolset
+    BaseToolset <|-- LangchainTool
+    BaseToolset <|-- CrewaiTool
+    BaseToolset <|-- BigQueryToolset
 ```
 
 ## Key API
@@ -140,23 +152,29 @@ class ToolContext:
 
 ### Tool Invocation Lifecycle
 
-```
-LLM response contains FunctionCall(name="get_weather", args={"city": "Tokyo"})
-│
-├── before_tool_callback(tool, args, tool_context)
-│   ├── returns dict? → use as result, skip tool execution
-│   └── returns None? → continue
-│
-├── tool.run_async(args=args, tool_context=tool_context)
-│   ├── get_weather("Tokyo") → {temp: 18}
-│   └── on error: on_tool_error_callback (if set)
-│
-├── after_tool_callback(tool, args, tool_context, result)
-│   ├── returns dict? → replace result
-│   └── returns None? → keep original result
-│
-└── FunctionResponse event yielded
-    └── back to LLM in next loop iteration
+```mermaid
+flowchart TD
+    Start["LLM response contains FunctionCall\nname='get_weather', args={'city': 'Tokyo'}"]
+    CB1["before_tool_callback(tool, args, tool_context)"]
+    CB1Y["returns dict → use as result, skip tool execution"]
+    CB1N["returns None → continue"]
+    Run["tool.run_async(args=args, tool_context=tool_context)\nget_weather('Tokyo') → {temp: 18}"]
+    Err["on error: on_tool_error_callback (if set)"]
+    CB2["after_tool_callback(tool, args, tool_context, result)"]
+    CB2Y["returns dict → replace result"]
+    CB2N["returns None → keep original result"]
+    Done["FunctionResponse event yielded\nback to LLM in next loop iteration"]
+
+    Start --> CB1
+    CB1 -->|returns dict| CB1Y
+    CB1 -->|returns None| CB1N
+    CB1N --> Run
+    Run -->|on error| Err
+    Run --> CB2
+    CB2 -->|returns dict| CB2Y
+    CB2 -->|returns None| CB2N
+    CB2Y --> Done
+    CB2N --> Done
 ```
 
 ### Default Error Behavior
@@ -168,17 +186,15 @@ If your tool function raises an exception and no `on_tool_error_callback` is set
 
 ### Tool Resolution in LlmAgent
 
-```
-LlmAgent(tools=[...]) — resolution at each LLM turn
-│
-├── my_function (callable)
-│   └── auto-wrapped as FunctionTool(func=my_function)
-│
-├── GoogleSearchTool() (BaseTool instance)
-│   └── used as-is
-│
-└── my_toolset (BaseToolset instance)
-    └── BaseToolset.get_tools() called per LLM turn
+```mermaid
+flowchart TD
+    Agent["LlmAgent(tools=[...]) — resolution at each LLM turn"]
+    F1["my_function (callable)\nauto-wrapped as FunctionTool(func=my_function)"]
+    F2["GoogleSearchTool() (BaseTool instance)\nused as-is"]
+    F3["my_toolset (BaseToolset instance)\nBaseToolset.get_tools() called per LLM turn"]
+    Agent --> F1
+    Agent --> F2
+    Agent --> F3
 ```
 
 ```python
@@ -193,21 +209,14 @@ agent = LlmAgent(tools=[
 
 ### Long-Running Tools
 
-```
-LongRunningFunctionTool execution
-│
-├── 1. Tool returns operation ID
-│   └── signals this is a long-running operation
-│
-├── 2. Runner yields "paused" event
-│   └── event.long_running_tool_ids is set
-│       └── is_final_response() returns True
-│
-├── 3. Client polls for completion
-│   └── uses the operation ID to check status
-│
-└── 4. Next invocation: result provided as FunctionResponse
-    └── agent resumes with the completed result
+```mermaid
+flowchart TD
+    Start["LongRunningFunctionTool execution"]
+    S1["1. Tool returns operation ID\nsignals this is a long-running operation"]
+    S2["2. Runner yields 'paused' event\nevent.long_running_tool_ids is set\nis_final_response() returns True"]
+    S3["3. Client polls for completion\nuses the operation ID to check status"]
+    S4["4. Next invocation: result provided as FunctionResponse\nagent resumes with the completed result"]
+    Start --> S1 --> S2 --> S3 --> S4
 ```
 
 When `is_long_running=True`, the tool returns an operation ID. ADK:
@@ -338,25 +347,13 @@ agent = LlmAgent(
 
 MCP is an open protocol for connecting LLMs to external tools and data sources. ADK's `McpToolset` wraps MCP servers as a `BaseToolset`, making any MCP-compatible tool available to your agents.
 
-```
-How MCP fits into ADK:
-│
-├── MCP Server
-│      external process exposing tools via MCP protocol
-│      (e.g., filesystem, database, API, browser)
-│
-├── Connection
-│      StdioServerParameters  — launch server as subprocess (stdin/stdout)
-│      SseServerParams        — connect to running server via HTTP SSE
-│
-├── McpToolset
-│      wraps MCP connection as a BaseToolset
-│      get_tools() discovers available tools from the MCP server
-│      each tool becomes a BaseTool with auto-generated schema
-│
-└── LlmAgent
-       receives MCP tools alongside regular FunctionTools
-       LLM sees them identically — calls them the same way
+```mermaid
+flowchart TD
+    MCP["MCP Server\nexternal process exposing tools via MCP protocol\ne.g., filesystem, database, API, browser"]
+    Conn["Connection\nStdioServerParameters — launch server as subprocess (stdin/stdout)\nSseServerParams — connect to running server via HTTP SSE"]
+    Toolset["McpToolset\nwraps MCP connection as a BaseToolset\nget_tools() discovers available tools from the MCP server\neach tool becomes a BaseTool with auto-generated schema"]
+    Agent["LlmAgent\nreceives MCP tools alongside regular FunctionTools\nLLM sees them identically — calls them the same way"]
+    MCP --> Conn --> Toolset --> Agent
 ```
 
 ```python

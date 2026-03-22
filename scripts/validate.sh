@@ -138,14 +138,21 @@ url_in_code=0
 for f in adk/*.md python/*.md reference/*.md; do
   [ -f "$f" ] || continue
   in_code=false
+  in_mermaid=false
   lineno=0
   while IFS= read -r line; do
     lineno=$((lineno + 1))
     if echo "$line" | grep -q '^```'; then
-      if [ "$in_code" = true ]; then in_code=false; else in_code=true; fi
+      if [ "$in_code" = true ]; then
+        in_code=false
+        in_mermaid=false
+      else
+        in_code=true
+        if echo "$line" | grep -q '^```mermaid'; then in_mermaid=true; fi
+      fi
       continue
     fi
-    if [ "$in_code" = true ] && echo "$line" | grep -q 'https://'; then
+    if [ "$in_code" = true ] && [ "$in_mermaid" = false ] && echo "$line" | grep -q 'https://'; then
       if echo "$line" | grep -q '# Source:'; then continue; fi
       warn "$f:$lineno — URL inside code block not clickable"
       url_in_code=$((url_in_code + 1))

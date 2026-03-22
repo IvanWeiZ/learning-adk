@@ -4,28 +4,12 @@
 
 ## At a Glance
 
-```
-┌──────────────────────────────────────────┐
-│             BaseAgent                     │
-│  abstract contract:                       │
-│    name, sub_agents, callbacks            │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│             Concrete Agents               │
-│  LlmAgent        — calls an LLM in loop  │
-│  LoopAgent        — repeat until done     │
-│  ParallelAgent    — concurrent sub-agents │
-│  SequentialAgent  — one after another     │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│             LlmAgent Flows                │
-│  SingleFlow  — no sub-agents              │
-│  AutoFlow    — has sub-agents (routing)   │
-└──────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["BaseAgent\nabstract contract:\nname, sub_agents, callbacks"]
+    B["Concrete Agents\nLlmAgent — calls an LLM in loop\nLoopAgent — repeat until done\nParallelAgent — concurrent sub-agents\nSequentialAgent — one after another"]
+    C["LlmAgent Flows\nSingleFlow — no sub-agents\nAutoFlow — has sub-agents (routing)"]
+    A --> B --> C
 ```
 
 Agents define AI behavior — model, tools, system prompt, sub-agents — but hold no conversation state (that lives in `Session`). `BaseAgent` provides the abstract contract; `LlmAgent` (aliased as `Agent`) is the primary implementation that calls an LLM in a reason-act loop. Composition agents (`LoopAgent`, `ParallelAgent`, `SequentialAgent`) orchestrate sub-agents without calling an LLM themselves.
@@ -34,12 +18,17 @@ Agents define AI behavior — model, tools, system prompt, sub-agents — but ho
 
 ## Class Hierarchy
 
-```
-BaseAgent (base_agent.py) — abstract, common contract
- ├── LlmAgent (llm_agent.py) — primary: calls an LLM in a loop
- ├── LoopAgent — runs sub-agents in a loop until done
- ├── ParallelAgent — runs sub-agents concurrently, merges results
- └── SequentialAgent — runs sub-agents one after another
+```mermaid
+classDiagram
+    class BaseAgent["BaseAgent (base_agent.py)\nabstract, common contract"]
+    class LlmAgent["LlmAgent (llm_agent.py)\nprimary: calls an LLM in a loop"]
+    class LoopAgent["LoopAgent\nruns sub-agents in a loop until done"]
+    class ParallelAgent["ParallelAgent\nruns sub-agents concurrently, merges results"]
+    class SequentialAgent["SequentialAgent\nruns sub-agents one after another"]
+    BaseAgent <|-- LlmAgent
+    BaseAgent <|-- LoopAgent
+    BaseAgent <|-- ParallelAgent
+    BaseAgent <|-- SequentialAgent
 ```
 
 `Agent` is a type alias for `LlmAgent`.
@@ -135,16 +124,15 @@ async def _run_async_impl(ctx):
 
 ADK auto-selects the flow based on three conditions:
 
-```
-Which flow does LlmAgent use?
-│
-├─ disallow_transfer_to_parent = True?
-│   └─ AND disallow_transfer_to_peers = True?
-│       └─ AND sub_agents is empty?
-│           ├── Yes to ALL three ──► SingleFlow (pure tool-use loop, no routing)
-│           └── No to ANY ─────────► AutoFlow  (adds transfer_to_agent support)
-│
-└─ Default (no flags set, no sub_agents) ──► AutoFlow
+```mermaid
+flowchart TD
+    Start["Which flow does LlmAgent use?"]
+    Q1{"disallow_transfer_to_parent = True\nAND disallow_transfer_to_peers = True\nAND sub_agents is empty?"}
+    SingleFlow["SingleFlow\npure tool-use loop, no routing"]
+    AutoFlow["AutoFlow\nadds transfer_to_agent support"]
+    Start --> Q1
+    Q1 -- "Yes to ALL three" --> SingleFlow
+    Q1 -- "No to ANY\n(or default: no flags set)" --> AutoFlow
 ```
 
 `AutoFlow` extends `SingleFlow` — it adds agent transfer/delegation on top of the basic reason-act loop.
@@ -228,23 +216,11 @@ def on_tool_error_callback(
 
 ### InvocationContext — The Shared Thread
 
-```
-┌──────────────────────────────────────────┐
-│          InvocationContext                │
-│  agent          → current BaseAgent       │
-│  session        → Session (history+state) │
-│  invocation_id  → unique ID for this run  │
-│  branch         → routing path            │
-│  end_invocation → bool: stop invocation   │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│          Injected Services                │
-│  session_service    artifact_service      │
-│  memory_service     credential_service    │
-│  plugin_manager                           │
-└──────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["InvocationContext\nagent → current BaseAgent\nsession → Session (history+state)\ninvocation_id → unique ID for this run\nbranch → routing path\nend_invocation → bool: stop invocation"]
+    B["Injected Services\nsession_service · artifact_service\nmemory_service · credential_service\nplugin_manager"]
+    A --> B
 ```
 
 Created by `Runner`, flows through every layer:
@@ -269,10 +245,13 @@ Sub-agent calls create a child context via `model_copy()`. Branch and session ar
 
 ### Agent Trees and Transfer
 
-```
-root_agent (LlmAgent)
-├── search_agent (LlmAgent + GoogleSearchTool)
-└── write_agent (LlmAgent, no tools)
+```mermaid
+flowchart TD
+    root["root_agent (LlmAgent)"]
+    search["search_agent\n(LlmAgent + GoogleSearchTool)"]
+    write["write_agent\n(LlmAgent, no tools)"]
+    root --> search
+    root --> write
 ```
 
 Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_to_agent`.

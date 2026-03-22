@@ -96,18 +96,18 @@ See also: [python-for-adk-learning-plan.md](../python/python-for-adk-learning-pl
 
 ## Concurrency
 
-| Java | Python | Notes |
-|---|---|---|
-| `CompletableFuture<T>` | `asyncio.Task` / `await` | ADK is async-first. → [asyncio deep dive](../python/python-asyncio-deep-dive.md) |
-| `ExecutorService` | `asyncio.get_event_loop()` | Single-threaded event loop; no thread pool needed for I/O. |
-| `Future.get()` | `await coroutine` | Never block on a coroutine; always `await`. |
-| `CompletableFuture.allOf()` | `asyncio.gather()` | Run multiple coroutines concurrently. |
-| `synchronized` | `asyncio.Lock()` | For async code. `threading.Lock` for threaded code (rare in ADK). |
-| `Thread` | `asyncio.create_task()` | Tasks are lightweight; no OS threads. |
-| `@Async` (Spring) | `async def` | Native language keyword. |
-| `Callable<T>` | `Callable[..., Awaitable[T]]` | Or just `async def` function. |
-| `volatile` | No equivalent | GIL provides basic visibility; use `asyncio` primitives. |
-| Thread pool for CPU work | `asyncio.to_thread()` | Offload CPU-bound work from the event loop. |
+| Java                        | Python                        | Notes                                                                            |
+| --------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| `CompletableFuture<T>`      | `asyncio.Task` / `await`      | ADK is async-first. → [asyncio deep dive](../python/python-asyncio-deep-dive.md) |
+| `ExecutorService`           | `asyncio.get_event_loop()`    | Single-threaded event loop; no thread pool needed for I/O.                       |
+| `Future.get()`              | `await coroutine`             | Never block on a coroutine; always `await`.                                      |
+| `CompletableFuture.allOf()` | `asyncio.gather()`            | Run multiple coroutines concurrently.                                            |
+| `synchronized`              | `asyncio.Lock()`              | For async code. `threading.Lock` for threaded code (rare in ADK).                |
+| `Thread`                    | `asyncio.create_task()`       | Tasks are lightweight; no OS threads.                                            |
+| `@Async` (Spring)           | `async def`                   | Native language keyword.                                                         |
+| `Callable<T>`               | `Callable[..., Awaitable[T]]` | Or just `async def` function.                                                    |
+| `volatile`                  | No equivalent                 | GIL provides basic visibility; use `asyncio` primitives.                         |
+| Thread pool for CPU work    | `asyncio.to_thread()`         | Offload CPU-bound work from the event loop.                                      |
 
 See [17-concurrency.md](../adk/17-concurrency.md) for ADK-specific concurrency patterns.
 

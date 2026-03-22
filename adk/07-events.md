@@ -4,32 +4,30 @@
 
 ## At a Glance
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Event Lifecycle                       │
-│  User msg → Runner → LLM → Tool → LLM → Final response │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Session.events []                       │
-│  Event(user) → Event(func_call) → Event(func_response)  │
-│             → Event(final, is_final_response=True)       │
-│                                                         │
-│  All events flow through as an ordered list              │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Event Lifecycle\nUser msg → Runner → LLM → Tool → LLM → Final response"]
+    B["Session.events []\nEvent(user) → Event(func_call) → Event(func_response)\n→ Event(final, is_final_response=True)\n\nAll events flow through as an ordered list"]
+    A --> B
 ```
 
 `Event` is the universal data type in ADK. Every action — a user message, an LLM reply, a tool call, a tool result, or an agent transfer — produces an `Event`. A `Session` is simply an ordered list of Events. Each Event carries identity metadata, a content payload (text, function calls, function responses), and an `EventActions` envelope for side-effects like state mutations, agent transfers, and artifact uploads.
 
 ## Class Hierarchy
 
-```
-pydantic.BaseModel
- ↑
- LlmResponse (models/llm_response.py — contains content: Optional[types.Content])
- ↑
- Event (events/event.py — adds author, invocation_id, actions, branch)
+```mermaid
+classDiagram
+    class `pydantic.BaseModel`
+    class LlmResponse {
+        models/llm_response.py
+        content: Optional[types.Content]
+    }
+    class Event {
+        events/event.py
+        author, invocation_id, actions, branch
+    }
+    `pydantic.BaseModel` <|-- LlmResponse
+    LlmResponse <|-- Event
 ```
 
 `Event` extends `LlmResponse` (contains `content: Optional[types.Content]`). Carries text, function calls, function responses, blobs, or thoughts.
@@ -150,20 +148,14 @@ A `Session` is an ordered list of Events.
 
 A tool-calling agent produces 4 events for one user turn:
 
-```
-User sends: "What's the weather in Tokyo?"
-│
-├── evt-001 — Event(author="user", content=user_msg)
-│   └── persisted to session (not yielded to caller)
-│
-├── evt-002 — Event(author="weather_agent", content=FunctionCall)
-│   └── LLM decides to call get_weather tool (yielded)
-│
-├── evt-003 — Event(author="weather_agent", content=FunctionResponse)
-│   └── tool executes, returns weather data (yielded)
-│
-└── evt-004 — Event(author="weather_agent", content=final_text)
-    └── is_final_response()=True — render this to user (yielded)
+```mermaid
+flowchart TD
+    U["User sends: 'What is the weather in Tokyo?'"]
+    E1["evt-001: Event(author='user', content=user_msg)\npersisted to session — not yielded to caller"]
+    E2["evt-002: Event(author='weather_agent', content=FunctionCall)\nLLM decides to call get_weather tool — yielded"]
+    E3["evt-003: Event(author='weather_agent', content=FunctionResponse)\ntool executes, returns weather data — yielded"]
+    E4["evt-004: Event(author='weather_agent', content=final_text)\nis_final_response()=True — render this to user — yielded"]
+    U --> E1 --> E2 --> E3 --> E4
 ```
 
 - **evt-001**: Runner creates the user event and appends it to the session, but does not yield it.
@@ -223,26 +215,15 @@ write_agent (branch="write_agent"):
 
 ### How Events Flow End-to-End
 
-```
-Runner.run_async(user_id, session_id, new_message)
-│
-├── 1. User sends message
-│   └── Runner creates Event(author='user', content=user_message)
-│       └── appended to Session.events
-│
-├── 2. LLM responds with text
-│   └── Flow creates Event(author=agent.name, content=llm_text)
-│       └── appended to Session.events
-│
-├── 3. LLM calls a tool
-│   └── Flow creates Event(author=agent.name, content=[FunctionCall(...)])
-│       └── tool executes
-│
-├── 4. Tool returns result
-│   └── Flow creates Event(author=agent.name, content=[FunctionResponse(...)])
-│       └── appended to Session.events
-│
-└── 5. All events stream back to caller via Runner.run_async()
+```mermaid
+flowchart TD
+    Start["Runner.run_async(user_id, session_id, new_message)"]
+    S1["1. User sends message\nRunner creates Event(author='user', content=user_message)\nappended to Session.events"]
+    S2["2. LLM responds with text\nFlow creates Event(author=agent.name, content=llm_text)\nappended to Session.events"]
+    S3["3. LLM calls a tool\nFlow creates Event(author=agent.name, content=[FunctionCall(...)])\ntool executes"]
+    S4["4. Tool returns result\nFlow creates Event(author=agent.name, content=[FunctionResponse(...)])\nappended to Session.events"]
+    S5["5. All events stream back to caller via Runner.run_async()"]
+    Start --> S1 --> S2 --> S3 --> S4 --> S5
 ```
 
 ## Examples

@@ -4,34 +4,27 @@
 
 ## At a Glance
 
-```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                                  Session                                     │
-│                                                                              │
-│  state: dict              events: list[Event]           metadata             │
-│  ┌──────────────────┐     ┌──────────────────────┐     ┌──────────────────┐  │
-│  │ key-value store  │     │ ordered conversation │     │ id               │  │
-│  │ scoped by:       │     │ history — every msg, │     │ app_name         │  │
-│  │  session (no pfx)│     │ tool call, response  │     │ user_id          │  │
-│  │  user:  (cross)  │     │ is an Event object   │     │ create/update    │  │
-│  │  app:   (global) │     │                      │     │ timestamps       │  │
-│  │  temp:  (ephemer)│     │                      │     │                  │  │
-│  └──────────────────┘     └──────────────────────┘     └──────────────────┘  │
-└───────────────────────────────────┬───────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                        BaseSessionService (CRUD)                             │
-│                                                                              │
-│  create_session / get_session / list_sessions / delete_session                │
-│  append_event — applies state_delta atomically, persists event               │
-│                                                                               │
-│  Implementations:                                                             │
-│  ├── InMemorySessionService      dev / tests — no persistence, fast           │
-│  ├── SqliteSessionService        local single-process persistence             │
-│  ├── DatabaseSessionService      production — SQLAlchemy, row-level locking   │
-│  └── VertexAiSessionService      GCP managed — Vertex AI Agent Engine         │
-└───────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Session["Session
+    ──────────────────────────────────────────────────
+    state: dict                 events: list[Event]           metadata
+    key-value store             ordered conversation          id
+    scoped by:                  history — every msg,          app_name
+    session (no pfx)            tool call, response           user_id
+    user: (cross-session)       is an Event object            create/update timestamps
+    app: (global)
+    temp: (ephemeral)"]
+    Service["BaseSessionService (CRUD)
+    ──────────────────────────────────────────────────
+    create_session / get_session / list_sessions / delete_session
+    append_event — applies state_delta atomically, persists event
+
+    InMemorySessionService    dev / tests — no persistence, fast
+    SqliteSessionService      local single-process persistence
+    DatabaseSessionService    production — SQLAlchemy, row-level locking
+    VertexAiSessionService    GCP managed — Vertex AI Agent Engine"]
+    Session --> Service
 ```
 
 A `Session` is one conversation thread. It stores the full ordered list of `Event`s (conversation history) and a mutable `state` dict (arbitrary key-value data persisted across turns). `BaseSessionService` provides CRUD. Agents access sessions only through `InvocationContext`.
@@ -40,12 +33,27 @@ A `Session` is one conversation thread. It stores the full ordered list of `Even
 
 ## Class Hierarchy
 
-```
-BaseSessionService (ABC)
-├── InMemorySessionService    ─ Python dict, dev/tests
-├── SqliteSessionService      ─ SQLite file, local persistence
-├── DatabaseSessionService    ─ SQLAlchemy, production databases
-└── VertexAiSessionService    ─ Vertex AI managed, cloud deployment
+```mermaid
+classDiagram
+    class BaseSessionService {
+        <<ABC>>
+    }
+    class InMemorySessionService {
+        Python dict, dev/tests
+    }
+    class SqliteSessionService {
+        SQLite file, local persistence
+    }
+    class DatabaseSessionService {
+        SQLAlchemy, production databases
+    }
+    class VertexAiSessionService {
+        Vertex AI managed, cloud deployment
+    }
+    BaseSessionService <|-- InMemorySessionService
+    BaseSessionService <|-- SqliteSessionService
+    BaseSessionService <|-- DatabaseSessionService
+    BaseSessionService <|-- VertexAiSessionService
 ```
 
 ---
@@ -130,61 +138,39 @@ For selection guidance (pros/cons, decision tree), see [20-best-practices.md](20
 
 ### How Runner Uses Sessions
 
-```
-Runner.run_async(user_id, session_id, new_message)
-│
-├── session_service.get_session(app_name, user_id, session_id)
-│   └── If not found: raise SessionNotFoundError (or auto-create if configured)
-│
-├── Create user message Event, session_service.append_event(session, user_event)
-│
-├── agent.run_async(ctx) → yields Events
-│
-├── For each event:
-│   └── session_service.append_event(session, event)
-│       ├── applies state_delta
-│       └── persists to storage
-│
-└── (Optional) compaction: summarize old events, update session
+```mermaid
+flowchart TD
+    Start["Runner.run_async(user_id, session_id, new_message)"]
+    S1["session_service.get_session(app_name, user_id, session_id)\nIf not found: raise SessionNotFoundError\nor auto-create if configured"]
+    S2["Create user message Event\nsession_service.append_event(session, user_event)"]
+    S3["agent.run_async(ctx) → yields Events"]
+    S4["For each event:\nsession_service.append_event(session, event)\napplies state_delta\npersists to storage"]
+    S5["(Optional) compaction: summarize old events, update session"]
+    Start --> S1 --> S2 --> S3 --> S4 --> S5
 ```
 
 ### State Delta Lifecycle
 
-```
-ctx.state["city"] = "Tokyo"
-│
-├── State object updates immediately
-│   ├── State._delta["city"] = "Tokyo"
-│   └── State._value["city"] = "Tokyo" (readable right away)
-│
-├── event yielded by agent
-│   └── event.actions.state_delta = {"city": "Tokyo"}
-│
-└── session_service.append_event(session, event)
-    ├── session.state["city"] = "Tokyo" (committed)
-    └── database/memory store updated
+```mermaid
+flowchart TD
+    S0["ctx.state['city'] = 'Tokyo'"]
+    S1["State object updates immediately\nState._delta['city'] = 'Tokyo'\nState._value['city'] = 'Tokyo' — readable right away"]
+    S2["event yielded by agent\nevent.actions.state_delta = {'city': 'Tokyo'}"]
+    S3["session_service.append_event(session, event)\nsession.state['city'] = 'Tokyo' — committed\ndatabase/memory store updated"]
+    S0 --> S1 --> S2 --> S3
 ```
 
 ### State Scope Visual
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ app:config — Shared by ALL users, ALL sessions              │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ user:preferences — Shared across ALL sessions         │  │
-│  │   for this user                                       │  │
-│  │                                                       │  │
-│  │  ┌─────────────────────────────────────────────────┐  │  │
-│  │  │ count (session-scoped) — THIS session only      │  │  │
-│  │  │                                                 │  │  │
-│  │  │  ┌───────────────────────────────────────────┐  │  │  │
-│  │  │  │ temp:scratch — THIS invocation only       │  │  │  │
-│  │  │  │   never persisted                         │  │  │  │
-│  │  │  └───────────────────────────────────────────┘  │  │  │
-│  │  └─────────────────────────────────────────────────┘  │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph AppScope["app:config — Shared by ALL users, ALL sessions"]
+        subgraph UserScope["user:preferences — Shared across ALL sessions for this user"]
+            subgraph SessionScope["count (session-scoped) — THIS session only"]
+                TempScope["temp:scratch — THIS invocation only\nnever persisted"]
+            end
+        end
+    end
 ```
 
 ---

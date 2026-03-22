@@ -4,33 +4,13 @@
 
 ## At a Glance
 
-```
-┌──────────────────────────────────────────┐
-│          Runner.run_async()               │
-│  1. fetch/create Session                  │
-│  2. build InvocationContext               │
-│  3. call agent.run_async()                │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│          Agent.run_async()                │
-│  yields Event stream                      │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│          Event Handling                   │
-│  persist each event to session            │
-│  yield each event to caller               │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│          Post-Invocation                  │
-│  compaction (optional)                    │
-│  close plugin contexts                    │
-└──────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Runner.run_async()\n1. fetch/create Session\n2. build InvocationContext\n3. call agent.run_async()"]
+    B["Agent.run_async()\nyields Event stream"]
+    C["Event Handling\npersist each event to session\nyield each event to caller"]
+    D["Post-Invocation\ncompaction (optional)\nclose plugin contexts"]
+    A --> B --> C --> D
 ```
 
 `Runner` owns the lifecycle of a single user request: fetch or create a session, build an invocation context, call the root agent, stream events back to the caller, persist them, and optionally compact old events. Runner is stateless — all state lives in `Session` — so one Runner handles many concurrent invocations safely.
@@ -184,24 +164,12 @@ Provide via `App` (preferred) or deprecated `plugins=` on Runner.
 
 ### Event Compaction
 
-```
-┌──────────────────────────────────────────┐
-│       Sliding Window Compaction           │
-│  inv 1, inv 2, inv 3, inv 4, inv 5       │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│       Old Invocations (inv 1, inv 2)      │
-│  summarized into a single compacted Event │
-└──────────────────┬───────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────┐
-│       Recent Invocations                  │
-│  inv 3, inv 4, inv 5 kept verbatim        │
-│  (overlap_size controls how many)         │
-└──────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Sliding Window Compaction\ninv 1, inv 2, inv 3, inv 4, inv 5"]
+    B["Old Invocations (inv 1, inv 2)\nsummarized into a single compacted Event"]
+    C["Recent Invocations\ninv 3, inv 4, inv 5 kept verbatim\n(overlap_size controls how many)"]
+    A --> B --> C
 ```
 
 Post-invocation **sliding window compaction** (if configured):

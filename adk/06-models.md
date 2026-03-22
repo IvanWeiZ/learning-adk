@@ -12,11 +12,15 @@ Thin adapter layer between ADK's internal types (`LlmRequest`, `LlmResponse`) an
 
 ## Class Hierarchy
 
-```
-BaseLlm (base_llm.py) — abstract interface
- ├── Gemini — Gemini models via google-genai SDK (primary, in google_llm.py)
- ├── AnthropicLlm — Claude models via anthropic SDK (optional dep)
- └── LiteLlm — 100+ providers via litellm (optional dep)
+```mermaid
+classDiagram
+    class BaseLlm["BaseLlm (base_llm.py)\nabstract interface"]
+    class Gemini["Gemini\nGemini models via google-genai SDK\n(primary, in google_llm.py)"]
+    class AnthropicLlm["AnthropicLlm\nClaude models via anthropic SDK\n(optional dep)"]
+    class LiteLlm["LiteLlm\n100+ providers via litellm\n(optional dep)"]
+    BaseLlm <|-- Gemini
+    BaseLlm <|-- AnthropicLlm
+    BaseLlm <|-- LiteLlm
 ```
 
 ---
@@ -67,20 +71,24 @@ The final `partial=False` chunk is a complete aggregation. Use it for storage; p
 
 Function calls, thoughts, and blobs can also arrive as partial chunks.
 
-```
-Streaming Timeline — what goes where:
+```mermaid
+flowchart LR
+    c1["chunk 1 (partial)\n&quot;The weather&quot;"]
+    c2["chunk 2 (partial)\n&quot; in Tokyo&quot;"]
+    c3["chunk 3 (partial)\n&quot; is 18°C&quot;"]
+    final["final (partial=False)\nfull text"]
+    ui1["stream to UI\n(real-time)"]
+    ui2["stream to UI\n(real-time)"]
+    ui3["stream to UI\n(real-time)"]
+    persist["persist to session\n(source of truth)"]
 
- chunk 1 (partial) chunk 2 (partial) chunk 3 (partial) final (partial=False)
- ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐
- │ "The weather" │ │ " in Tokyo" │ │ " is 18°C" │ │ full text │
- └───────┬───────┘ └───────┬───────┘ └───────┬───────┘ └─────────┬─────────┘
- │ │ │ │
- ▼ ▼ ▼ ▼
- stream to UI stream to UI stream to UI persist to session
- (real-time) (real-time) (real-time) (source of truth)
-
- partial=True events are FREE — append_event() skips them
+    c1 --> ui1
+    c2 --> ui2
+    c3 --> ui3
+    final --> persist
 ```
+
+`partial=True` events are FREE — `append_event()` skips them.
 
 ---
 
@@ -100,33 +108,27 @@ llm = LLMRegistry.new_llm('gemini-2.5-flash')
 
 `resolve()` is `@lru_cache(maxsize=32)` — repeated resolution of the same model name is fast.
 
-```
-Model string resolution:
+```mermaid
+flowchart TD
+    registry["LLMRegistry.resolve()"]
 
- "gemini-2.5-flash"
- │
- ▼ LLMRegistry.resolve()
- Check registered adapters:
- Gemini.supported_models() → ["gemini-.*"] ← MATCH
- │
- ▼
- Return Gemini(model="gemini-2.5-flash")
+    gemini_in["&quot;gemini-2.5-flash&quot;"]
+    gemini_match["Gemini.supported_models()\n→ [&quot;gemini-.*&quot;] MATCH"]
+    gemini_out["Return Gemini(model=&quot;gemini-2.5-flash&quot;)"]
 
- "claude-sonnet-4-5"
- │
- ▼
- AnthropicLlm.supported_models() → ["claude-.*"] ← MATCH
- │
- ▼
- Return AnthropicLlm(model="claude-sonnet-4-5")
+    claude_in["&quot;claude-sonnet-4-5&quot;"]
+    claude_match["AnthropicLlm.supported_models()\n→ [&quot;claude-.*&quot;] MATCH"]
+    claude_out["Return AnthropicLlm(model=&quot;claude-sonnet-4-5&quot;)"]
 
- "openai/gpt-4o"
- │
- ▼
- LiteLlm.supported_models() → [".+/.+"] ← MATCH (provider/model format)
- │
- ▼
- Return LiteLlm(model="openai/gpt-4o")
+    openai_in["&quot;openai/gpt-4o&quot;"]
+    openai_match["LiteLlm.supported_models()\n→ [&quot;.+/.+&quot;] MATCH\n(provider/model format)"]
+    openai_out["Return LiteLlm(model=&quot;openai/gpt-4o&quot;)"]
+
+    gemini_in --> registry --> gemini_match --> gemini_out
+    claude_in --> registry
+    registry --> claude_match --> claude_out
+    openai_in --> registry
+    registry --> openai_match --> openai_out
 ```
 
 **Error messages are helpful:**
