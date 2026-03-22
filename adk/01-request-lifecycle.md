@@ -6,31 +6,32 @@ A detailed trace of one user message through every ADK layer — from `run_async
 
 ## At a Glance
 
-```mermaid
-flowchart TD
-    Entry["runner.run_async(user_id, session_id, new_message)"]
-
-    Runner["Runner\nsession bookkeeping: get/create session,\nappend_event for each event"]
-
-    BaseAgent["BaseAgent\nbefore_agent_callback → run agent → after_agent_callback"]
-
-    LlmAgent["LlmAgent\ndelegates to BaseLlmFlow, saves output_key to state"]
-
-    subgraph Flow["BaseLlmFlow (reason-act loop)"]
-        Pre["1. PREPROCESS\nbuild LlmRequest (instructions, history, tools)"]
-        Call["2. CALL LLM\nmodel.generate_content_async(request, stream=...)"]
-        Post["3. POSTPROCESS\nexecute tools, handle agent transfer"]
-        Loop{{"4. LOOP?"}}
-        BackToPre["→ go to step 1"]
-        Exit["yield Event, EXIT"]
-
-        Pre --> Call --> Post --> Loop
-        Loop -->|"function calls found"| BackToPre
-        BackToPre --> Pre
-        Loop -->|"final text response"| Exit
-    end
-
-    Entry --> Runner --> BaseAgent --> LlmAgent --> Flow
+```
+runner.run_async(user_id, session_id, new_message)
+│
+├── Runner
+│   session bookkeeping: get/create session, append_event for each event
+│
+├── BaseAgent
+│   before_agent_callback → run agent → after_agent_callback
+│
+├── LlmAgent
+│   delegates to BaseLlmFlow, saves output_key to state
+│
+└── BaseLlmFlow (reason-act loop)
+    │
+    ├── 1. PREPROCESS
+    │      build LlmRequest (instructions, history, tools)
+    │
+    ├── 2. CALL LLM
+    │      model.generate_content_async(request, stream=...)
+    │
+    ├── 3. POSTPROCESS
+    │      execute tools, handle agent transfer
+    │
+    └── 4. LOOP?
+           function calls found → go to step 1
+           final text response  → yield Event, EXIT
 ```
 
 Trace of one user message from `run_async()` to the final streamed event. Five layers participate: Runner handles session bookkeeping (load, persist every event), BaseAgent runs before/after callbacks, LlmAgent delegates to the flow and saves `output_key` if set, BaseLlmFlow runs the reason-act loop (build request, call LLM, dispatch tools, repeat), and SessionSvc commits state atomically on every `append_event()`. The flow loops until the LLM returns no function calls. A tool-using turn typically loops 2x: tool call, then final answer.
@@ -56,57 +57,66 @@ Trace of one user message from `run_async()` to the final streamed event. Five l
 
 ### Layer Diagram
 
-```mermaid
-flowchart TD
-    Caller["CALLER\nrunner.run_async(user_id, session_id, new_message)"]
-
-    subgraph RunnerBox["RUNNER  runners.py"]
-        R1["get_session()  ← SESSION READ"]
-        R2["[create_session()]  ← if missing"]
-        R3["append_event(user_msg)  ← SESSION WRITE"]
-        R4["[plugin.before_run()]  ← plugin early-exit"]
-        R5["agent.run_async(ctx) → yields Events back"]
-        R6["[compaction plugin]  ← optional post-run"]
-        R1 --> R2 --> R3 --> R4 --> R5 --> R6
-    end
-
-    subgraph BaseAgentBox["BASE AGENT  base_agent.py"]
-        BA1["before_agent_callback\nNone: continue | Content: skip agent"]
-        BA2["_run_async_impl(ctx) → delegates to subclass"]
-        BA3["after_agent_callback\nNone: done | Content: extra event"]
-        BA1 --> BA2 --> BA3
-    end
-
-    subgraph LlmAgentBox["LLM AGENT  llm_agent.py"]
-        LA1["_llm_flow.run_async(ctx)"]
-        LA2["__maybe_save_output_to_state(event)  ← if output_key set"]
-        LA1 --> LA2
-    end
-
-    subgraph FlowBox["BASE LLM FLOW  base_llm_flow.py"]
-        subgraph LoopBox["LOOP until no function calls"]
-            F1["preprocess → build LlmRequest\n← SESSION READ: history"]
-            F2["before_model_callback\nNone: call LLM | LlmResponse: skip"]
-            F3["LLM call  ← on error: on_model_error_callback"]
-            F4["after_model_callback\nNone: use it | LlmResponse: swap"]
-            F5["postprocess → yield Events"]
-            FCheck{{"function call?"}}
-            F6["before_tool_callback\nNone: run | dict: skip tool"]
-            F7["tool.run_async()  ← on error: on_tool_error_callback"]
-            F8["after_tool_callback\nNone: keep | dict: replace result"]
-            F9["yield tool result Event"]
-            F1 --> F2 --> F3 --> F4 --> F5 --> FCheck
-            FCheck -->|yes| F6 --> F7 --> F8 --> F9 --> F1
-            FCheck -->|no| FlowEnd["exit loop"]
-        end
-    end
-
-    subgraph GeminiBox["GEMINI LLM  models/google_llm.py"]
-        G1["generate_content_async(LlmRequest)\n→ AsyncIterator[LlmResponse]"]
-    end
-
-    Caller --> RunnerBox --> BaseAgentBox --> LlmAgentBox --> FlowBox
-    F3 <-->|"LlmRequest / LlmResponse"| GeminiBox
+```
+CALLER
+  │  runner.run_async(user_id, session_id, new_message)
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ RUNNER [runners.py]                                               │
+│                                                                   │
+│   get_session()                              ← SESSION READ       │
+│   [create_session()]                         ← if missing         │
+│   append_event(user_msg)                     ← SESSION WRITE      │
+│   [plugin.before_run()]                      ← plugin early-exit  │
+│   agent.run_async(ctx) → yields Events back                      │
+│   [compaction plugin]                        ← optional post-run  │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ BASE AGENT [base_agent.py]                                        │
+│                                                                   │
+│   before_agent_callback → None: continue | Content: skip agent    │
+│   _run_async_impl(ctx)  → delegates to subclass                  │
+│   after_agent_callback  → None: done    | Content: extra event    │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ LLM AGENT [llm_agent.py]                                          │
+│                                                                   │
+│   _llm_flow.run_async(ctx)                                        │
+│   __maybe_save_output_to_state(event)        ← if output_key set │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ BASE LLM FLOW [base_llm_flow.py]                                  │
+│                                                                   │
+│   ┌─ LOOP until no function calls ─────────────────────────────┐  │
+│   │                                                             │  │
+│   │  preprocess → build LlmRequest (SESSION READ: history)      │  │
+│   │                                                             │  │
+│   │  before_model_callback → None: call LLM | LlmResponse: skip│  │
+│   │  LLM call              ← on error: on_model_error_callback  │  │
+│   │  after_model_callback  → None: use it   | LlmResponse: swap│  │
+│   │                                                             │  │
+│   │  postprocess → yield Events                                 │  │
+│   │                                                             │  │
+│   │  if function call:                                          │  │
+│   │    before_tool_callback → None: run  | dict: skip tool      │  │
+│   │    tool.run_async()     ← on error: on_tool_error_callback  │  │
+│   │    after_tool_callback  → None: keep | dict: replace result │  │
+│   │    yield tool result Event                                  │  │
+│   │                                                             │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ GEMINI LLM [models/google_llm.py]                                 │
+│   generate_content_async(LlmRequest) → AsyncIterator[LlmResponse] │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ### The Weather Agent
@@ -149,19 +159,26 @@ The rest of this file traces exactly what happens inside ADK when this code runs
 
 `runner.run_async()` yields these events for the Tokyo weather query:
 
-```mermaid
-flowchart TD
-    Start(["runner.run_async() yields:"])
-
-    E1["1. Tool Call\nLLM asks to call get_weather(city='Tokyo')\nis_final_response(): False"]
-
-    E2["2. Tool Result\nget_weather returned {temp_c: 18, condition: 'Partly cloudy'}\nis_final_response(): False"]
-
-    E3["3–5. Streaming Chunks  partial=True\n'The weather in Tokyo'\n' is currently 18°C'\n' with partly cloudy skies.'\nis_final_response(): False — don't render, they're incremental"]
-
-    E4["6. Final Response  partial=False\n'The weather in Tokyo is currently 18°C with partly cloudy skies.'\nis_final_response(): True  ← this is the one to render"]
-
-    Start --> E1 --> E2 --> E3 --> E4
+```
+Events yielded by runner.run_async():
+│
+├── 1. Tool Call
+│      LLM asks to call get_weather(city="Tokyo")
+│      is_final_response(): False
+│
+├── 2. Tool Result
+│      get_weather returned {temp_c: 18, condition: "Partly cloudy"}
+│      is_final_response(): False
+│
+├── 3-5. Streaming Chunks (partial=True)
+│      "The weather in Tokyo"
+│      " is currently 18°C"
+│      " with partly cloudy skies."
+│      is_final_response(): False — don't render these, they're incremental
+│
+└── 6. Final Response (partial=False)
+       "The weather in Tokyo is currently 18°C with partly cloudy skies."
+       is_final_response(): True ← this is the one to render
 ```
 
 > The user message is appended to the session internally but never yielded to your code.
@@ -232,15 +249,12 @@ InvocationContext(
 
 **Source:** [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py)
 
-```mermaid
-flowchart TD
-    Entry["BaseAgent.run_async(ctx)"]
-    S1["_create_invocation_context()\nclone ctx, bind agent=self"]
-    S2["_handle_before_agent_callback()\nplugins first, then agent list"]
-    S3["_run_async_impl()\n→ LlmAgent"]
-    S4["_handle_after_agent_callback()"]
-
-    Entry --> S1 --> S2 --> S3 --> S4
+```
+BaseAgent.run_async(ctx)
+ ► _create_invocation_context() # clone ctx, bind agent=self
+ ► _handle_before_agent_callback() # plugins first, then agent list
+ ► _run_async_impl() # ► LlmAgent
+ ► _handle_after_agent_callback()
 ```
 
 No callbacks configured — both return `None`.
@@ -428,6 +442,79 @@ Session(
 ### Full Sequence Diagram
 
 All callbacks and session writes shown in order. A callback returning non-None short-circuits the step it guards.
+
+```
+runner.run_async(user_id, session_id, new_message)
+│
+├── 1. RUNNER
+│   ├── get_session()                              ← SESSION READ
+│   ├── append_event(user_msg)                     ← SESSION WRITE
+│   └── agent.run_async(ctx)
+│
+├── 2. BASE AGENT
+│   ├── before_agent_callback
+│   │      if returns None:    proceed to run the agent
+│   │      if returns Content: skip the agent, yield that content instead
+│   │
+│   └── _llm_flow.run_async(ctx)
+│
+├── 3. LLM FLOW — LOOP (repeats until no function calls)
+│   │
+│   ├── preprocess: build LlmRequest from session.events   ← SESSION READ
+│   │
+│   ├── before_model_callback
+│   │      if returns None:        proceed to call the LLM
+│   │      if returns LlmResponse: skip the LLM call, use this response instead
+│   │
+│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
+│   │      (loop 1: returns FunctionCall)
+│   │
+│   ├── on_model_error_callback  (only fires on LLM error)
+│   │      if returns None:        re-raise the error
+│   │      if returns LlmResponse: suppress error, use this response instead
+│   │
+│   ├── after_model_callback
+│   │      if returns None:        use the LLM's actual response
+│   │      if returns LlmResponse: replace with this response
+│   │
+│   ├── ◄── yield evt-002: Event(FunctionCall)             ← SESSION WRITE
+│   │
+│   ├── before_tool_callback
+│   │      if returns None: proceed to run the tool
+│   │      if returns dict: skip the tool, use this dict as the result
+│   │
+│   ├── get_weather(city="Tokyo") ──► {"temp_c": 18, ...}
+│   │
+│   ├── on_tool_error_callback  (only fires on tool error)
+│   │      if returns None: re-raise the error
+│   │      if returns dict: suppress error, use this dict as the result
+│   │
+│   ├── after_tool_callback
+│   │      if returns None: keep the tool's actual result
+│   │      if returns dict: replace with this dict
+│   │
+│   ├── ◄── yield evt-003: Event(FunctionResponse)         ← SESSION WRITE
+│   │
+│   ├── preprocess: rebuild LlmRequest (now has fc+fr)     ← SESSION READ
+│   │
+│   ├── before_model_callback (loop 2)
+│   ├── LlmRequest ──► GeminiLLM ──► LlmResponse
+│   │      (loop 2: returns text, no more function calls)
+│   ├── after_model_callback
+│   │
+│   ├── ◄── yield evt-004a: Event(partial)
+│   ├── ◄── yield evt-004b: Event(partial)
+│   ├── ◄── yield evt-004c: Event(partial)
+│   └── ◄── yield evt-004:  Event(final)                   ← SESSION WRITE
+│          loop ends — no more function calls
+│
+└── 4. BACK TO BASE AGENT
+    └── after_agent_callback
+           if returns None:    done, no extra output
+           if returns Content: yield one more event with that content
+```
+
+**Interactive sequence diagram** — same flow, showing cross-component messaging:
 
 ```mermaid
 sequenceDiagram

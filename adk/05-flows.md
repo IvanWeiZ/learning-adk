@@ -20,13 +20,10 @@ Flows are auto-selected. Understanding them helps when debugging transfers or wr
 
 ## Flow Variants
 
-```mermaid
-classDiagram
-    class BaseLlmFlow["BaseLlmFlow (base_llm_flow.py)\nabstract, implements the loop"]
-    class SingleFlow["SingleFlow\nno agent routing; pure tool-use loop"]
-    class AutoFlow["AutoFlow\nadds agent transfer/delegation support"]
-    BaseLlmFlow <|-- SingleFlow
-    BaseLlmFlow <|-- AutoFlow
+```
+BaseLlmFlow (base_llm_flow.py) — abstract, implements the loop
+ ├── SingleFlow — no agent routing; pure tool-use loop
+ └── AutoFlow — adds agent transfer/delegation support
 ```
 
 `LlmAgent._llm_flow` selects:
@@ -37,18 +34,32 @@ classDiagram
 
 ## Loop Iteration Flowchart
 
-```mermaid
-flowchart TD
-    preprocess["preprocess\nbuild LlmRequest\n(history + tools)\nfrom session.events"]
-    callLLM["call LLM"]
-    hasFuncCalls{"Has function calls?"}
-    executeTool["execute tool(s)"]
-    yieldFinal["yield final Event\n(EXIT)"]
-
-    preprocess --> callLLM --> hasFuncCalls
-    hasFuncCalls -- "No" --> yieldFinal
-    hasFuncCalls -- "Yes" --> executeTool
-    executeTool -- "loop back" --> preprocess
+```
+┌─────────────────────────────────────────────┐
+│ BaseLlmFlow Loop │
+│ │
+│ ┌─────────────┐ │
+│ │ preprocess │ ← build LlmRequest │
+│ │ (history + │ from session.events │
+│ │ tools) │ │
+│ └──────┬───────┘ │
+│ ▼ │
+│ ┌─────────────┐ │
+│ │ call LLM │ │
+│ └──────┬───────┘ │
+│ ▼ │
+│ Has function ──── No ──── ► yield │
+│ calls? final │
+│ │ Event │
+│ Yes (EXIT) │
+│ ▼ │
+│ ┌─────────────┐ │
+│ │ execute │ │
+│ │ tool(s) │ │
+│ └──────┬───────┘ │
+│ │ │
+│ └──────── loop back ─────────────┘ │
+└─────────────────────────────────────────────┘
 ```
 
 ### Two Iterations in Practice
