@@ -12,10 +12,16 @@ Thumbs.db
 # Claude Code
 .claude/
 
+# gstack (home-dir artifacts if any leak in)
+.gstack/
+
 # Python (stale scripts)
 __pycache__/
 *.pyc
 *.pyo
+
+# MkDocs
+site/
 
 # Environment
 .env

@@ -514,6 +514,83 @@ runner.run_async(user_id, session_id, new_message)
            if returns Content: yield one more event with that content
 ```
 
+**Interactive sequence diagram** — same flow, showing cross-component messaging:
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Runner
+    participant SessionSvc as Session Service
+    participant BaseAgent
+    participant LlmFlow as BaseLlmFlow
+    participant Gemini as GeminiLLM
+    participant Tool as get_weather
+
+    Caller->>Runner: run_async(user_id, session_id, new_message)
+
+    %% 1. RUNNER
+    Runner->>SessionSvc: get_session()
+    SessionSvc-->>Runner: session
+    Runner->>SessionSvc: append_event(user_msg)
+    Note over SessionSvc: SESSION WRITE
+
+    Runner->>BaseAgent: agent.run_async(ctx)
+
+    %% 2. BASE AGENT
+    Note over BaseAgent: before_agent_callback<br/>None → proceed | Content → skip agent
+
+    BaseAgent->>LlmFlow: _llm_flow.run_async(ctx)
+
+    %% 3. LLM FLOW LOOP 1
+    Note over LlmFlow: LOOP — iteration 1
+    LlmFlow->>SessionSvc: read session.events (preprocess)
+    Note over SessionSvc: SESSION READ
+
+    Note over LlmFlow: before_model_callback<br/>None → call LLM | LlmResponse → skip LLM
+
+    LlmFlow->>Gemini: LlmRequest
+    Gemini-->>LlmFlow: LlmResponse (FunctionCall)
+    Note over LlmFlow: on_model_error_callback fires on error only<br/>after_model_callback: None → use response | LlmResponse → replace
+
+    LlmFlow->>SessionSvc: append_event(evt-002: FunctionCall)
+    Note over SessionSvc: SESSION WRITE
+    LlmFlow-->>Caller: yield evt-002: Event(FunctionCall)
+
+    Note over LlmFlow: before_tool_callback<br/>None → run tool | dict → skip tool
+
+    LlmFlow->>Tool: get_weather(city="Tokyo")
+    Tool-->>LlmFlow: {"temp_c": 18, ...}
+    Note over LlmFlow: on_tool_error_callback fires on error only<br/>after_tool_callback: None → keep | dict → replace
+
+    LlmFlow->>SessionSvc: append_event(evt-003: FunctionResponse)
+    Note over SessionSvc: SESSION WRITE
+    LlmFlow-->>Caller: yield evt-003: Event(FunctionResponse)
+
+    %% 3. LLM FLOW LOOP 2
+    Note over LlmFlow: LOOP — iteration 2
+    LlmFlow->>SessionSvc: read session.events (preprocess, now has fc+fr)
+    Note over SessionSvc: SESSION READ
+
+    Note over LlmFlow: before_model_callback (loop 2)
+
+    LlmFlow->>Gemini: LlmRequest (with tool history)
+    Gemini-->>LlmFlow: LlmResponse (text, no more function calls)
+    Note over LlmFlow: after_model_callback
+
+    LlmFlow-->>Caller: yield evt-004a: Event(partial)
+    LlmFlow-->>Caller: yield evt-004b: Event(partial)
+    LlmFlow-->>Caller: yield evt-004c: Event(partial)
+
+    LlmFlow->>SessionSvc: append_event(evt-004: final)
+    Note over SessionSvc: SESSION WRITE
+    LlmFlow-->>Caller: yield evt-004: Event(final)
+    Note over LlmFlow: loop ends — no more function calls
+
+    %% 4. BACK TO BASE AGENT
+    LlmFlow-->>BaseAgent: done
+    Note over BaseAgent: after_agent_callback<br/>None → done | Content → yield one more event
+```
+
 ## Gotchas
 
 ### Callbacks

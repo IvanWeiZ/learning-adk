@@ -181,7 +181,7 @@ When to use each pattern:
 
 ### Q2: What Is the Best Way to Test Each ADK Component and E2E?
 
-For MockModel, InMemoryRunner, deterministic test patterns, and complete test examples, see [22-testing.md](22-testing.md) and [22b-testing-examples.md](22b-testing-examples.md).
+For MockModel, InMemoryRunner, deterministic test patterns, and complete test examples, see [22-testing.md](22-testing.md) and [testing-examples.md](testing-examples.md).
 
 ---
 
