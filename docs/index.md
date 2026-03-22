@@ -2,14 +2,8 @@
 
 **Go beyond the API surface. Understand what actually happens inside Google's Agent Development Kit.**
 
-<div class="grid cards" markdown>
-
-- :material-file-document-multiple: **46** Deep Dives
-- :material-text-long: **21,500+** Lines
-- :material-robot: **26** ADK Topics
-- :material-language-python: **10** Python Guides
-
-</div>
+| :material-file-document-multiple: **46** Deep Dives | :material-text-long: **21,500+** Lines | :material-robot: **26** ADK Topics | :material-language-python: **10** Python Guides |
+|:---:|:---:|:---:|:---:|
 
 Every claim traced to a specific line in the [ADK source code](https://github.com/google/adk-python).
 Built from a Java developer's perspective learning Python and ADK from the ground up.
