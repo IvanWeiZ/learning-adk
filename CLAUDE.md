@@ -73,6 +73,30 @@ learning-adk/
 
 ---
 
+## Documentation Site
+
+The repo is served as a docs site via **MkDocs Material** at [ivanweiz.github.io/learning-adk](https://ivanweiz.github.io/learning-adk/).
+
+**Key files:**
+
+- `mkdocs.yml` — Site config (Material theme, Mermaid extension, nav structure)
+- `requirements.txt` — Pinned `mkdocs-material==9.6.14`
+- `docs/index.md` — Landing page (adapted from README)
+- `docs/{adk,python,reference}` — Symlinks to content directories
+- `.github/workflows/docs.yml` — Auto-deploys to GitHub Pages on push to `main`
+
+**Local development:**
+
+```bash
+pip3 install -r requirements.txt
+mkdocs serve                       # http://127.0.0.1:8000/learning-adk/
+mkdocs build                       # builds to site/ (gitignored)
+```
+
+**Diagram policy:** ASCII diagrams are preferred for readability. Mermaid `sequenceDiagram` may be used for cross-component message flows (see `01-request-lifecycle.md`). Do NOT convert ASCII trees or class hierarchies to Mermaid flowcharts/classDiagrams — they become less readable.
+
+---
+
 ## Pre-Commit Validation Checklist
 
 **Run these checks before every commit.** You can run all checks at once:
