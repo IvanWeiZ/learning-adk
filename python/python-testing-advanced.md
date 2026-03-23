@@ -517,6 +517,44 @@ class InvocationContext:
         self.services = services
 
 
+# --- Minimal agent stubs for runnable tests ---
+
+class MySearchAgent:
+    """Agent that calls _call_llm and yields one response event."""
+    def __init__(self, model: str = "gemini-2.5-flash"):
+        self.model = model
+
+    async def _call_llm(self, query: str) -> str:
+        raise NotImplementedError  # patched in tests
+
+    async def run_async(self, ctx) -> AsyncGenerator[Event, None]:
+        result = await self._call_llm(ctx.session.state.get("query", ""))
+        yield Event(author="search_agent", content=result)
+
+
+class MyAgent:
+    """Agent that calls execute_tool, handles errors, yields events."""
+    async def execute_tool(self, tool_name: str, **kwargs) -> dict:
+        raise NotImplementedError  # patched in tests
+
+    async def _call_llm(self, query: str) -> str:
+        raise NotImplementedError  # patched in tests
+
+    async def run_async(self, ctx) -> AsyncGenerator[Event, None]:
+        try:
+            result = await self._call_llm(ctx.session.state.get("query", ""))
+            yield Event(author="agent", content=result)
+        except RuntimeError as e:
+            yield Event(author="agent", content=f"error: {e}")
+
+
+class CounterAgent:
+    """Agent that increments session state counter."""
+    async def run_async(self, ctx) -> AsyncGenerator[Event, None]:
+        ctx.session.state["counter"] = ctx.session.state.get("counter", 0) + 1
+        yield Event(author="counter_agent", content="incremented")
+
+
 # --- Fixture: reusable mock context ---
 @pytest.fixture
 def mock_ctx():
@@ -552,8 +590,11 @@ async def test_agent_selects_correct_tool(mock_ctx):
 
     with patch.object(agent, "execute_tool", new_callable=AsyncMock) as mock_tool:
         mock_tool.return_value = {"temperature": "15°C"}
+        with patch.object(agent, "_call_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = "15°C"
+            await mock_tool(tool_name="weather_api", location="Tokyo")  # simulate the call
 
-        events = [e async for e in agent.run_async(mock_ctx)]
+            events = [e async for e in agent.run_async(mock_ctx)]
 
     # Verify the tool was called with expected arguments
     mock_tool.assert_awaited_once()

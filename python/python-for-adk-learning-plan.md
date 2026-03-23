@@ -4,28 +4,28 @@
 
 ## At a Glance
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              Python for ADK — 2-Week Learning Path              │
-│                                                                 │
-│  Week 1: Foundations                                            │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐    │
-│  │ D1  │ │ D2  │ │ D3  │ │ D4  │ │ D5  │ │ D6  │ │ D7  │    │
-│  │Type │ │Pyd. │ │Pyd. │ │Gen. │ │Async│ │Async│ │ABC/ │    │
-│  │Hints│ │Base │ │Adv. │ │yield│ │io   │ │Gen. │ │Proto│    │
-│  └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘    │
-│     │       │       │       │       │       │       │          │
-│  Week 2: Advanced Patterns & ADK-Specific                      │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐    │
-│  │ D8  │ │ D9  │ │ D10 │ │ D11 │ │ D12 │ │ D13 │ │ D14 │    │
-│  │Deco.│ │Ctx  │ │Dict/│ │Mod. │ │Error│ │Test │ │Cap- │    │
-│  │     │ │Mgr  │ │Kwarg│ │Sys  │ │Hand.│ │Async│ │stone│    │
-│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘    │
-│                                                                 │
-│  For: Experienced Java developer with basic Python knowledge    │
-│  Goal: Master Python features needed for production ADK agents  │
-└─────────────────────────────────────────────────────────────────┘
-```
+**For:** Experienced Java developer with basic Python knowledge
+**Goal:** Master Python features needed for production ADK agents
+
+**Week 1 — Foundations**
+
+1. D1 — Type Hints and the `typing` module
+2. D2 — Pydantic BaseModel (Part 1 — Basics)
+3. D3 — Pydantic BaseModel (Part 2 — Advanced)
+4. D4 — Generators and `yield`
+5. D5 — asyncio (Part 1 — Coroutines and Tasks)
+6. D6 — asyncio (Part 2 — Async Generators)
+7. D7 — ABCs, Protocols, and Structural Subtyping
+
+**Week 2 — Advanced Patterns & ADK-Specific**
+
+8. D8 — Decorators and Closures
+9. D9 — Context Managers
+10. D10 — Dicts, Kwargs, and Data Classes
+11. D11 — Module System and Imports
+12. D12 — Error Handling Patterns
+13. D13 — Testing with Async Code
+14. D14 — Capstone Project
 
 A focused 2-week curriculum that bridges your Java expertise with the Python patterns ADK relies on. Each day covers one or two tightly scoped topics with ADK connections, Java comparisons, and hands-on practice.
 
@@ -88,12 +88,14 @@ Think of Pydantic as Lombok `@Data` + Jackson + Bean Validation all in one. You 
 **Practice:**
 Model an ADK-like `Event` class:
 ```python
+from pydantic import BaseModel, Field
+
 class Event(BaseModel):
     id: str
     author: str
     content: str | None = None
     timestamp: datetime
-    actions: EventActions = EventActions()
+    actions: EventActions = Field(default_factory=EventActions)  # mutable default via Field
     branch: str | None = None
 ```
 Then practice `model_copy(update={"author": "new_agent"})`.

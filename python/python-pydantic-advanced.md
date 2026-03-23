@@ -748,6 +748,8 @@ print(user_fast.name)  # "you"
 
 #### TypeAdapter for Bulk Validation
 
+> **See also:** [TypeAdapter for Generic Validation](#typeadapter-for-generic-validation) above covers validating non-model generic types (e.g., `list[dict[str, int]]`). This section focuses on bulk validation of model instances.
+
 Validate many items efficiently:
 
 ```python
@@ -1367,6 +1369,8 @@ immutable.age = 31  # Error: frozen model
 
 ## Java to Pydantic Reference
 
+> **See also:** [reference/java-to-python-cheat-sheet.md](../reference/java-to-python-cheat-sheet.md) for a broader Java → Python mapping covering collections, concurrency, exceptions, and ADK-specific equivalents. The table below is Pydantic-focused.
+
 | Java | Pydantic | Notes |
 |------|----------|-------|
 | `public record User { String name; int age; }` | `class User(BaseModel): name: str; age: int` | Simple data class |
@@ -1420,6 +1424,8 @@ immutable.age = 31  # Error: frozen model
 - Tool definitions generate JSON schemas automatically
 - Sessions are immutable copies of each other
 - Validation is declarative, not imperative
+
+> **See also:** [ADK in Practice](#adk-in-practice) above for a more detailed mapping with additional patterns.
 
 | Pydantic Pattern | ADK Usage |
 |---|---|
