@@ -94,7 +94,7 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **Memory** — Cross-session recall capability. A `MemoryService` stores and retrieves information across different sessions for the same user or application. → [11-memory.md](../adk/11-memory.md)
 
-- **MemoryService** — The abstract interface for memory backends. Implementations include `InMemoryMemoryService` and `VertexAiRagMemoryService`. → [11-memory.md](../adk/11-memory.md)
+- **MemoryService** — The abstract interface for memory backends. Implementations include `InMemoryMemoryService` and `VertexAiMemoryBankService`. → [11-memory.md](../adk/11-memory.md)
 
 - **MockModel** — A test utility that replaces a real LLM with predetermined responses, enabling deterministic agent testing without API calls. → [22-testing.md](../adk/22-testing.md)
 

@@ -245,8 +245,8 @@ for event in runner.run(
 
 ## Gotchas
 
-- `auto_create_session` defaults to `False` — you will get `SessionNotFoundError` if you forget to create a session first or set this flag.
-- `run_async` parameters are all **keyword-only** — positional args will raise `TypeError`.
+- `auto_create_session` defaults to `False` — you get `SessionNotFoundError` if you forget to create a session first or set this flag.
+- `run_async` parameters are all **keyword-only** — positional args raise `TypeError`.
 - Runner is stateless but not thread-safe for a single invocation — each call to `run_async` should use its own `session_id`.
 
 ---

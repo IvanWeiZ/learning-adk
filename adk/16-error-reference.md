@@ -228,7 +228,7 @@ agent = LlmAgent(
 - `InMemorySessionService` silently drops events when the session is missing -- no exception, no callback. Use `DatabaseSessionService` in production.
 - Toolset auth failures are swallowed with a warning log. The tool proceeds unauthenticated and fails later, making root cause hard to trace.
 - There is no `on_agent_error_callback` -- callback exceptions are always fatal.
-- Agent `name="user"` is reserved and will raise at construction time.
+- Agent `name="user"` is reserved and raises at construction time.
 
 ---
 

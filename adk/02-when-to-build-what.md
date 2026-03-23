@@ -2,7 +2,7 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/) · [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/) · [`plugins/`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/) · [`flows/`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md)
 
-## At a Glance (big-picture diagram first, then one paragraph)
+## At a Glance
 
 ```
 What are you trying to do?

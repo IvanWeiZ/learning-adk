@@ -70,7 +70,7 @@ Write a function `def search(query: str, max_results: int = 10, filters: dict[st
 #### Day 2: Pydantic BaseModel (Part 1 — Basics)
 
 **Why ADK needs this:**
-Every ADK data structure — `Event`, `EventActions`, `Session`, `GenerateContentConfig` — is a Pydantic model. You will subclass `BaseModel` constantly.
+Every ADK data structure — `Event`, `EventActions`, `Session`, `GenerateContentConfig` — is a Pydantic model. You subclass `BaseModel` constantly.
 
 **Java to Python:**
 Think of Pydantic as Lombok `@Data` + Jackson + Bean Validation all in one. You define fields with types, and Pydantic handles validation, serialization, and schema generation automatically.
@@ -476,7 +476,7 @@ Integrate everything into one working project that mirrors ADK's architecture.
 8. **Error handling & logging** throughout
 9. **Tests** for every component
 
-This should be ~300-500 lines of Python and will exercise every concept from the previous 13 days.
+This should be ~300-500 lines of Python and exercises every concept from the previous 13 days.
 
 ## ADK in Practice
 

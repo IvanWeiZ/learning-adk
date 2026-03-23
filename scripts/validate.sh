@@ -164,6 +164,22 @@ if [ "$url_in_code" -eq 0 ]; then
 fi
 echo ""
 
+# §9: Vale prose linting
+echo "§9 Prose quality (vale)"
+if command -v vale &>/dev/null; then
+  vale_output=$(vale --no-exit --output=line adk/ python/ reference/ 2>&1 || true)
+  if [ -n "$vale_output" ]; then
+    echo "$vale_output" | head -20
+    vale_count=$(echo "$vale_output" | wc -l | tr -d ' ')
+    warn "Vale found $vale_count issue(s)"
+  else
+    pass "Vale: no issues"
+  fi
+else
+  warn "Vale not installed — skipping prose checks (brew install vale)"
+fi
+echo ""
+
 # Broken relative links
 echo "Broken relative links"
 errfile="/tmp/ci_validate_link_errors_$$"

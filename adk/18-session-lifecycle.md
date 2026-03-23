@@ -164,7 +164,7 @@ Agent code sets state                State._delta accumulates
 
 **InMemorySessionService**
 
-No locking. The class docstring says: *"not suitable for multi-threaded production environments."* `copy.deepcopy` on `get_session` prevents accidental mutation of internal storage, but concurrent writes will race.
+No locking. The class docstring says: *"not suitable for multi-threaded production environments."* `copy.deepcopy` on `get_session` prevents accidental mutation of internal storage, but concurrent writes race.
 
 **DatabaseSessionService**
 
@@ -390,8 +390,8 @@ LLM calls are 80-95% of total latency.
 |-------|-------------|---------------|-------------|
 | `gemini-2.5-flash` | ~200ms | ~500-1500ms | Default — fast and capable |
 | `gemini-2.5-pro` | ~500ms | ~1000-3000ms | Complex reasoning only |
-| `claude-haiku-4-5` | ~300ms | ~800-2000ms | Fast Anthropic option |
-| `claude-sonnet-4-5` | ~500ms | ~1500-4000ms | High quality, slower |
+| `claude-haiku-4-5-20251001` | ~300ms | ~800-2000ms | Fast Anthropic option |
+| `claude-sonnet-4-5-20250514` | ~500ms | ~1500-4000ms | High quality, slower |
 
 ```python
 # Use the fastest model that's good enough
@@ -587,8 +587,8 @@ runner = Runner(agent=agent, app_name="my_app", session_service=session_service)
 
 - **`append_event` is the hot path.** A single user turn can generate 5-20+ events. Each one is an `await` on the session service. With `DatabaseSessionService`, this means 5-20+ DB round-trips per turn.
 - **`deepcopy` on `get_session` can be costly.** `InMemorySessionService` deep-copies the entire session (all events + state) on every `get_session` call. For sessions with 100+ events, this becomes noticeable.
-- **`temp:` state vanishes on reload.** `temp:`-prefixed keys are stripped before persistence. If you store something in `temp:` and expect it next turn, it will be gone.
-- **`InMemorySessionService` has no locking.** Concurrent writes will race. Not safe for production multi-threaded use.
+- **`temp:` state vanishes on reload.** `temp:`-prefixed keys are stripped before persistence. If you store something in `temp:` and expect it next turn, it is gone.
+- **`InMemorySessionService` has no locking.** Concurrent writes race. Not safe for production multi-threaded use.
 - **SQLite has no row-level locking.** Concurrent writes from multiple processes can corrupt data. Use SQLite only for single-process deployments.
 - **LLM calls dominate latency (80-95%).** Optimizing session I/O helps, but optimize model calls first.
 
