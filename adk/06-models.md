@@ -107,13 +107,13 @@ Model string resolution:
  ▼
  Return Gemini(model="gemini-2.5-flash")
 
- "claude-sonnet-4-5-20250514"
+ "claude-sonnet-4-20250514"
  │
  ▼
  AnthropicLlm.supported_models() → ["claude-.*"] ← MATCH
  │
  ▼
- Return AnthropicLlm(model="claude-sonnet-4-5-20250514")
+ Return AnthropicLlm(model="claude-sonnet-4-20250514")
 
  "openai/gpt-4o"
  │

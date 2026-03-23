@@ -278,12 +278,6 @@ sub_agents=[Agent(
 )]
 ```
 
-### 14. Common Architecture Anti-Patterns
-
----
-
-## Quick Reference
-
 ## Gotchas
 
 - **`output_schema` silently disables all tools.** No warning.

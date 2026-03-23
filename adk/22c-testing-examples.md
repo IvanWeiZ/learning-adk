@@ -41,7 +41,8 @@ def test_callable_instruction():
 
     mock = MockModel.create(responses=['Hello Alice!'])
     agent = Agent(name='test', model=mock, instruction=_provider)
-    runner = InMemoryRunner(agent, initial_state={'user_name': 'Alice'})
+    # Note: InMemoryRunner does not accept initial_state directly.
+    runner = InMemoryRunner(agent)
     runner.run('hi')
     # Callable instruction was resolved with state
     assert 'Alice' in mock.requests[0].config.system_instruction.parts[0].text

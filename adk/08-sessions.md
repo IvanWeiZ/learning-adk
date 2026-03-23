@@ -206,7 +206,7 @@ tool_context.state['app:feature_flags'] = {'beta': True}      # app-scoped (all 
 - Agents access sessions only through `InvocationContext` — never directly via the session service.
 - State deltas are only committed when `append_event` is called by the Runner — if you set state but the event is never appended, the change is lost.
 - `GetSessionConfig` filters events on retrieval, not deletion — the full history still exists in storage.
-- The `"user"` name is reserved by ADK; do not use it as a user_id.
+- The `"user"` name is reserved by ADK as the author for user-role events; do not use it as an **agent name** (it is fine as a `user_id`).
 - `temp:` prefixed keys are ephemeral and never persisted — useful for scratch data within a single invocation.
 
 ---

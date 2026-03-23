@@ -145,7 +145,7 @@ class EvalMetricResult(BaseModel):
 ### AgentEvaluator — Running Evaluations
 
 ```
-AgentEvaluator.evaluate()
+await AgentEvaluator.evaluate()
 ├── 1. Scan for .test.json files in the given path
 ├── 2. For each EvalCase:
 │   ├── Create Runner + Session
@@ -162,7 +162,7 @@ from google.adk.evaluation import AgentEvaluator
 
 # evaluate() asserts internally; it does NOT return results.
 # Default num_runs=2 (runs each case twice for consistency).
-AgentEvaluator.evaluate(
+await AgentEvaluator.evaluate(
     agent_module="my_package.my_agent", # importable module with 'agent' variable
     eval_dataset_file_path_or_dir="tests/evals/", # directory with .test.json files
     num_runs=2, # default: 2
@@ -177,7 +177,7 @@ AgentEvaluator.evaluate(
 Scores whether the agent called the right tools in the right order.
 
 Scoring logic:
-- Each expected `ToolUse` is checked against the actual tool calls in sequence
+- Each expected `FunctionCall` is checked against the actual tool calls in sequence
 - `tool_name` must match exactly
 - `tool_input` is compared if provided (partial match is allowed -- only specified keys are checked)
 - Score = (matched steps) / (total expected steps)

@@ -165,8 +165,6 @@ The query returned 3 rows with monthly totals. Next, I'll create a chart.
 Here are the Q1 2026 sales results: ...
 ```
 
-Everything before `/*FINAL_ANSWER*/` is thought (hidden). Only the final answer reaches the user.
-
 Everything before `/*FINAL_ANSWER*/` is internal reasoning (marked as `thought=True`). Only the final answer (marked `thought=False`) reaches the user.
 
 ### When to Use Which
