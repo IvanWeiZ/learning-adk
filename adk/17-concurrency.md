@@ -7,28 +7,17 @@
 ## At a Glance
 
 ```
-              Runner (stateless — safe to share)
-                │
-    ┌───────────┼───────────┐
-    ▼           ▼           ▼
- Session A   Session B   Session C    ← different session_id = always safe
-    │
-    ├─ DatabaseSessionService ──→ asyncio lock + DB row lock ──→ safe
-    └─ InMemorySessionService ──→ no locks ──→ data race!
+Runner is stateless — safe to share across concurrent requests.
 
- Parallel Tool Execution (asyncio.gather):
-    LLM returns: [tool_A, tool_B]
-         │
-         ▼
-    concurrent coroutines:
-    ├── tool_A
-    │
-    ├── tool_B
-    │
-    └── both complete
-           │
-           ▼
-    deep_merge_dicts (last-write-wins on key conflicts)
+Safety depends on session service + session_id:
+├─ Different session_id → always safe (no shared state)
+├─ Same session_id + DatabaseSessionService → safe (asyncio lock + DB row lock)
+├─ Same session_id + InMemorySessionService → NOT safe (no locks, data race)
+└─ Same session_id + SQLite across processes → NOT safe (no row-level lock)
+
+Danger zones:
+├─ Parallel tools writing same state key → last-write-wins (silent data loss)
+└─ Thread-pool tools accessing ToolContext → not thread-safe
 ```
 
 ADK is async-first and generally safe for concurrent requests across different sessions. The main danger zones are: (1) concurrent writes to the same session with `InMemorySessionService`, (2) parallel tools writing the same state key, and (3) thread-pool tools accessing non-thread-safe `ToolContext`. Understanding these boundaries lets you scale safely.
@@ -105,7 +94,7 @@ Collision Scenario — both tools write same state key:
 `functions.py` dispatches multiple tool calls via `asyncio.gather`:
 
 - All tool coroutines launch concurrently.
-- `return_exceptions=True` is **not** used -- one failing tool re-raises immediately while the others keep running in the background. This is a potential resource leak.
+- `return_exceptions=True` is **not** used — one failing tool re-raises immediately. Other coroutines continue to the next `await` point before cancellation (potential resource leak).
 - State deltas from parallel tools are merged via `deep_merge_dicts`. On key conflicts the last-merged tool's value wins silently.
 
 ### Session Locking
@@ -129,7 +118,7 @@ Plugins run strictly sequentially. `close` is also sequential (anyio/MCP compati
 ### ParallelAgent
 
 - Each sub-agent gets an isolated `InvocationContext` with unique `branch`.
-- Events serialize via `asyncio.Queue` + resume-signal.
+- Events serialize via `asyncio.Queue` + resume-signal (an `asyncio.Event` that notifies the parent when a sub-agent yields).
 - Sub-agents share one `Session`; event delivery is serialized through the queue.
 - **Known race:** parallel sub-agents that write the same `output_key` produce a last-write-wins result.
 
@@ -157,11 +146,7 @@ ToolThreadPoolConfig — sync vs async tool execution paths
             └── ToolContext shared with main loop (NOT thread-safe!)
 ```
 
-- **Opt-in**, disabled by default.
-- **Sync tools:** run directly in a `ThreadPoolExecutor`.
-- **Async tools:** run in a brand-new event loop per worker thread. This means they cannot share asyncio primitives (locks, queues, events) with the main loop.
-- The pool is **global and process-wide** -- it is never destroyed.
-- `InvocationContext` and `ToolContext` are shared with the main event loop but are **not thread-safe**. Accessing or mutating them from a pool worker is undefined behavior.
+> **Warning:** `ToolContext` is shared with the main event loop but is **not thread-safe**. Accessing it from pool workers is undefined behavior. The pool is global and process-wide — never destroyed.
 
 ---
 
@@ -183,7 +168,16 @@ asyncio.gather(
 ```
 
 ```python
-# Safe parallel tools: use different state keys
+# BAD: both tools write same key — last-write-wins, one result silently lost
+def get_weather(city: str, ctx: ToolContext) -> str:
+    ctx.state["result"] = fetch_weather(city)  # overwritten by get_news!
+    return ctx.state["result"]
+
+def get_news(topic: str, ctx: ToolContext) -> str:
+    ctx.state["result"] = fetch_news(topic)  # overwrites weather!
+    return ctx.state["result"]
+
+# GOOD: distinct keys per tool
 def get_weather(city: str, ctx: ToolContext) -> str:
     ctx.state["weather_result"] = fetch_weather(city)
     return ctx.state["weather_result"]
@@ -192,18 +186,6 @@ def get_news(topic: str, ctx: ToolContext) -> str:
     ctx.state["news_result"] = fetch_news(topic)
     return ctx.state["news_result"]
 ```
-
----
-
-## Gotchas
-
-- `InMemorySessionService` has **no locks** -- concurrent writes to the same session silently lose data. Use `DatabaseSessionService` in production.
-- SQLite with `DatabaseSessionService` is only safe within a single process. Cross-process writes can corrupt data because SQLite does not support `SELECT FOR UPDATE`.
-- Parallel tools that write the same state key hit `deep_merge_dicts` last-write-wins. Always use distinct state keys per tool.
-- `asyncio.gather` for tools does **not** use `return_exceptions=True` -- one failure re-raises while other tools keep running in the background (potential resource leak).
-- `ToolThreadPoolConfig` shares `InvocationContext`/`ToolContext` with the main loop, but these objects are **not thread-safe**. Accessing them from pool workers is undefined behavior.
-- Async tools in the thread pool get a brand-new event loop per worker -- they cannot share asyncio primitives with the main loop.
-- The thread pool is global and process-wide; it is never destroyed.
 
 ---
 
