@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** ADK source code | **Prereqs:** [20-best-practices.md](20-best-practices.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *This file continues from [20-best-practices.md](20-best-practices.md), which covers anti-patterns and rules.*
 
 ---

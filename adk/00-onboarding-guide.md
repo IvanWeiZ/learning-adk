@@ -2,6 +2,8 @@
 
 > **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** all ADK modules | **Prereqs:** none
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## An Agent Is Just Three Things
 
 ```

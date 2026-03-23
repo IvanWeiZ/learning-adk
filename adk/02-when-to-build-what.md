@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/) · [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/) · [`plugins/`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/) · [`flows/`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

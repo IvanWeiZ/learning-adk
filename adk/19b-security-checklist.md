@@ -2,6 +2,8 @@
 
 > **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/) | **Prereqs:** [19-session-security.md](19-session-security.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *This file continues from [19-session-security.md](19-session-security.md), which covers developer-facing security patterns, state scoping, and validation.*
 
 ---

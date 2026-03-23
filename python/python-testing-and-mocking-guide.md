@@ -2,6 +2,8 @@
 
 > **ADK relevance:** Testing agents, tools, callbacks, and async generators requires specific mocking patterns | **Estimated time:** 3-4 hours
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

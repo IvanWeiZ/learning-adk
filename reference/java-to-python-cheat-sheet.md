@@ -1,5 +1,7 @@
 # Java to Python Cheat Sheet
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 For experienced Java developers learning Python for ADK. This guide maps familiar Java concepts to their Python equivalents, with notes on where things differ.
 
 See also: [python-for-adk-learning-plan.md](../python/python-for-adk-learning-plan.md) for a structured 2-week curriculum.

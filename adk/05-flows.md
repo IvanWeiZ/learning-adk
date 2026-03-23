@@ -2,6 +2,8 @@
 
 > **Official docs:** [Flows](https://google.github.io/adk-docs/runtime/flows/) | **Source:** [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`single_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/single_flow.py) · [`auto_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/auto_flow.py) | **Prereqs:** [04-agents.md](04-agents.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## What It Is

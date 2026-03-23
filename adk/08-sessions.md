@@ -2,6 +2,8 @@
 
 > **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/session.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/session.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) | **Prereqs:** [03-runners.md](03-runners.md), [07-events.md](07-events.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

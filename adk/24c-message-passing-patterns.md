@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/) | **Prereqs:** [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *Extracted from [24-faq.md](24-faq.md) Q4.*
 
 ---

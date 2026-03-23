@@ -2,6 +2,8 @@
 
 > **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`agents/run_config.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/run_config.py) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md), [03-runners.md](03-runners.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## At a Glance

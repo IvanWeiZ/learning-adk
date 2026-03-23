@@ -2,6 +2,8 @@
 
 > **Official docs:** [Models](https://google.github.io/adk-docs/runtime/models/) | **Source:** [`base_llm.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/base_llm.py) · [`registry.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/registry.py) · [`llm_request.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_request.py) · [`llm_response.py`](https://github.com/google/adk-python/blob/main/src/google/adk/models/llm_response.py) | **Prereqs:** [05-flows.md](05-flows.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## What It Is

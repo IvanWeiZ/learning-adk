@@ -2,6 +2,8 @@
 
 > **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`agents/parallel_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/parallel_agent.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [09-tools.md](09-tools.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## At a Glance

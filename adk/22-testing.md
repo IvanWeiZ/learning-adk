@@ -2,6 +2,8 @@
 
 > **Official docs:** [Evaluation](https://google.github.io/adk-docs/evaluate/) | **Source:** [`tests/unittests/testing_utils.py`](https://github.com/google/adk-python/blob/main/tests/unittests/testing_utils.py) | **Prereqs:** [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 > **Package availability warning:** `MockModel`, `InMemoryRunner` (test version), and `simplify_events` are internal test utilities in the adk-python source tree — they are **NOT** included in the `pip install google-adk` package. To use them: clone the [adk-python repo](https://github.com/google/adk-python) and add `src/` to your `PYTHONPATH`, or copy `tests/unittests/testing_utils.py` into your project.
 
 ADK's test utilities enable deterministic agent tests without real LLM calls. Replace the LLM with `MockModel` (pre-loaded responses), wire into `InMemoryRunner`, assert on events. Tests run instantly and offline.

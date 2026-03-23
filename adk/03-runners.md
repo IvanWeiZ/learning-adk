@@ -2,6 +2,8 @@
 
 > **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md), [02-when-to-build-what.md](02-when-to-build-what.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

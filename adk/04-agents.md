@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`agents/base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py) · [`agents/llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py) · [`agents/invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py) | **Prereqs:** [01-request-lifecycle.md](01-request-lifecycle.md), [03-runners.md](03-runners.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

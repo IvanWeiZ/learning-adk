@@ -2,6 +2,8 @@
 
 > **Official docs:** [Tools](https://google.github.io/adk-docs/tools-custom/) | **Source:** [`tools/base_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_tool.py) · [`tools/base_toolset.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/base_toolset.py) · [`tools/tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) · [`tools/function_tool.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/function_tool.py) | **Prereqs:** [04-agents.md](04-agents.md), [05-flows.md](05-flows.md), [07-events.md](07-events.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

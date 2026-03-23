@@ -2,6 +2,8 @@
 
 > **ADK relevance:** These traps appear in every ADK codebase — agents, tools, callbacks, state management. Knowing them saves hours of debugging. | **Estimated time:** 45 min
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 This is not a syntax guide (see [java-to-python-cheat-sheet.md](../reference/java-to-python-cheat-sheet.md)). This is a list of things that **look right but break at runtime** because Python works differently than Java under the hood.
 
 ---

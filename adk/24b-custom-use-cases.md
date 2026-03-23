@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/) · [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/) | **Prereqs:** [02-when-to-build-what.md](02-when-to-build-what.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *This file continues from [02-when-to-build-what.md](02-when-to-build-what.md), which covers decision trees and quick reference tables.*
 
 ---

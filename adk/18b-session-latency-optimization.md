@@ -2,6 +2,8 @@
 
 > **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) | **Prereqs:** [18-session-lifecycle.md](18-session-lifecycle.md), [08-sessions.md](08-sessions.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## Optimizing for Latency (When Persistence Is Not Critical)
 
 If durability is not required, per-event persistence is overkill. Strategies ranked simplest to most aggressive:

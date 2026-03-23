@@ -2,6 +2,8 @@
 
 > **Official docs:** [ADK 2.0](https://google.github.io/adk-docs/2.0/) | **Source:** `pip install google-adk --pre` | **Prereqs:** [25-adk-2.0-preview.md](25-adk-2.0-preview.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *This file continues from [25-adk-2.0-preview.md](25-adk-2.0-preview.md), which covers overview and graph workflows.*
 
 > **Warning:** ADK 2.0 is an **alpha release**. APIs, import paths, and behavior may change without notice between pre-release versions. Do not use in production. Install with `pip install google-adk --pre`.

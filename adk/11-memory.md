@@ -2,6 +2,8 @@
 
 > **Official docs:** [Memory](https://google.github.io/adk-docs/runtime/memory/) | **Source:** [`base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) · [`in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) · [`vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) · [`vertex_ai_rag_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_rag_memory_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## At a Glance
