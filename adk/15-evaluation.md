@@ -155,12 +155,7 @@ AgentEvaluator.evaluate()
 └── 4. Assert results internally (raises on failure)
 ```
 
-`AgentEvaluator` is the main entry point. It:
-1. Scans for `.test.json` eval files in the given directory
-2. Replays each `EvalCase` against a real agent (using a `Runner`)
-3. Collects actual tool calls and final responses
-4. Scores them against expectations using configured evaluators
-5. **Asserts internally** — does not return results. Failures raise `AssertionError`.
+`AgentEvaluator` is the main entry point. It scans for `.test.json` files, replays each `EvalCase` against a real agent, scores results, and **asserts internally** — failures raise `AssertionError`.
 
 ```python
 from google.adk.evaluation import AgentEvaluator
@@ -174,7 +169,6 @@ AgentEvaluator.evaluate(
 )
 ```
 
-If any eval case fails its metric thresholds, `evaluate()` raises an `AssertionError`.
 
 ### Metrics Deep Dive
 
@@ -193,13 +187,12 @@ Example: if you expect `[search, summarize]` and agent did `[search, translate, 
 ```
 Scoring Example — tool_trajectory_avg_score:
 
-Expected tool calls: [search_flights, book_flight]
-Actual tool calls: [search_flights, get_weather, book_flight]
- ✓ extra ✓
+Expected: [search_flights, book_flight]
+Actual:   [search_flights, get_weather, book_flight]
 
-Step 1: search_flights → found in actual? YES ✓ (score: 1)
-Step 2: book_flight → found in actual? YES ✓ (score: 1)
-Extra: get_weather → not penalized (extras are OK)
+Step 1: search_flights → found? YES (score: 1)
+Step 2: book_flight    → found? YES (score: 1)
+Extra:  get_weather    → not penalized (extras are OK)
 
 Final score: (1 + 1) / 2 = 1.0 ← perfect!
 
@@ -217,7 +210,7 @@ Uses an LLM judge with a rubric like:
 
 The raw score is normalized to 0.0–1.0.
 
-This is a **model-graded** metric -- it's fuzzy by design. Two semantically equivalent phrasings both score high.
+This is a **model-graded** metric — fuzzy by design. Two semantically equivalent phrasings both score high. The LLM judge defaults to Gemini; configurable via `EvalMetric.criterion`.
 
 ---
 
@@ -302,18 +295,7 @@ Run with: `pytest tests/test_agent_eval.py -v`
 
 No need to inspect return values — `evaluate()` raises on failure, which pytest reports as a test failure.
 
-### Writing Good Eval Cases
-
-**Cover the happy path first:**
-```json
-{ "eval_id": "simple_greeting", ... }
-```
-
-**Then edge cases and refusals:**
-```json
-{ "eval_id": "out_of_scope_query", ... }
-{ "eval_id": "ambiguous_city_name", ... }
-```
+## Writing Good Eval Cases
 
 **Use empty `args` when argument values are flexible:**
 ```json
@@ -328,7 +310,7 @@ This checks that the agent *called* the tool without asserting which exact query
 
 ---
 
-## Gotchas
+## When to Use Evals
 
 ### Testing Pyramid for Agents
 
