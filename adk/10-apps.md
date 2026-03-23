@@ -10,18 +10,7 @@
 │  name, root_agent, plugins, configs                     │
 │         │                                                │
 │         ├── plugins: [BasePlugin, ...]                   │
-│         │       │                                        │
-│         │       ├── on_user_message_callback()           │
-│         │       ├── before_run_callback()                │
-│         │       ├── before_agent_callback()              │
-│         │       ├── after_agent_callback()               │
-│         │       ├── before_model_callback()              │
-│         │       ├── after_model_callback()               │
-│         │       ├── on_model_error_callback()            │
-│         │       ├── before_tool_callback()               │
-│         │       ├── after_tool_callback()                │
-│         │       ├── on_tool_error_callback()             │
-│         │       └── on_event_callback()                  │
+│         │       └── 11 callbacks (see BasePlugin below)  │
 │         │                                                │
 │         ├── events_compaction_config                     │
 │         │       └── summarize old events → 1 compact evt │
@@ -38,7 +27,22 @@
 └─────────────────────────────────────────────────────────┘
 ```
 
-`App` wraps your root agent with cross-cutting concerns: plugins (lifecycle hooks that apply to every agent in the tree), event compaction (history summarization), context caching, and resumability. Without `App`, you pass `agent=` and `app_name=` to `Runner`. With `App`, you pass `app=` to get all features.
+`App` wraps your root agent with cross-cutting concerns — plugins, compaction, context caching, and resumability.
+
+```python
+# With App (production — enables all features):
+runner = Runner(app=App(name='my_app', root_agent=agent), session_service=...)
+
+# Without App (scripts/demos — no plugins, compaction, or caching):
+runner = Runner(agent=agent, app_name='my_app', session_service=...)
+```
+
+| Feature | `app=App(...)` | `agent=..., app_name=...` |
+|---------|---------------|--------------------------|
+| Plugins | Yes | No |
+| Compaction | Yes | No |
+| Context cache | Yes | No |
+| Resumability | Yes | No |
 
 ## Class Hierarchy
 
@@ -108,7 +112,9 @@ class App(BaseModel):
 
 ### BasePlugin Interface
 
-All 11 callbacks. Plugins execute in registration order. A non-`None` return short-circuits remaining plugins and agent callbacks.
+11 event-driven callbacks plus `close()` (a lifecycle hook, not a callback — called when the app shuts down). Plugins execute in registration order.
+
+> **Short-circuit rule:** A non-`None` return from any plugin callback short-circuits remaining plugins AND the agent's own callbacks for that stage.
 
 ```python
 class BasePlugin(ABC):
@@ -262,7 +268,7 @@ ContextCacheConfig(
 )
 ```
 
-Requires `static_instruction` on `LlmAgent`. No effect without it.
+Context caching stores `static_instruction` tokens server-side so they don't re-upload on every LLM call — reduces latency and cost for agents with large system prompts. **Requires** `static_instruction` on `LlmAgent` (see [04-agents.md](04-agents.md)); no effect without it.
 
 ### ResumabilityConfig
 
@@ -274,24 +280,9 @@ ResumabilityConfig(is_resumable=True)
 
 ## How It Works
 
-### Basic Usage
-
-```python
-from google.adk.apps import App
-from google.adk.agents import LlmAgent
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-
-agent = LlmAgent(name='my_agent', model='gemini-2.5-flash', instruction='...')
-
-app = App(name='my_app', root_agent=agent)
-
-runner = Runner(app=app, session_service=InMemorySessionService())
-```
-
 ### Plugins — App-Wide Lifecycle Hooks
 
-Plugins are app-wide hooks around every agent call.
+Plugins fire **before** the agent's own callbacks at each stage (before_agent, before_model, before_tool). If any plugin returns non-`None`, the agent's own callback never runs.
 
 Use cases:
 - Logging / tracing every agent call
@@ -332,7 +323,7 @@ When an agent calls a `is_long_running=True` tool:
 2. The caller polls for the long-running operation to complete
 3. On the next `run_async` call with the same session, the invocation resumes from where it left off
 
-Requires idempotent tool calls.
+**Requires idempotent tool calls.** Resuming a paused agent re-invokes previous tools; non-idempotent tools may double-execute or corrupt state.
 
 ## Examples
 
@@ -392,28 +383,20 @@ app = App(
     root_agent=agent,
     resumability_config=ResumabilityConfig(is_resumable=True),
 )
+
+# Invocation 1: agent calls a long-running tool → pauses
+async for event in runner.run_async(user_id='u1', session_id='s1', new_message=msg):
+    if event.long_running_tool_ids:
+        print(f"Paused — waiting for: {event.long_running_tool_ids}")
+        break  # caller polls for completion externally
+
+# Invocation 2: same session → resumes from where it left off
+async for event in runner.run_async(user_id='u1', session_id='s1', new_message=resume_msg):
+    if event.is_final_response():
+        print(event.content.parts[0].text)
 ```
 
 ## Gotchas
-
-### App vs. Bare Agent
-
-| Feature | `app=App(...)` | `agent=..., app_name=...` |
-|---------|---------------|--------------------------|
-| Plugins | Yes | No (use deprecated `plugins=` on Runner) |
-| Compaction | Yes | No |
-| Context cache | Yes | No |
-| Resumability | Yes | No |
-| Complexity | Slightly more setup | Simpler |
-
-Use `App` for production. Bare agent is fine for scripts/demos.
-
-**Quick decision:**
-```
-Do you need plugins, compaction, context caching, or resumability?
- Yes → use App(root_agent=agent, ...)
- No  → use Runner(agent=agent, app_name="my_app", ...)
-```
 
 ### App Name Constraints
 
