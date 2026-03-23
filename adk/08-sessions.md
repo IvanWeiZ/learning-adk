@@ -34,19 +34,7 @@
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-A `Session` is one conversation thread. It stores the full ordered list of `Event`s (conversation history) and a mutable `state` dict (arbitrary key-value data persisted across turns). `BaseSessionService` provides CRUD. Agents access sessions only through `InvocationContext`.
-
----
-
-## Class Hierarchy
-
-```
-BaseSessionService (ABC)
-├── InMemorySessionService    ─ Python dict, dev/tests
-├── SqliteSessionService      ─ SQLite file, local persistence
-├── DatabaseSessionService    ─ SQLAlchemy, production databases
-└── VertexAiSessionService    ─ Vertex AI managed, cloud deployment
-```
+A `Session` is one conversation thread. It stores the full ordered list of `Event`s (conversation history) and a mutable `state` dict (arbitrary key-value data persisted across turns). `BaseSessionService` provides CRUD.
 
 ---
 
@@ -109,7 +97,7 @@ config = GetSessionConfig(
 session = await session_service.get_session(..., config=config)
 ```
 
-Sessions have thousands of events but you only need recent context.
+Use `GetSessionConfig` when you only need recent context from a long session.
 
 ### Implementations
 
@@ -150,12 +138,14 @@ Runner.run_async(user_id, session_id, new_message)
 
 ### State Delta Lifecycle
 
+State is backed by two internal dicts: `_value` for reads and `_delta` for pending writes that haven't been persisted yet.
+
 ```
 ctx.state["city"] = "Tokyo"
 │
 ├── State object updates immediately
-│   ├── State._delta["city"] = "Tokyo"
-│   └── State._value["city"] = "Tokyo" (readable right away)
+│   ├── State._delta["city"] = "Tokyo"   (pending write)
+│   └── State._value["city"] = "Tokyo"   (readable right away)
 │
 ├── event yielded by agent
 │   └── event.actions.state_delta = {"city": "Tokyo"}
@@ -191,45 +181,29 @@ ctx.state["city"] = "Tokyo"
 
 ## Examples
 
-### Session State
-
-`session.state` is a free-form dict. Written via `EventActions.state_delta`:
-
 ```python
-# In a tool or callback:
+# Writing state in a tool or callback:
 tool_context.state['user_name'] = 'Alice'
 # → stored in event.actions.state_delta['user_name'] = 'Alice'
 # → session_service applies the delta on append_event
 
-# In LlmAgent:
+# output_key stores the agent's final text response in state:
 agent = LlmAgent(output_key='summary')
-# → final response text is saved to session.state['summary']
+# When this agent produces its final response, the text is automatically
+# saved to session.state['summary'] via state_delta.
+# Useful in SequentialAgent pipelines where the next agent reads the output.
+
+# State scoping via key prefix:
+tool_context.state['cart_items'] = [...]                      # session-scoped (default)
+tool_context.state['user:preferences'] = {'theme': 'dark'}   # user-scoped (cross-session)
+tool_context.state['app:feature_flags'] = {'beta': True}      # app-scoped (all users)
 ```
-
-### State Scoping in Practice
-
-```python
-# Session-scoped (default) — only this session sees this:
-tool_context.state['cart_items'] = [...]
-
-# User-scoped — all sessions for this user see this:
-tool_context.state['user:preferences'] = {'theme': 'dark'}
-
-# App-scoped — every user in this app sees this:
-tool_context.state['app:feature_flags'] = {'beta': True}
-```
-
-State is scoped:
-- `'key'` — session-level (default)
-- `'user:key'` — user-level (shared across all sessions for this user)
-- `'app:key'` — app-level (shared across all sessions and users)
-
-Scoping is handled by the session service implementations.
 
 ---
 
 ## Gotchas
 
+- Agents access sessions only through `InvocationContext` — never directly via the session service.
 - State deltas are only committed when `append_event` is called by the Runner — if you set state but the event is never appended, the change is lost.
 - `GetSessionConfig` filters events on retrieval, not deletion — the full history still exists in storage.
 - The `"user"` name is reserved by ADK; do not use it as a user_id.
