@@ -9,7 +9,7 @@
 >
 > **Action:** Delete entirely or replace with enumerated breaking changes (import path shifts, removed APIs, renamed classes).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -19,7 +19,7 @@
 >
 > **Action:** Add one paragraph: explain whether `@node` is ADK 2.0 syntax or a separate pattern, and how it relates to graph workflows.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -30,7 +30,7 @@
 > **Action:** Replace with one-sentence cross-reference: "See 25-adk-2.0-preview.md for mode comparison baseline."
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 > 
 
@@ -39,7 +39,7 @@
 >
 > **Action:** Test against pre-release or add warning: "Import paths are beta; subject to change."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -49,7 +49,7 @@
 >
 > **Action:** Explain 2.0 transfer semantics once before examples, then show code patterns only.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -59,7 +59,7 @@
 >
 > **Action:** Move section to line 17, before mode examples.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -69,7 +69,7 @@
 >
 > **Action:** Add inline code showing result collection (e.g., `event.response` structure or output schema).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 

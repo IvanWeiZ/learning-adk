@@ -153,7 +153,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 | 0 | [00-onboarding-guide.md](adk/00-onboarding-guide.md) | **Zero to first agent** — an agent is just prompt + model + tools |
 | 1 | [01-request-lifecycle.md](adk/01-request-lifecycle.md) | Full traced request through every layer — the mental model |
 | 2 | [02-when-to-build-what.md](adk/02-when-to-build-what.md) | Decision guide: scenario → ADK component |
-| | [custom-use-cases.md](adk/custom-use-cases.md) | Component code examples |
+| | [24b-custom-use-cases.md](adk/24b-custom-use-cases.md) | Component code examples |
 
 ### Part 2 — Core Layers
 
@@ -205,7 +205,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 | | [22b-testing-context-setup.md](adk/22b-testing-context-setup.md) | Context setup, ToolContext, InvocationContext fixtures |
 | | [22c-testing-examples.md](adk/22c-testing-examples.md) | Test examples for callbacks, plugins, tools |
 | 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, reason-act loop |
-| | [plugins-and-a2a.md](adk/plugins-and-a2a.md) | Custom tools, A2A, code executors |
+| | [23b-plugins-and-a2a.md](adk/23b-plugins-and-a2a.md) | Custom tools, A2A, code executors |
 
 </details>
 
@@ -217,7 +217,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 |:-:|------|---------------|
 | 24 | [24-faq.md](adk/24-faq.md) | Tool versioning, state scoping, agent messaging |
 | 25 | [25-adk-2.0-preview.md](adk/25-adk-2.0-preview.md) | ADK 2.0: graph workflows, collaborative agents |
-| | [adk-2.0-patterns.md](adk/adk-2.0-patterns.md) | Collaborative agents, dynamic workflows, migration |
+| | [25b-adk-2.0-patterns.md](adk/25b-adk-2.0-patterns.md) | Collaborative agents, dynamic workflows, migration |
 
 </details>
 

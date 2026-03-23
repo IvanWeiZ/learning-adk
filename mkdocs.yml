@@ -73,7 +73,7 @@ nav:
     - Onboarding Guide: adk/00-onboarding-guide.md
     - Request Lifecycle: adk/01-request-lifecycle.md
     - When to Build What: adk/02-when-to-build-what.md
-    - Custom Use Cases: adk/custom-use-cases.md
+    - Custom Use Cases: adk/24b-custom-use-cases.md
 
   - Core Layers:
     - Runners: adk/03-runners.md
@@ -107,11 +107,11 @@ nav:
     - Testing Context Setup: adk/22b-testing-context-setup.md
     - Testing Examples: adk/22c-testing-examples.md
     - Advanced Internals: adk/23-advanced-internals.md
-    - Plugins & A2A: adk/plugins-and-a2a.md
+    - Plugins & A2A: adk/23b-plugins-and-a2a.md
 
   - ADK 2.0:
     - Preview: adk/25-adk-2.0-preview.md
-    - Patterns: adk/adk-2.0-patterns.md
+    - Patterns: adk/25b-adk-2.0-patterns.md
 
   - FAQ: adk/24-faq.md
 

@@ -9,7 +9,7 @@
 >
 > **Action:** Replace each with one-sentence summary + GitHub link; keep only unique content (BaseTool subclassing, LongRunningFunctionTool, AgentTool, BaseToolset, A2A).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -19,7 +19,7 @@
 >
 > **Action:** See Delete action above.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -29,7 +29,7 @@
 >
 > **Action:** Verify against SDK or add note: "If string form fails, use enum value."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -39,7 +39,7 @@
 >
 > **Action:** Add inline note: "Each invocation creates a new session, isolating state from parent agent."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -49,7 +49,7 @@
 >
 > **Action:** After pruning, keep only: BaseTool → LongRunningFunctionTool → AgentTool → BaseToolset → A2A (coherent "advanced tools").
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -59,7 +59,7 @@
 >
 > **Action:** Test both forms or cite SDK version.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 

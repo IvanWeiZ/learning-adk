@@ -9,7 +9,7 @@
 >
 > **Action:** Show implementation stub or link to session service docs with method signature.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -19,7 +19,7 @@
 >
 > **Action:** Keep Built-In section; for State Prefix, add note: "See 19-session-security.md for full reference."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -29,7 +29,7 @@
 >
 > **Action:** Replace comment with numbered list of required cleanup steps: artifacts, memory, credential store.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -39,7 +39,7 @@
 >
 > **Action:** Add `> [!danger]` callout block before the pattern.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -49,7 +49,7 @@
 >
 > **Action:** Use environment variable injection: `postgresql+asyncpg://{os.environ['DB_USER']}:...`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
