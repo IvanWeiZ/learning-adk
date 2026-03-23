@@ -2,9 +2,9 @@
 
 > **Official docs:** [Samples](https://google.github.io/adk-docs/get-started/samples/) | **Source:** [`contributing/samples/`](https://github.com/google/adk-python/tree/main/contributing/samples) | **Prereqs:** [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
-**Source:** All code examples reference files in [adk-python](https://github.com/google/adk-python).
+## At a Glance
 
-**Related:** [04-agents.md](04-agents.md) (agent types and callbacks) · [09-tools.md](09-tools.md) (tool system) · [14-planners.md](14-planners.md) (planning patterns) · [10-apps.md](10-apps.md) (plugins)
+This file collects advanced ADK patterns drawn from the official samples: YAML-defined agent hierarchies, retry plugins, request-level injection, triage gates, callback composition, structured output, and human-in-the-loop confirmation flows.
 
 ---
 
@@ -114,6 +114,42 @@ class CustomRetryPlugin(ReflectAndRetryToolPlugin):
 3. **`_handle_tool_error`** increments a per-tool counter under `asyncio.Lock`, builds a `ToolFailureResponse` with structured reflection guidance, and returns it as the function response the LLM sees.
 4. On success, the failure counter for that tool resets — other tools' counters are unaffected.
 
+```
+Retry loop (per tool call):
+                         ┌──────────────────────────────────────┐
+                         │          LLM calls tool               │
+                         └──────────────────┬───────────────────┘
+                                            │
+                          ┌─────────────────▼──────────────────┐
+                          │       Tool executes                  │
+                          └───────────┬────────────┬────────────┘
+                              raises? │            │ returns dict
+                                      │            │
+             ┌────────────────────────▼─┐  ┌──────▼─────────────────────────────┐
+             │  on_tool_error_callback   │  │  after_tool_callback               │
+             │  catches exception        │  │  extract_error_from_result()       │
+             └────────────┬─────────────┘  └──────┬───────────────┬─────────────┘
+                          │                  error │               │ None
+                          │                        │               │
+                          └──────────┬─────────────┘               │
+                                     │                              │
+                         ┌───────────▼───────────────┐             │
+                         │  _handle_tool_error        │             │
+                         │  increment retry counter   │             │
+                         │  counter < max_retries?    │             │
+                         └──────┬─────────┬───────────┘             │
+                          yes   │         │ no                       │
+                                │         │                          │
+               ┌────────────────▼─┐  ┌───▼──────────────────┐      │
+               │ ToolFailureResp  │  │ raise / return error  │      │
+               │ sent to LLM      │  │ (based on config)     │      │
+               │ → LLM retries    │  └───────────────────────┘      │
+               └─────────────────-┘                                  │
+                         ▲                                           │
+                         └──────────────────── loop ─────────────────┘
+                                                      (tool succeeded)
+```
+
 ### Wiring it to an agent
 
 ```python
@@ -132,6 +168,10 @@ runner = Runner(agent=agent, plugins=[ReflectAndRetryToolPlugin(max_retries=3)])
 ## 3. process_llm_request Override
 
 `BaseTool.process_llm_request` modifies `LlmRequest` before the model call. Inject ephemeral content (in prompt but not persisted).
+
+### Why not just return the data from the tool?
+
+Function response data persists in session history forever. `process_llm_request` injection is ephemeral (current prompt only) — the content is visible to the LLM for this call but never written to the session. This keeps large payloads (reports, binary artifacts) out of long-term storage while still making them available for the current reasoning step.
 
 ### Pattern: inject artifact content on-demand
 
@@ -180,10 +220,6 @@ class QueryLargeDataTool(FunctionTool):
                             )
                         )
 ```
-
-### Why not just return the data from the tool?
-
-Function response data persists in session history forever. `process_llm_request` injection is ephemeral (current prompt only).
 
 **Source:** `contributing/samples/context_offloading_with_artifact/agent.py`
 
@@ -336,6 +372,8 @@ root_agent = Agent(
     instruction="""\
 Answer user's questions based on the data you have.
 
+# Simplified proof-of-concept: data is hardcoded in the instruction.
+# In production, inject real data via a callable instruction or tool.
 Here are the data you have for San Jose:
 * temperature: 26 C
 * humidity: 20%
@@ -408,7 +446,7 @@ Amounts <= 1000 execute immediately; above 1000 pause for approval.
 
 ### Manual confirmation via tool_context
 
-For complex flows, use `tool_context.request_confirmation` directly:
+When you need finer control than a threshold function allows — for example, returning a payload that the approver can modify — call `tool_context.request_confirmation` directly inside the tool. The tool is called **twice**: on the first call it pauses execution and returns a pending status; on the second call (after the human responds), `tool_context.tool_confirmation` is populated with the approver's payload and the tool completes normally. This two-call protocol requires resumability to be enabled on the `App` (see below).
 
 ```python
 def request_time_off(days: int, tool_context: ToolContext):
@@ -432,7 +470,7 @@ def request_time_off(days: int, tool_context: ToolContext):
 
 ### Resumability
 
-Enable resumability for confirmation flows:
+Enable resumability for confirmation flows. `ResumabilityConfig` is part of the `App` container layer — see [10-apps.md](10-apps.md) for full `App` configuration options including plugins and compaction.
 
 ```python
 from google.adk.apps import App, ResumabilityConfig
@@ -445,3 +483,22 @@ app = App(
 ```
 
 **Source:** `contributing/samples/human_tool_confirmation/agent.py`
+
+---
+
+## Gotchas
+
+- **`output_schema` silently disables all tools.** Do not pass `tools=[...]` on an agent that uses `output_schema` — they are ignored without error.
+- **YAML tool paths are resolved at load time.** A typo in `tools[].name` raises an `ImportError` when the agent is loaded, not when it is called.
+- **`process_llm_request` injection is ephemeral.** Content appended there is visible to the LLM for the current call only — it is never written to the session.
+- **ReflectAndRetry counters are per-tool, not per-invocation.** A different tool failing does not consume retries for your tool. Counter resets on success.
+- **Manual confirmation requires two invocations.** Forgetting to enable `ResumabilityConfig(is_resumable=True)` causes the second call to never arrive.
+
+---
+
+## Related
+
+- [04-agents.md](04-agents.md) — Agent types and callbacks
+- [09-tools.md](09-tools.md) — Tool system reference
+- [10-apps.md](10-apps.md) — App container, plugins, ResumabilityConfig
+- [14-planners.md](14-planners.md) — Planning patterns

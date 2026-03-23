@@ -9,7 +9,7 @@
 >
 > **Action:** Remove; Examples section is sufficient.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Separate the two orderings or add one sentence explaining why agent's own callback trails plugins (the precedence rule).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Clarify that `close()` is a lifecycle hook, not a callback; separate from the 11 event-driven callbacks.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Trim At a Glance to just top-level App fields and note "BasePlugin has 11 callbacks (see class hierarchy below)".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,16 +45,16 @@
 >
 > **Action:** Keep table (more useful); trim line 41 feature enumeration.
 >
-> - [ ] Approved
+> - [x] Approved: also move the table up
 > - [ ] Denied
-> - [ ] Comment: 
+> - [ ] Comment:  also move the table up
 
 > [!abstract] Clarity
 > **Issue:** Line 41 — "Without App: pass agent=; With App: pass app=" omits the footgun (easy mistake).
 >
 > **Action:** Show both Runner constructor signatures side-by-side.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Bold as note or callout; add link to `04-agents.md` explaining `static_instruction`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Make this a bold note or callout box separate from API signature.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -81,7 +81,7 @@
 >
 > **Action:** Add: "Resuming a paused agent re-invokes previous tools; non-idempotent tools may double-execute or corrupt state."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -90,7 +90,7 @@
 >
 > **Action:** Either add brief conceptual paragraph or fold explanation into config block for consistency.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -99,7 +99,7 @@
 >
 > **Action:** Keep Key API minimal (one-liner); move full wiring to Examples section.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -108,7 +108,7 @@
 >
 > **Action:** Add second code block showing how caller invokes resume (e.g., loop with pause event check).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -117,7 +117,7 @@
 >
 > **Action:** Verify model name against Google's current model list before publication.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

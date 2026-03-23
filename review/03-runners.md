@@ -11,14 +11,14 @@
 >
 > - [ ] Approved
 > - [ ] Denied
-> - [ ] Comment: 
+> - [x] Comment:   change the name to comparison between runner, agent, session
 
 > [!abstract] Clarity
 > **Issue:** Line 36 is a dense run-on listing seven things Runner does; hard to scan.
 >
 > **Action:** Break into two sentences: what Runner does per-request, then the stateless property.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Add one-line example of passing a plugin via `App`, or reference `10-apps.md` with context.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add the import line: `from google.adk import types`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Reword: "Each concurrent invocation must use a different `session_id`; sharing a session_id across concurrent calls causes undefined behavior because `Session` is stateful."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Trim the "How It Works" paragraph to one sentence and cross-reference the Gotchas section.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -64,7 +64,7 @@
 > **Action:** Cut or tighten the prose (lines 207-213) after the diagram.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!tip] Summary

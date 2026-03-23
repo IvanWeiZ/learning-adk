@@ -9,7 +9,7 @@
 >
 > **Action:** Rename to "Common Mistakes & Rules".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Delete Anti-Patterns 1–3 block (lines 257–263) entirely.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Move table to follow "At a Glance" section to function as navigation index.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add one-line note: `clone()` is a deep-copy method on `LlmAgent`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add type annotations in parentheses after each parameter (e.g., `(CallbackContext)`; also show `return: None` for each).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Rename to "Quick Reference".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Explain how child override causes unexpected behavior, or delete the rule.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -73,7 +73,7 @@
 > **Action:** Keep only the parallel `output_key` race condition example and cross-reference `08-sessions.md` for full lifecycle.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 ## Summary

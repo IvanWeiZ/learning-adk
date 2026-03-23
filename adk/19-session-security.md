@@ -11,7 +11,7 @@ A single session leak exposes conversation history, credentials, and tool output
 - **Event history leaks** — branch filtering and what agents see
 - **Data persistence** — what gets stored vs what stays in memory
 
-For the security checklist, threat model, and deployment hardening guide, see [security-checklist.md](security-checklist.md).
+For the security checklist, threat model, and deployment hardening guide, see [19b-security-checklist.md](19b-security-checklist.md).
 
 ---
 
@@ -281,13 +281,13 @@ def lookup_customer(customer_id: str) -> str:
 - **Deleting a session does NOT delete `user:` or `app:` state.** These live in separate storage tables.
 - **SQLite has no row-level locking.** Concurrent writes from multiple processes can corrupt data.
 
-*Continued in [security-checklist.md](security-checklist.md) — audit checklist, threat model, deployment hardening, and multi-tenant architecture patterns.*
+*Continued in [19b-security-checklist.md](19b-security-checklist.md) — audit checklist, threat model, deployment hardening, and multi-tenant architecture patterns.*
 
 ---
 
 ## Related
 
-- [security-checklist.md](security-checklist.md) — Security checklist and deployment hardening
+- [19b-security-checklist.md](19b-security-checklist.md) — Security checklist and deployment hardening
 - [08-sessions.md](08-sessions.md) — Session data model and service implementations
 - [07-events.md](07-events.md) — Event structure and what gets persisted
 - [03-runners.md](03-runners.md) — How Runner manages session lifecycle

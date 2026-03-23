@@ -97,14 +97,15 @@ nav:
     - Concurrency: adk/17-concurrency.md
     - Session Lifecycle: adk/18-session-lifecycle.md
     - Session Security: adk/19-session-security.md
-    - Security Checklist: adk/security-checklist.md
+    - Security Checklist: adk/19b-security-checklist.md
 
   - Patterns & Practices:
     - Best Practices: adk/20-best-practices.md
-    - Debugging Guide: adk/debugging-guide.md
+    - Debugging Guide: adk/20b-debugging-guide.md
     - Advanced Patterns: adk/21-advanced-patterns.md
     - Testing: adk/22-testing.md
-    - Testing Examples: adk/testing-examples.md
+    - Testing Context Setup: adk/22b-testing-context-setup.md
+    - Testing Examples: adk/22c-testing-examples.md
     - Advanced Internals: adk/23-advanced-internals.md
     - Plugins & A2A: adk/plugins-and-a2a.md
 

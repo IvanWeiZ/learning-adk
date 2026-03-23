@@ -9,7 +9,7 @@
 >
 > **Action:** Delete the entire section; add critical warnings as inline callouts where concepts are first explained.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Delete the prose bullets; the diagram conveys the information more clearly.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Trim to the top half only (lines 10-17, Runner/session safety); move parallel-tool execution diagram to How It Works.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Clarify: "the exception propagates from `gather`; other coroutines continue to the next `await` point."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add one sentence: "A resume-signal is [brief definition or source reference]."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Add inline comment showing what not to do, e.g., `# Bad: both tools writing ctx.state["result"]`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

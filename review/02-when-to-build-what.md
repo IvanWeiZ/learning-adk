@@ -9,7 +9,7 @@
 >
 > **Action:** Merge the three unique entries (BasePlanner, BaseCodeExecutor, A2A) into "At a Glance" and delete the duplicate tree entirely.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Delete the heading and move the cross-reference into "Related" section.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** No split needed; focus on deletions to improve clarity.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Rename to "Scenario Reference" or simply "Reference".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Replace with a reference to the detailed guide or add inline context for each class.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Move the warning to a separate callout before the table.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Rename to "Component Quick Reference" or merge with "Summary Table".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Restructure to three sections: At a Glance tree → Scenario-to-component reference tables → Summary decision table → Related; eliminates dead section and clarifies purpose.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -81,7 +81,7 @@
 >
 > **Action:** Add one 6-line example comparing FunctionTool vs. BaseTool.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -90,7 +90,7 @@
 >
 > **Action:** Keep the Summary Table (it adds "When" and "Key base class" columns) and delete at least one of the two trees above.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

@@ -2,9 +2,9 @@
 
 > **Official docs:** [Evaluation](https://google.github.io/adk-docs/evaluate/) | **Source:** [`tests/unittests/testing_utils.py`](https://github.com/google/adk-python/blob/main/tests/unittests/testing_utils.py) | **Prereqs:** [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
----
+> **Package availability warning:** `MockModel`, `InMemoryRunner` (test version), and `simplify_events` are internal test utilities in the adk-python source tree — they are **NOT** included in the `pip install google-adk` package. To use them: clone the [adk-python repo](https://github.com/google/adk-python) and add `src/` to your `PYTHONPATH`, or copy `tests/unittests/testing_utils.py` into your project.
 
-> **Note:** `MockModel`, `InMemoryRunner`, and `simplify_events` are internal test utilities in the adk-python source tree — they are NOT included in the `pip install google-adk` package. To use them: clone the [adk-python repo](https://github.com/google/adk-python) and add `src/` to your PYTHONPATH, or copy `tests/unittests/testing_utils.py` into your project.
+ADK's test utilities enable deterministic agent tests without real LLM calls. Replace the LLM with `MockModel` (pre-loaded responses), wire into `InMemoryRunner`, assert on events. Tests run instantly and offline.
 
 ### Production vs. Test Stack
 
@@ -35,20 +35,16 @@ from tests.unittests.testing_utils import InMemoryRunner, MockModel, simplify_ev
 def test_hello():
     mock = MockModel.create(responses=["Hello back!"])
     agent = Agent(name="greeter", model=mock)
-    runner = InMemoryRunner(agent)
+    runner = InMemoryRunner(root_agent=agent)
     events = runner.run("Hello")
     assert simplify_events(events) == [("greeter", "Hello back!")]
 ```
 
 ---
 
-## What It Is
-
-ADK's test utilities enable deterministic agent tests without real LLM calls. Replace the LLM with `MockModel` (pre-loaded responses), wire into `InMemoryRunner`, assert on events. Tests run instantly and offline.
-
----
-
 ## Test Utilities Reference
+
+**Quick picker:** For most tests, use `InMemoryRunner` (multi-turn, session reuse) or `TestInMemoryRunner` (isolated, new session per call). Use `create_invocation_context` only for low-level unit tests that need direct access to `InvocationContext` without a full runner. See [22b-testing-context-setup.md](22b-testing-context-setup.md) for full context setup patterns.
 
 ADK provides two categories of test utilities:
 
@@ -166,6 +162,21 @@ mock = MockModel.create(responses=[], error=SystemError('API down'))
 
 Each call to `generate_content_async` increments `response_index` and yields the next response. If `error` is set, it raises the error instead.
 
+Test that a model error propagates correctly:
+
+```python
+import pytest
+from google.adk.agents.llm_agent import Agent
+from tests.unittests.testing_utils import InMemoryRunner, MockModel
+
+def test_model_error_propagates():
+    mock = MockModel.create(responses=[], error=SystemError('API down'))
+    agent = Agent(name='test', model=mock)
+    runner = InMemoryRunner(root_agent=agent)
+    with pytest.raises(SystemError, match='API down'):
+        runner.run('Hello')
+```
+
 ### Inspecting What the Model Received
 
 `MockModel` records every `LlmRequest` for assertion:
@@ -173,7 +184,7 @@ Each call to `generate_content_async` increments `response_index` and yields the
 ```python
 mock_model = MockModel.create(responses=['response'])
 agent = Agent(name='test', model=mock_model, instruction='Be helpful.')
-runner = InMemoryRunner(agent)
+runner = InMemoryRunner(root_agent=agent)
 runner.run('Hello')
 
 # Assert on the LlmRequest sent to the model
@@ -203,7 +214,7 @@ from google.adk.agents.llm_agent import Agent
 mock_model = MockModel.create(responses=['Hello!', 'How can I help?'])
 agent = Agent(name='greeter', model=mock_model)
 
-runner = InMemoryRunner(agent)
+runner = InMemoryRunner(root_agent=agent)
 events_turn1 = runner.run('Hi there')
 events_turn2 = runner.run('Follow up')
 # Both turns share the same session with accumulated history
@@ -293,129 +304,6 @@ results = simplify_resumable_app_events(events)
 
 ---
 
-## Creating Dependencies
+*Context setup patterns (`create_invocation_context`, `ToolContext`, `ReadonlyContext`, manual `InvocationContext`) have been moved to [22b-testing-context-setup.md](22b-testing-context-setup.md).*
 
-### create_invocation_context — Full Context Without a Runner
-
-For low-level tests that need direct access to `InvocationContext` without a full runner:
-
-```python
-from tests.unittests.testing_utils import create_invocation_context
-
-ctx = await create_invocation_context(
-    agent=my_agent,
-    user_content='test message',         # optional
-    run_config=RunConfig(),              # optional
-    plugins=[my_plugin],                 # optional
-)
-# ctx has:
-#   ctx.artifact_service  → InMemoryArtifactService
-#   ctx.session_service   → InMemorySessionService
-#   ctx.memory_service    → InMemoryMemoryService
-#   ctx.plugin_manager    → PluginManager(plugins)
-#   ctx.session           → fresh session with app_name='test_app', user_id='test_user'
-```
-
-### Creating a ToolContext (Context)
-
-**Important:** `ToolContext` is an alias for `Context` (see `tool_context.py` line 30: `ToolContext = Context`). `Context` extends `ReadonlyContext` and adds mutable state, artifacts, credentials, memory, and tool confirmation.
-
-#### Option A: Via MagicMock (unit-level, for isolated tool testing)
-
-```python
-from unittest.mock import MagicMock
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.sessions.session import Session
-from google.adk.tools.tool_context import ToolContext  # alias for Context
-
-@pytest.fixture
-def mock_tool_context() -> ToolContext:
-    mock_invocation_context = MagicMock(spec=InvocationContext)
-    mock_invocation_context.session = MagicMock(spec=Session)
-    mock_invocation_context.session.state = MagicMock()
-    return ToolContext(invocation_context=mock_invocation_context)
-```
-
-This is the simplest approach. Use it when you just need a `ToolContext` parameter and don't need real state or artifact operations.
-
-#### Option B: Via create_invocation_context (integration-level, real services)
-
-```python
-from tests.unittests.testing_utils import create_invocation_context
-from google.adk.tools.tool_context import ToolContext
-
-async def make_real_tool_context() -> ToolContext:
-    agent = LlmAgent(name='test_agent')
-    ctx = await create_invocation_context(agent)
-    return ToolContext(invocation_context=ctx)
-```
-
-This gives you real in-memory services, so `tool_context.state`, `tool_context.save_artifact()`, etc. all work.
-
-#### Option C: Via InMemoryRunner (full integration, tools execute in agent loop)
-
-```python
-# No manual ToolContext creation needed — the runner wires everything
-mock = MockModel.create(responses=[
-    Part.from_function_call(name='my_tool', args={'x': 1}),
-    'done',
-])
-agent = Agent(name='test', model=mock, tools=[my_tool])
-runner = InMemoryRunner(agent)
-events = runner.run('do it')
-```
-
-### Creating a ReadonlyContext (for instruction/field tests)
-
-```python
-from google.adk.agents.readonly_context import ReadonlyContext
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.sessions.in_memory_session_service import InMemorySessionService
-
-async def _create_readonly_context(
-    agent: LlmAgent, state: dict[str, Any] | None = None
-) -> ReadonlyContext:
-    session_service = InMemorySessionService()
-    session = await session_service.create_session(
-        app_name='test_app', user_id='test_user', state=state
-    )
-    invocation_context = InvocationContext(
-        invocation_id='test_id',
-        agent=agent,
-        session=session,
-        session_service=session_service,
-    )
-    return ReadonlyContext(invocation_context)
-```
-
-### Creating an InvocationContext Manually
-
-For maximum control, build `InvocationContext` directly:
-
-```python
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.sessions.in_memory_session_service import InMemorySessionService
-from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.plugins.plugin_manager import PluginManager
-
-session_service = InMemorySessionService()
-session = await session_service.create_session(
-    app_name='test_app', user_id='test_user'
-)
-
-ctx = InvocationContext(
-    invocation_id='test_invocation_id',
-    agent=my_agent,
-    session=session,
-    session_service=session_service,
-    artifact_service=InMemoryArtifactService(),       # optional
-    memory_service=InMemoryMemoryService(),            # optional
-    plugin_manager=PluginManager(plugins=[]),           # optional
-    run_config=RunConfig(),                             # optional
-)
-```
-
----
-
-*Continued in [testing-examples.md](testing-examples.md) — comprehensive test examples for LlmAgent features, callbacks, plugins, tools, and best practices.*
+*Continued in [22c-testing-examples.md](22c-testing-examples.md) — comprehensive test examples for LlmAgent features, callbacks, plugins, tools, and best practices.*

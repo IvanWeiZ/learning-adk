@@ -11,14 +11,14 @@
 >
 > - [ ] Approved
 > - [ ] Denied
-> - [ ] Comment: 
+> - [x] Comment:  try to merge them
 
 > [!abstract] Structure
 > **Issue:** "At a Glance" (lines 5-11) is a single sentence plus cross-reference — no content preview.
 >
 > **Action:** Add a 3-5 line summary of file contents or remove the section heading.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** State the danger explicitly in the opening sentence.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add one sentence: "Branch is a dot-separated ancestor path in the agent tree."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Move this example to `20-best-practices.md` or `17-concurrency.md`; it doesn't belong in session security.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

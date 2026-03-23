@@ -9,7 +9,7 @@
 >
 > **Action:** Delete the prose body; keep the box diagram.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Replace with a runnable snippet showing `await runner.run_async()` iteration and `event.is_final_response()` check, or remove the heading.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Replace with descriptive labels ("Tool Call", "weather lookup result").
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Keep only in Key Methods block; remove the Gotchas restatement.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Move into `content` field description in the class diagram.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Move comment to prose sentence after code block.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Merge them; keep the detailed version, rename to clarify streaming/persistence angle.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Add 10-line snippet showing event consumption, `event.author` check, and `event.actions.state_delta` inspection.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

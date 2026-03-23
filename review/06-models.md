@@ -9,7 +9,7 @@
 >
 > **Action:** Rewrite using vertical list-based layout per CLAUDE.md lesson 14.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Update to a real ID (e.g., `claude-3-5-sonnet-20241022`).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Move the example to subclass sections or remove provider-specific examples from `BaseLlm`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add a comment: `# Gemini only` to clarify.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add one sentence: cache fields apply when context caching is enabled; `live_connect_config` applies to Live API only.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Add one sentence with an example clarifying inheritance behavior.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Move before "Adding a Custom Adapter" or add cross-reference to `04-agents.md`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Add cross-reference at line 179: "See `07-events.md` for how `Event` extends this."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

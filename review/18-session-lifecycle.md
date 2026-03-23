@@ -11,14 +11,15 @@
 >
 > - [ ] Approved
 > - [ ] Denied
-> - [ ] Comment: 
+> - [x] Comment:  move it session latency optimization md also for  ### Optimizing for Latency (When Persistence Is Not Critical)
+
 
 > [!bug] Bug
 > **Issue:** Lines 214-284 show skeleton code with bare `# ... insert event rows ...` placeholder (lines 282-283).
 >
 > **Action:** Complete the `_flush` method or add explicit note: "implementation omitted for brevity."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +28,7 @@
 >
 > **Action:** Move state scoping content here or remove the diagram and explicitly defer to `08-sessions.md`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +37,7 @@
 >
 > **Action:** Collapse into: `4+. append_event(agent) — one per non-partial event`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +46,7 @@
 >
 > **Action:** Rename to "Optional: append_event — plugin early exit" and "Optional: append_event — rewind."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +55,7 @@
 >
 > **Action:** Add one-line warning: "this is illustrative; missing edge cases like absent app/user state dicts."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -64,7 +65,7 @@
 >
 > **Action:** Move after "Decision Guide" (line 352) so readers see the summary before strategies; rename to `## Reference`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

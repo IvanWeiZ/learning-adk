@@ -9,7 +9,7 @@
 >
 > **Action:** Remove; Java comparisons belong in dedicated `java-to-python-cheat-sheet.md` reference file.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Verify against source; if method is on service not context, show correct call pattern.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Show safe pattern (build new string, guard for None) or explain when `+=` is safe.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Redraw with proper alignment or convert to vertical timeline format per repo diagram policy.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -46,7 +46,7 @@
 > **Action:** Keep table for "why" framing; link to `08-sessions.md` for full scoping rules.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!quote] Dedup
@@ -55,7 +55,7 @@
 > **Action:** Add note: "for full session state scoping rules, see 08-sessions.md" to prevent future drift.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!abstract] Clarity
@@ -63,7 +63,7 @@
 >
 > **Action:** Add: "Storage is not automatic — requires explicit `add_session_to_memory()` call or callback."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Add: "case-insensitive exact substring matching (not fuzzy)."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -81,7 +81,7 @@
 >
 > **Action:** Delete; Pattern 1 shows the callback approach clearly.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -91,7 +91,7 @@
 > **Action:** Move to `09-tools.md` or replace with single forward reference to it.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!abstract] Structure
@@ -99,7 +99,7 @@
 >
 > **Action:** Move to directly after "What It Is" (after line 21) to improve flow.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -108,7 +108,7 @@
 >
 > **Action:** Show callback-based pattern first or add comment clarifying why refetch is needed.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -117,7 +117,7 @@
 >
 > **Action:** Remove f-string wrapper or explain why it's used.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

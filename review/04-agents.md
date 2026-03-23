@@ -9,7 +9,7 @@
 >
 > **Action:** Delete the section; move the type alias note to the At-a-Glance prose.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Delete the section.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -28,7 +28,7 @@
 > **Action:** Add dedicated sections for composition agents with fields, examples, and gotchas, or split to a companion file.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!abstract] Clarity
@@ -36,7 +36,7 @@
 >
 > **Action:** Move the prose explanation before the diagram.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Move the workaround to the Gotchas section where `output_schema` is already mentioned.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -55,7 +55,7 @@
 > **Action:** Move it to just before "Agent Trees and Transfer" where it becomes relevant.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!abstract] Structure
@@ -63,7 +63,7 @@
 >
 > **Action:** Add construction examples for each composition agent type.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Replace with a composition agent example or expand inline.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -82,7 +82,7 @@
 > **Action:** Keep the field reference table; cut the narrative and cross-reference `03-runners.md`.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!tip] Summary

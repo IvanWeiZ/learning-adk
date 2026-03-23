@@ -9,7 +9,7 @@
 >
 > **Action:** Delete the section entirely; tightens file by ~16 lines without losing content.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Either delete entirely or expand with at least one paragraph explaining trigger, model support, and event loop differences.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Add one sentence: `LlmAgent` selects and assigns the flow at construction time based on its configuration.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add a parenthetical note cross-referencing the relationship between `SingleFlow` and `AutoFlow`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add one sentence: cache fields apply only when context caching is enabled; `live_connect_config` applies only to Live API.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Standardize arrow usage throughout the trace.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Delete the section or collapse to one line in "Response Processors"; cross-reference `13-auth.md`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Add one short code example showing a tool-use turn with real `async for event in runner.run_async(...)` syntax.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -81,7 +81,7 @@
 >
 > **Action:** Replace tables with a summary and forward reference, or sync the lists completely.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -90,7 +90,7 @@
 >
 > **Action:** Collapse to single line pointing to `13-auth.md`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
