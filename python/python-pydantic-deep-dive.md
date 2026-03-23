@@ -29,7 +29,7 @@ Pydantic powers ALL data structures in Google ADK (Event, EventActions, Session,
 
 ## BaseModel Fundamentals
 
-#### What is BaseModel?
+### What is BaseModel?
 
 In Java, you'd use **records** (Java 16+) or **Lombok @Data** to define POJOs with automatic getters, setters, equals, hashCode, and toString. **Pydantic's BaseModel** is similar but goes further: it validates data on construction and provides serialization/deserialization out of the box.
 
@@ -56,7 +56,7 @@ print(user.age)   # 30
 print(user.model_dump())  # {'name': 'you', 'age': 30}
 ```
 
-#### Field Types and Python Typing
+### Field Types and Python Typing
 
 Python uses type hints instead of Java's explicit types. Here's the mapping:
 
@@ -98,7 +98,7 @@ event = Event(
 )
 ```
 
-#### Optional Fields and Defaults
+### Optional Fields and Defaults
 
 In Java, you'd use `@Nullable` or Optional. In Pydantic:
 
@@ -138,7 +138,7 @@ except Exception as e:
 
 Pydantic's `Field()` function gives you fine-grained control over individual fields, similar to Java's validation annotations (`@NotNull`, `@Min`, `@Pattern`, etc.).
 
-#### Basic Field() Usage
+### Basic Field() Usage
 
 ```python
 from pydantic import BaseModel, Field
@@ -182,7 +182,7 @@ except Exception as e:
     print(f"Validation error: {e}")
 ```
 
-#### Aliases and Serialization Names
+### Aliases and Serialization Names
 
 Often you receive data with different field names (e.g., from APIs using snake_case or camelCase):
 
@@ -215,7 +215,7 @@ json_str = '{"firstName":"you","lastName":"Doe","emailAddress":"wei@example.com"
 user_from_json = User.model_validate_json(json_str)
 ```
 
-#### default_factory for Mutable Defaults
+### default_factory for Mutable Defaults
 
 This is crucial! In Java, you might initialize collections in constructors. In Python, if you use `= []` as a default, all instances share the same list. Use `default_factory`:
 
@@ -241,7 +241,7 @@ print(session1.tags)  # ['important']
 print(session2.tags)  # [] - NOT shared!
 ```
 
-#### Exclude and Deprecated Fields
+### Exclude and Deprecated Fields
 
 ```python
 class Document(BaseModel):
@@ -282,7 +282,7 @@ Pydantic validates data **on construction**, automatically catching errors befor
 >
 > Without it, an invalid assignment silently succeeds. This is a common ADK gotcha when mutating model state after creation.
 
-#### Automatic Validation (Lax vs Strict Mode)
+### Automatic Validation (Lax vs Strict Mode)
 
 By default, Pydantic is **lenient** and coerces compatible types:
 
@@ -313,7 +313,7 @@ except Exception as e:
     print(f"Strict mode rejected string: {e}")
 ```
 
-#### @field_validator
+### @field_validator
 
 Use `@field_validator` to add custom validation logic (replaces Pydantic v1's `@validator`):
 
@@ -429,7 +429,7 @@ class Temperature(BaseModel):
 temp = Temperature(celsius="25.5")
 ```
 
-#### @model_validator
+### @model_validator
 
 Validate across multiple fields or after all fields are set:
 
@@ -459,7 +459,7 @@ except Exception as e:
     print(f"Cross-field validation failed: {e}")
 ```
 
-#### Custom Validation with Annotated Types
+### Custom Validation with Annotated Types
 
 For reusable validation constraints:
 
@@ -492,7 +492,7 @@ except Exception as e:
 
 Pydantic seamlessly converts between Python objects and JSON/dicts. In Java, you'd use libraries like Jackson or Gson for this.
 
-#### model_dump() and model_dump_json()
+### model_dump() and model_dump_json()
 
 ```python
 from pydantic import BaseModel
@@ -529,7 +529,7 @@ print(user.model_dump_json())
 # {"name":"you","email":"wei@example.com","created_at":"2026-03-15T...","is_active":true}
 ```
 
-#### model_validate() and model_validate_json()
+### model_validate() and model_validate_json()
 
 ```python
 # From dict
@@ -555,7 +555,7 @@ except Exception as e:
     print(f"Strict validation failed: {e}")
 ```
 
-#### Include/Exclude Fields
+### Include/Exclude Fields
 
 Useful for controlling what gets serialized (e.g., sensitive data):
 
@@ -585,7 +585,7 @@ print(user.model_dump(include={"name", "email"}))
 print(user.model_dump(exclude={"api_key"}))
 ```
 
-#### Custom Serializers
+### Custom Serializers
 
 For complex serialization logic:
 
@@ -616,7 +616,7 @@ print(event.model_dump())
 # {'name': 'Login', 'timestamp': '2026-03-15T...', 'duration_ms': '1500ms'}
 ```
 
-#### Model Serializer (Full Control)
+### Model Serializer (Full Control)
 
 For complete serialization control:
 
@@ -646,7 +646,7 @@ print(response.model_dump())
 
 This is arguably the most important pattern in ADK. Instead of mutating objects, you create modified copies. This is similar to Java's builder pattern but more concise.
 
-#### Basic model_copy()
+### Basic model_copy()
 
 ```python
 from pydantic import BaseModel
@@ -680,7 +680,7 @@ assert context.request_id == "req_789"
 assert child_context.request_id == "req_child_001"
 ```
 
-#### Deep Copy vs Shallow Copy
+### Deep Copy vs Shallow Copy
 
 By default, `model_copy()` creates a **shallow copy**. Nested objects are still references:
 
@@ -728,7 +728,7 @@ print(original2.metadata.tags)  # ['python', 'pydantic'] - NOT shared
 print(deep.metadata.tags)       # ['python', 'pydantic', 'adk']
 ```
 
-#### ADK Pattern: Nested Context
+### ADK Pattern: Nested Context
 
 This is how ADK creates child InvocationContexts:
 
@@ -783,7 +783,7 @@ print(f"Root request: {root.request_id}, Child request: {child.request_id}")
 
 Real-world data is hierarchical. Pydantic handles nested validation gracefully.
 
-#### Basic Nesting
+### Basic Nesting
 
 ```python
 from pydantic import BaseModel
@@ -824,7 +824,7 @@ user2 = User(
 )
 ```
 
-#### Lists and Dicts of Models
+### Lists and Dicts of Models
 
 ```python
 from typing import Optional
@@ -855,7 +855,7 @@ print(company.contacts[0].name)  # "you"
 print(len(company.contacts))     # 2
 ```
 
-#### Optional Nested Models
+### Optional Nested Models
 
 ```python
 from typing import Optional
@@ -880,7 +880,7 @@ user2 = User(
 print(user2.profile.bio)  # "Python developer"
 ```
 
-#### Validation Cascades
+### Validation Cascades
 
 When nested models fail validation, the error propagates:
 

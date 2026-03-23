@@ -61,7 +61,7 @@ async def main():
     db_result = await db_task
 ```
 
-asyncio runs everything on **one thread**. When a coroutine hits `await` (an I/O wait), it **yields control** back to the event loop, which runs other coroutines. No threads, no locks, no context switching overhead.
+asyncio runs everything on **one thread**. When a coroutine hits `await` (an I/O wait), it **yields control** back to the event loop, which runs other coroutines. No threads, no locks, and no OS-level context switching. asyncio does switch between coroutines at `await` points, but that is a Python-level cooperative switch — no kernel involvement and orders of magnitude cheaper than preemptive OS thread scheduling.
 
 #### The Key Insight
 
@@ -354,18 +354,19 @@ async def main():
 async def log_event(event: dict):
     await db.insert(event)
 
+# ✅ CORRECT: keep a reference to prevent GC and silent exception loss
+background_tasks = set()
+
 async def handle_request(query: str):
-    # Fire and forget — don't wait for logging
-    asyncio.create_task(log_event({"query": query}))
-
-    # But WARNING: if the task raises an exception, it's silently lost!
-    # Python 3.12 warns about this. Best practice:
-
-    background_tasks = set()
-
     task = asyncio.create_task(log_event({"query": query}))
     background_tasks.add(task)
-    task.add_done_callback(background_tasks.discard)  # prevent GC
+    task.add_done_callback(background_tasks.discard)  # drop ref when done
+
+# ❌ WRONG: task is created but the reference is immediately dropped
+async def handle_request_bad(query: str):
+    asyncio.create_task(log_event({"query": query}))
+    # If the task raises, the exception is silently lost.
+    # Python 3.12+ warns about this at runtime.
 ```
 
 ---
@@ -644,14 +645,21 @@ async def run(query: str):
 #### Composing Async Generators (Sequential Agents)
 
 ```python
-# Python does NOT support `async yield from` — you must loop manually
+# Python does NOT support `async yield from` — you must loop manually.
+# The reason is deeper than syntax: an async generator can only yield
+# from its own body. There is no way to "delegate" to a sub-generator
+# and interleave its yields with the outer generator's execution.
+# `yield from` (sync) works because the sub-generator steps are cheap
+# and synchronous. Async generators need to await between steps, so
+# the language requires you to make each await explicit.
 
-# ❌ WRONG — syntax error
+# ❌ WRONG — SyntaxError: `async yield from` is not valid Python
 async def sequential_agents(agents, query):
     for agent in agents:
         async yield from agent.run(query)  # SyntaxError!
 
-# ✅ RIGHT — explicit async for loop
+# ✅ RIGHT — explicit async for loop: consume each sub-generator fully
+# before moving to the next one (true sequential execution)
 async def sequential_agents(agents, query) -> AsyncGenerator[Event, None]:
     for agent in agents:
         async for event in agent.run(query):
@@ -665,7 +673,18 @@ import asyncio
 from typing import AsyncGenerator
 
 async def parallel_agents(agents, query) -> AsyncGenerator[Event, None]:
-    """Run agents in parallel, yield events as they arrive."""
+    """Run agents in parallel, collect events, then yield.
+
+    LIMITATION — streaming is lost:
+    Because `yield` cannot appear inside `async with TaskGroup()` (SyntaxError),
+    all events are buffered in a queue and only released after ALL agents finish.
+    The consumer sees nothing until the slowest agent completes.
+
+    If true streaming is required (events flow out as they arrive), use a
+    different coordination approach — e.g., have consumers await on the queue
+    directly while the tasks run, or use asyncio.Queue with an explicit
+    "all done" counter instead of TaskGroup.
+    """
     queue: asyncio.Queue[Event | None] = asyncio.Queue()
 
     async def run_and_enqueue(agent):
@@ -673,14 +692,14 @@ async def parallel_agents(agents, query) -> AsyncGenerator[Event, None]:
             await queue.put(event)
         await queue.put(None)  # sentinel: this agent is done
 
-    # Start all agents concurrently
-    # NOTE: yield cannot be used inside `async with TaskGroup()` —
-    # it would be a SyntaxError. Instead, enqueue events and yield after.
+    # Start all agents concurrently.
+    # NOTE: yield cannot appear inside `async with TaskGroup()` — SyntaxError.
+    # Events accumulate in the queue; consumer sees them only after all agents finish.
     async with asyncio.TaskGroup() as tg:
         for agent in agents:
             tg.create_task(run_and_enqueue(agent))
 
-    # Yield events after TaskGroup exits (all tasks done)
+    # Yield buffered events after TaskGroup exits (all tasks done)
     while not queue.empty():
         event = queue.get_nowait()
         if event is not None:
@@ -796,9 +815,11 @@ async def main(tool_configs: list):
 #### ADK Example: MCP Toolset Connection
 
 ```python
-# ADK's McpToolset is a BaseToolset passed directly to an agent
+# PSEUDOCODE — import path not verified against ADK source.
+# ADK's McpToolset is a BaseToolset passed directly to an agent.
 # (MCPToolset is deprecated; use McpToolset instead)
-from google.adk.tools import McpToolset
+# Verify the exact import path in google/adk-python before using.
+from google.adk.tools import McpToolset  # verify this import
 
 toolset = McpToolset(
     connection_params=StdioServerParameters(
