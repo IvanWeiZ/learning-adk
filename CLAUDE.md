@@ -48,10 +48,11 @@ learning-adk/
 │   ├── 24-faq.md                                  # Tool versioning, state scoping
 │   ├── 25-adk-2.0-preview.md                      # ADK 2.0: graph workflows, collaborative agents
 │   ├── custom-use-cases.md                        # Component code examples (split from 02)
-│   ├── debugging-guide.md                         # Debugging checklist, performance (split from 20)
+│   ├── 19b-security-checklist.md                  # Audit checklist, threat model (split from 19)
+│   ├── 20b-debugging-guide.md                     # Debugging checklist, performance (split from 20)
+│   ├── 22b-testing-context-setup.md               # Context setup, fixtures (split from 22)
+│   ├── 22c-testing-examples.md                    # Test examples for callbacks, plugins (split from 22)
 │   ├── plugins-and-a2a.md                         # Custom tools, A2A, code executors (split from 23)
-│   ├── security-checklist.md                      # Audit checklist, threat model (split from 19)
-│   ├── testing-examples.md                        # Test examples for callbacks, plugins (split from 22)
 │   └── adk-2.0-patterns.md                         # Collaborative agents, dynamic workflows (split from 25)
 ├── python/
 │   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
@@ -169,7 +170,7 @@ Limits: ADK docs **600**, Python guides **1000**, Onboarding **250**.
 - `adk/18-session-lifecycle.md`: 603 (limit 600)
 - `adk/24-faq.md`: 648 (limit 600)
 - `adk/25-adk-2.0-preview.md`: 933 (limit 600)
-- `adk/testing-examples.md`: 633 (limit 600)
+- `adk/22c-testing-examples.md`: 633 (limit 600)
 - `python/python-metaprogramming-deep-dive.md`: 1350 (limit 1000)
 - `python/python-pydantic-advanced.md`: 1418 (limit 1000)
 

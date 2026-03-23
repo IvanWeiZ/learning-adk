@@ -9,7 +9,7 @@
 >
 > **Action:** Provide a real 5–10 line answer or remove from file.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -19,7 +19,7 @@
 > **Action:** Keep pattern comparison (lines 363–385); delete redundant state-passing diagram (lines 421–445) and others.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!warning] Split
@@ -27,7 +27,7 @@
 >
 > **Action:** Extract to dedicated `message-passing-patterns.md`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Replace with public API or document that no public API exists for this use case.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Explain implementation approach or provide helper function.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Answer in 15–20 lines (state scopes table from `08-sessions.md` fits) or remove.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -64,7 +64,7 @@
 > **Action:** Keep message-passing table (lines 582–608) which doesn't appear elsewhere; cross-ref others.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 ## Summary

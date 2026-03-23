@@ -41,8 +41,11 @@ fi
 echo ""
 
 # §3: Stale b-suffix cross-references
+# Canonical b-suffix files (19b-, 20b-, 22b-, 22c-) are intentional — exclude them.
+# Only flag references to OLD b-suffix names that were renamed away (e.g., 07b-events.md).
 echo "§3 Stale b-suffix references"
-if grep -rn '[0-9]\+b-[a-z].*\.md' adk/*.md python/*.md reference/*.md 2>/dev/null; then
+if grep -rn '[0-9]\+b-[a-z].*\.md' adk/*.md python/*.md reference/*.md 2>/dev/null \
+   | grep -v '19b-security-checklist\|20b-debugging-guide\|22b-testing-context-setup\|22c-testing-examples'; then
   fail "Found stale b-suffix file references"
 else
   pass "No stale b-suffix references"

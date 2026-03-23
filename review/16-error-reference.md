@@ -9,7 +9,7 @@
 >
 > **Action:** Delete the entire section; absorb any critical warnings as inline callouts where concepts are first explained.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Implement at least one recovery branch (e.g., retry or return fallback `LlmResponse` for 429s).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Remove one copy; move remaining code to Examples section and remove duplicate structure.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add required imports or simplify to a named function.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -46,7 +46,7 @@
 >
 > **Action:** Promote to a sub-bullet under recovery pipeline or give it a `#### Tool-Not-Found` heading.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -55,7 +55,7 @@
 >
 > **Action:** Move the code example to Examples; keep only the diagram in Key API.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

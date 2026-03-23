@@ -27,7 +27,7 @@
 >
 > **Action:** Deleting line 37 (~7 lines) and compressing the callback signatures block (lines 527-563) to a summary table with a link (~20-line reduction) brings it under 600 without a split.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Add one sentence clarifying the difference between partial JSON chunks and partial text.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add a forward reference to Step 8 explaining why `evt-004a/b/c` don't persist to the session.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -56,14 +56,14 @@
 >
 > - [ ] Approved
 > - [ ] Denied
-> - [ ] Comment: 
+> - [x] Comment:  actually move key concept before  At a Glance
 
 > [!abstract] Examples
 > **Issue:** Lines 429-440 use informal shorthand (e.g., `content="What's the weather?"`) that doesn't match the Event model in Step 1.
 >
 > **Action:** Add a comment signaling pseudocode, or use real field names and values.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Replace callback signatures block (lines 527-563) with a compact summary table and link to `04-agents.md`; keep the one-sentence state-scope summary inline.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

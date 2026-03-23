@@ -188,7 +188,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 | 17 | [17-concurrency.md](adk/17-concurrency.md) | Thread safety, parallel tools, session locking |
 | 18 | [18-session-lifecycle.md](adk/18-session-lifecycle.md) | Session service call timeline, latency optimization |
 | 19 | [19-session-security.md](adk/19-session-security.md) | Security considerations for session/event data |
-| | [security-checklist.md](adk/security-checklist.md) | Audit checklist, threat model, deployment hardening |
+| | [19b-security-checklist.md](adk/19b-security-checklist.md) | Audit checklist, threat model, deployment hardening |
 
 </details>
 
@@ -199,10 +199,11 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 | # | File | What It Covers |
 |:-:|------|---------------|
 | 20 | [20-best-practices.md](adk/20-best-practices.md) | Anti-patterns, common mistakes, rules |
-| | [debugging-guide.md](adk/debugging-guide.md) | Debugging checklist, latency optimization |
+| | [20b-debugging-guide.md](adk/20b-debugging-guide.md) | Debugging checklist, latency optimization |
 | 21 | [21-advanced-patterns.md](adk/21-advanced-patterns.md) | YAML configs, ReflectAndRetry, triage gates |
 | 22 | [22-testing.md](adk/22-testing.md) | MockModel, deterministic testing, pytest patterns |
-| | [testing-examples.md](adk/testing-examples.md) | Test examples for callbacks, plugins, tools |
+| | [22b-testing-context-setup.md](adk/22b-testing-context-setup.md) | Context setup, ToolContext, InvocationContext fixtures |
+| | [22c-testing-examples.md](adk/22c-testing-examples.md) | Test examples for callbacks, plugins, tools |
 | 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, reason-act loop |
 | | [plugins-and-a2a.md](adk/plugins-and-a2a.md) | Custom tools, A2A, code executors |
 

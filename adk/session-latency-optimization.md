@@ -414,4 +414,4 @@ runner = Runner(agent=agent, app_name="my_app", session_service=session_service)
 
 - [18-session-lifecycle.md](18-session-lifecycle.md) — Session service call timeline and `append_event` internals
 - [08-sessions.md](08-sessions.md) — Session data model, state scoping, service interface
-- [debugging-guide.md](debugging-guide.md) — Debugging checklist, performance profiling
+- [20b-debugging-guide.md](20b-debugging-guide.md) — Debugging checklist, performance profiling

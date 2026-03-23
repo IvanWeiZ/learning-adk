@@ -9,7 +9,7 @@
 >
 > **Action:** Remove Class Hierarchy; keep the table as authoritative source.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Either add one-line explanation ("State backed by two dicts: `_value` for reads, `_delta` for pending writes") or remove internal fields and trace only observable behavior.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Expand with comment explaining it "stores agent's final text response in session.state['summary']".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -37,7 +37,7 @@
 > **Action:** Cut code block to one; keep bullet summary as quick reference.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!abstract] Clarity
@@ -45,7 +45,7 @@
 >
 > **Action:** Rephrase: "Use `GetSessionConfig` when you only need recent context from a long session."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Move to Gotchas section (line 232+) as a critical constraint.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Collapse Examples into How It Works or remove duplication in code blocks.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

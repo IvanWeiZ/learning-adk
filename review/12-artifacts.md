@@ -9,7 +9,7 @@
 >
 > **Action:** Remove base-service signature or move to collapsed note; keep CallbackContext version as primary.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Add comparison table or note making the distinction memorable.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Standardize error wording; clarify "artifact refs" term.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Collapse three separate code blocks into one with comments marking alternative service lines; save ~20 lines.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add note: "`file_data` is unsupported in FileArtifactService and GcsArtifactService."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Add one-line callout linking to scoping section.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Add parenthetical: "(see 07-events.md)".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Add one sentence: "This enables snapshots or persistence of in-memory artifacts between sessions."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -81,7 +81,7 @@
 >
 > **Action:** Move to just before versioning semantics section (line 240) where version numbers and metadata are discussed.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -90,7 +90,7 @@
 >
 > **Action:** Add guard clause example: "if artifact_service is None: raise ValueError(...)" or complete try/except skeleton.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 

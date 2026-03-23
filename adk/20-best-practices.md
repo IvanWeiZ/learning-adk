@@ -4,13 +4,28 @@
 
 ## At a Glance
 
-Full debugging checklist: see [debugging-guide.md](debugging-guide.md).
+Full debugging checklist: see [20b-debugging-guide.md](20b-debugging-guide.md).
 
 This document collects the most common ADK mistakes, anti-patterns, and rules. Each section covers one category of error with wrong/correct examples and the reasoning behind the rule.
 
+### Summary: Top 10 Rules
+
+| # | Rule | Why |
+|---|------|-----|
+| 1 | Agent names must be valid Python identifiers | ADK validates at construction |
+| 2 | Return errors from tools, never raise exceptions | LLM handles strings, not stack traces |
+| 3 | Write clear tool docstrings | It's the only thing the LLM reads |
+| 4 | Don't use `output_schema` with tools | It silently disables all tools |
+| 5 | Each agent instance belongs to one parent only | Use `.clone()` for reuse |
+| 6 | Use exact callback parameter names | ADK uses names for injection |
+| 7 | Don't duplicate config in `generate_content_config` | ADK validates and crashes |
+| 8 | Store only JSON-serializable values in state | State is persisted to storage |
+| 9 | Use specific `description` fields for sub-agents | LLM uses them for routing |
+| 10 | Keep agent hierarchy shallow (2-3 levels) | Each level = more LLM calls |
+
 ---
 
-## How It Works
+## Common Mistakes & Rules
 
 ### 1. Agent Naming — The #1 Source of Startup Crashes
 
@@ -99,6 +114,8 @@ researcher = Agent(name="researcher", tools=[search_knowledge])
 
 ### 5. Agent Reuse — One Parent Only
 
+`clone()` is a deep-copy method on `LlmAgent` that creates a new independent instance. The `update` parameter accepts a dict of field overrides applied after copying, so you can rename the clone without affecting the original.
+
 ```python
 # WRONG: Same instance in two parents
 shared_helper = Agent(name="helper", instruction="Help with tasks")
@@ -117,19 +134,20 @@ parent_b = Agent(name="parent_b", sub_agents=[template.clone(update={"name": "he
 Callback parameter names (must be exact):
 │
 ├── before_agent_callback
-│      callback_context
+│      callback_context: CallbackContext
 │
 ├── before_model_callback
-│      callback_context, llm_request
+│      callback_context: CallbackContext, llm_request: LlmRequest
 │
 ├── after_model_callback
-│      callback_context, llm_response
+│      callback_context: CallbackContext, llm_response: LlmResponse
 │
 ├── before_tool_callback
-│      tool, args, tool_context
+│      tool: BaseTool, args: dict[str, Any], tool_context: ToolContext
 │
 └── after_tool_callback
-       tool, args, tool_context, tool_response
+       tool: BaseTool, args: dict[str, Any], tool_context: ToolContext,
+       tool_response: dict[str, Any]
 ```
 
 ### 7. generate_content_config — Don't Duplicate Agent Fields
@@ -179,6 +197,8 @@ agent_b = Agent(name="b", output_key="result_b")
 
 ### 9. Model Inheritance — Don't Over-Specify
 
+Children inherit the model from their nearest ancestor that has one set. If **no ancestor** has a model and the child doesn't set one either, ADK raises a `ValueError` at runtime — not at construction time. This means the failure surfaces only when the child agent is actually invoked, which can be hard to debug in large hierarchies. Always set a model on the root agent.
+
 ```python
 # WASTEFUL: Setting the same model on every agent
 root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
@@ -189,6 +209,11 @@ root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
 root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
     Agent(name="child_a"), # Inherits gemini-2.5-flash
     Agent(name="smart_child", model="gemini-2.5-pro"), # Override only when different
+])
+
+# BROKEN: No model anywhere — fails at runtime when child_a is invoked
+root = Agent(name="root", sub_agents=[
+    Agent(name="child_a"), # ValueError at invocation time
 ])
 ```
 
@@ -255,32 +280,9 @@ sub_agents=[Agent(
 
 ### 14. Common Architecture Anti-Patterns
 
-**Anti-Pattern 1: God Agent** — One agent with 20 tools and a 2000-word instruction. Split into focused agents with 3-5 tools each.
-
-**Anti-Pattern 2: Deep Nesting** — 5+ levels of agent hierarchy means 5+ LLM calls just for routing. Keep hierarchy shallow (2-3 levels max).
-
-**Anti-Pattern 3: Global Mutable State** — Using global variables to share state between tools is a race condition. Use `tool_context.state` instead.
-
 ---
 
-## Examples
-
-### Summary: Top 10 Rules
-
-| # | Rule | Why |
-|---|------|-----|
-| 1 | Agent names must be valid Python identifiers | ADK validates at construction |
-| 2 | Return errors from tools, never raise exceptions | LLM handles strings, not stack traces |
-| 3 | Write clear tool docstrings | It's the only thing the LLM reads |
-| 4 | Don't use `output_schema` with tools | It silently disables all tools |
-| 5 | Each agent instance belongs to one parent only | Use `.clone()` for reuse |
-| 6 | Use exact callback parameter names | ADK uses names for injection |
-| 7 | Don't duplicate config in `generate_content_config` | ADK validates and crashes |
-| 8 | Store only JSON-serializable values in state | State is persisted to storage |
-| 9 | Use specific `description` fields for sub-agents | LLM uses them for routing |
-| 10 | Keep agent hierarchy shallow (2-3 levels) | Each level = more LLM calls |
-
----
+## Quick Reference
 
 ## Gotchas
 
@@ -293,13 +295,13 @@ sub_agents=[Agent(
 - **Blocking I/O in tools blocks the entire event loop.** Use `async` HTTP clients or `asyncio.to_thread`.
 - **Global mutable state shared across tool functions is a race condition.** Use `tool_context.state`.
 
-*Continued in [debugging-guide.md](debugging-guide.md) — debugging checklist, latency optimization, and performance tips.*
+*Continued in [20b-debugging-guide.md](20b-debugging-guide.md) — debugging checklist, latency optimization, and performance tips.*
 
 ---
 
 ## Related
 
-- [debugging-guide.md](debugging-guide.md) — Debugging checklist and performance optimization
+- [20b-debugging-guide.md](20b-debugging-guide.md) — Debugging checklist and performance optimization
 - [00-onboarding-guide.md](00-onboarding-guide.md) — Start here if you're new
 - [23-advanced-internals.md](23-advanced-internals.md) — Advanced patterns and internals
 - [04-agents.md](04-agents.md) — Agent types deep dive

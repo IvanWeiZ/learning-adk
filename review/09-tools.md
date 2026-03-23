@@ -10,7 +10,7 @@
 > **Action:** Remove; diagram is sufficient.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!danger] Delete
@@ -19,7 +19,7 @@
 > **Action:** Keep only lines 423–424; remove duplicates.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 
 > [!bug] Bug
@@ -27,7 +27,7 @@
 >
 > **Action:** Verify against source before publication; if real, add to ToolContext table; if not, use correct method name.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Table adds import paths (acceptable). Add note on why `BuiltInCodeExecutor` appears only in table.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add one-line note: "accessed via `tool_context.actions`, same `EventActions` described in 07-events.md".
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -54,7 +54,7 @@
 >
 > **Action:** Expand to show two-invocation flow (like long-running lifecycle) or cut with cross-reference to where pattern is documented.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -63,7 +63,7 @@
 >
 > **Action:** Remove tree from Tool Resolution section; keep only code snippet since At a Glance handles visual.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -72,7 +72,7 @@
 >
 > **Action:** Verify import path is real; clarify why alias is used in example but not diagram.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
