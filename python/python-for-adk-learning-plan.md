@@ -85,12 +85,14 @@ Think of Pydantic as Lombok `@Data` + Jackson + Bean Validation all in one. You 
 **Practice:**
 Model an ADK-like `Event` class:
 ```python
+from pydantic import BaseModel, Field
+
 class Event(BaseModel):
     id: str
     author: str
     content: str | None = None
     timestamp: datetime
-    actions: EventActions = EventActions()
+    actions: EventActions = Field(default_factory=EventActions)
     branch: str | None = None
 ```
 Then practice `model_copy(update={"author": "new_agent"})`.

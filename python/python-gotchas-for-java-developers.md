@@ -82,10 +82,11 @@ print(a["tools"])             # unchanged
 **ADK context:** Session `state` is a dict. If you store a list in state and pass it around, mutations propagate. Always copy before modifying:
 
 ```python
-# In a tool function
-tools_list = list(ctx.state["available_tools"])  # copy!
+# In a tool function — simplified example; real ADK uses session.state
+session_state = tool_context.invocation_context.session.state
+tools_list = list(session_state["available_tools"])  # copy!
 tools_list.append("new_tool")
-ctx.state["available_tools"] = tools_list
+session_state["available_tools"] = tools_list
 ```
 
 ---
