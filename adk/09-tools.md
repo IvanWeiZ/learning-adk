@@ -109,6 +109,9 @@ class ToolContext:
     # Read/write session state:
     state: State # tool_context.state['key'] = value
 
+    # Side-effects envelope (same EventActions from 07-events.md):
+    actions: EventActions # tool_context.actions.transfer_to_agent = 'agent_name'
+
     # Store files:
     async def save_artifact(filename, artifact) -> int # returns version
     async def load_artifact(filename, version=None) # returns artifact
@@ -116,12 +119,14 @@ class ToolContext:
     # Request OAuth credentials:
     def request_credential(auth_config: AuthConfig) -> None
 
+    # Request human confirmation before proceeding:
+    def request_confirmation(hint: str, payload: dict) -> None
+
     # Interact with memory:
     async def search_memory(query: str) -> SearchMemoryResponse
-
-    # Agent transfer (from within a tool):
-    actions.transfer_to_agent = 'agent_name'
 ```
+
+> **ToolContext vs InvocationContext:** `ToolContext` is the high-level API passed to tools — it exposes state, artifacts, memory, and actions. `InvocationContext` is the internal runtime context threaded through the entire call chain (Runner → Agent → Flow → Tool). `ToolContext` wraps `InvocationContext` and provides a friendlier surface. `CallbackContext` is the same as `ToolContext` (they are aliases). See [`tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) and [`invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py).
 
 ### Built-in Tools
 
@@ -135,6 +140,8 @@ class ToolContext:
 | `LangchainTool` | `google.adk.tools.langchain_tool` | Wrap any LangChain tool |
 | `CrewaiTool` | `google.adk.tools.crewai_tool` | Wrap any CrewAI tool |
 | `BigQueryToolset` | `google.adk.tools` | BigQuery operations |
+
+> `BuiltInCodeExecutor` appears only in this table (not in the class hierarchy above) because it's a code executor, not a `BaseTool` subclass — it plugs into `LlmAgent.code_executor`, not `tools`.
 
 ## How It Works
 
@@ -168,18 +175,7 @@ If your tool function raises an exception and no `on_tool_error_callback` is set
 
 ### Tool Resolution in LlmAgent
 
-```
-LlmAgent(tools=[...]) — resolution at each LLM turn
-│
-├── my_function (callable)
-│   └── auto-wrapped as FunctionTool(func=my_function)
-│
-├── GoogleSearchTool() (BaseTool instance)
-│   └── used as-is
-│
-└── my_toolset (BaseToolset instance)
-    └── BaseToolset.get_tools() called per LLM turn
-```
+Tools are resolved at each LLM turn — callables are auto-wrapped, `BaseTool` instances used as-is, and `BaseToolset` instances queried dynamically:
 
 ```python
 agent = LlmAgent(tools=[
@@ -276,18 +272,23 @@ When `is_long_running=True`, the tool returns an operation ID. ADK:
 Tools can request human confirmation before executing:
 
 ```python
-class MyTool(BaseTool):
-    async def run_async(self, args, tool_context):
-        # Request confirmation via the clean API
+class DeleteFileTool(BaseTool):
+    async def run_async(self, *, args, tool_context):
+        # Invocation 1: request confirmation — tool pauses, client shows dialog
         tool_context.request_confirmation(
             hint='Delete file?',
             payload={'filename': args['filename']}
         )
-        # Tool execution pauses; client shows confirmation dialog
-        # On next invocation, if confirmed, the tool runs for real
+        # is_final_response() returns True; Runner yields control to caller
+
+        # Invocation 2: user's next message carries the approval/denial
+        # If confirmed: tool runs again with the same args and executes for real
+        # If denied: tool receives the denial and can return an error dict
+        os.remove(args['filename'])
+        return {'status': 'deleted', 'filename': args['filename']}
 ```
 
-`ToolConfirmation` uses `hint` and `payload` fields (not `title`/`message`).
+`ToolConfirmation` uses `hint` and `payload` fields (not `title`/`message`). See [`tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) for the full API.
 
 ## Examples
 
@@ -391,6 +392,7 @@ agent = LlmAgent(
 ```python
 # Example: Connect to a running MCP server via SSE
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+# Note: deep import path — alias used for readability
 from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams as SseServerParams
 
 api_tools = McpToolset(
