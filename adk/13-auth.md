@@ -4,7 +4,7 @@
 
 ---
 
-## What It Is
+## At a Glance
 
 ADK's auth module lets tools declare credential requirements (API keys, OAuth tokens, service accounts) via `AuthConfig`. ADK handles the round-trip: requesting credentials, exchanging tokens, and storing results in session state.
 
@@ -12,7 +12,7 @@ Supports five credential types and OpenAPI 3.0 security schemes.
 
 ---
 
-## Auth Model Overview
+## How It Works
 
 Three phases:
 

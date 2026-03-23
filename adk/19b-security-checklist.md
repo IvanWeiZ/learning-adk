@@ -39,11 +39,7 @@ session_service = DatabaseSessionService(
 )
 ```
 
-**Concurrency safety (verified from source):** `DatabaseSessionService` uses two layers of protection:
-1. **In-process `asyncio.Lock`** per session — keyed by `(app_name, user_id, session_id)`
-2. **Database row-level locking** (`SELECT ... FOR UPDATE`) on Postgres, MySQL, and MariaDB
-
-SQLite does **not** support row-level locking — use only for single-process deployments.
+**Concurrency safety:** `DatabaseSessionService` uses two-layer locking (asyncio + DB row-level). SQLite does **not** support row-level locking — use only for single-process deployments. See [17-concurrency.md](17-concurrency.md) for full details.
 
 **Production database security checklist:**
 

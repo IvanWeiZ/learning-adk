@@ -217,6 +217,8 @@ For `MockModel`, `InMemoryRunner`, `simplify_events`, and complete test patterns
 
 ### Q3: What Is the Best Way to Preprocess User Requests (Extract IDs, Enrich Data)?
 
+> For full worked examples with production-ready code, see [24b-custom-use-cases.md](24b-custom-use-cases.md).
+
 #### Pattern A: before_agent_callback (Recommended)
 
 Intercept the request before the agent sees it, extract IDs, fetch additional data, and inject it into state:
@@ -424,7 +426,7 @@ root_agent = SequentialAgent(
 
 Four mechanisms are available: session state (via `output_key`), tool-based state writing, agent transfer, and `AgentTool`. Each differs in isolation, history sharing, and whether an extra LLM call is required.
 
-See [message-passing-patterns.md](message-passing-patterns.md) for full code examples and comparison table.
+See [24c-message-passing-patterns.md](24c-message-passing-patterns.md) for full code examples and comparison table.
 
 ---
 

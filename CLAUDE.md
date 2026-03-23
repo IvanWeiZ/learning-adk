@@ -52,8 +52,9 @@ learning-adk/
 │   ├── 20b-debugging-guide.md                     # Debugging checklist, performance (split from 20)
 │   ├── 22b-testing-context-setup.md               # Context setup, fixtures (split from 22)
 │   ├── 22c-testing-examples.md                    # Test examples for callbacks, plugins (split from 22)
-│   ├── 23b-plugins-and-a2a.md                         # Custom tools, A2A, code executors (split from 23)
-│   └── 25b-adk-2.0-patterns.md                         # Collaborative agents, dynamic workflows (split from 25)
+│   ├── 23b-custom-tools-and-toolsets.md            # Custom tools, toolsets (split from 23)
+│   ├── 24c-message-passing-patterns.md             # Agent data passing (extracted from 24)
+│   └── 25b-adk-2.0-patterns.md                    # Collaborative agents, dynamic workflows (split from 25)
 ├── python/
 │   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
 │   ├── python-gotchas-for-java-developers.md      # 13 runtime traps Java devs hit

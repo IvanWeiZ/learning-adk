@@ -4,7 +4,7 @@
 
 ---
 
-## What It Is
+## At a Glance
 
 `Memory` lets agents recall information from past sessions. Unlike `Session.state` (one conversation), memory stores searchable entries that persist across conversations. Storage is not automatic — requires explicit `add_session_to_memory()` call or a callback wired to trigger it.
 

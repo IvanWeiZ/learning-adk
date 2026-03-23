@@ -205,7 +205,7 @@ User ──► Runner ──► Agent ──► Flow ──► LLM + Tools ─�
 | | [22b-testing-context-setup.md](adk/22b-testing-context-setup.md) | Context setup, ToolContext, InvocationContext fixtures |
 | | [22c-testing-examples.md](adk/22c-testing-examples.md) | Test examples for callbacks, plugins, tools |
 | 23 | [23-advanced-internals.md](adk/23-advanced-internals.md) | Processor pipeline, reason-act loop |
-| | [23b-plugins-and-a2a.md](adk/23b-plugins-and-a2a.md) | Custom tools, A2A, code executors |
+| | [23b-custom-tools-and-toolsets.md](adk/23b-custom-tools-and-toolsets.md) | Custom tools, toolsets, advanced patterns |
 
 </details>
 

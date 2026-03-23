@@ -141,19 +141,7 @@ For state scoping rules, see [08-sessions.md](08-sessions.md). For state delta i
 
 ### Locking and Concurrency
 
-**InMemorySessionService**
-
-No locking. The class docstring says: *"not suitable for multi-threaded production environments."* `copy.deepcopy` on `get_session` prevents accidental mutation of internal storage, but concurrent writes race.
-
-**DatabaseSessionService**
-
-Two layers:
-
-1. **In-process asyncio locks** via `_with_session_lock()` — keyed by `(app_name, user_id, session_id)`, reference-counted
-2. **Database row-level locking** — `SELECT ... FOR UPDATE` on MySQL/PostgreSQL; SQLite uses file-level locking
-3. **Timestamp comparison** — detects if the session was modified between initial load and append, triggers a reload
-
-**Cross-process:** Only the database locking protects across processes. The asyncio locks are per-process only.
+See [17-concurrency.md](17-concurrency.md) for full locking details (InMemorySessionService has no locking; DatabaseSessionService uses two-layer asyncio + DB row-level locking).
 
 For latency optimization strategies (session service, model selection, streaming, tools), see [18b-session-latency-optimization.md](18b-session-latency-optimization.md).
 
