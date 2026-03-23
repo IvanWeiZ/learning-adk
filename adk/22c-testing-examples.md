@@ -42,12 +42,18 @@ def test_callable_instruction():
     mock = MockModel.create(responses=['Hello Alice!'])
     agent = Agent(name='test', model=mock, instruction=_provider)
     runner = InMemoryRunner(agent)
-    # Pre-seed state so ctx.state["user_name"] doesn't raise KeyError
-    session = runner.session_service.create_session(
+    # Pre-seed state: the test InMemoryRunner uses runner.runner.session_service
+    # internally; create_session is async, but the test InMemoryRunner provides
+    # create_session_sync. Alternatively, just use the session property which
+    # auto-creates a session. For state pre-seeding, access the internal runner:
+    session = runner.runner.session_service.create_session_sync(
         app_name=runner.app_name, user_id='test_user',
         state={'user_name': 'Alice'},
     )
-    runner.run('hi', session_id=session.id, user_id='test_user')
+    runner.session_id = session.id
+    # Note: test InMemoryRunner.run() does NOT accept session_id/user_id —
+    # it manages them internally via the session property.
+    runner.run('hi')
     # Callable instruction was resolved with state
     assert 'Alice' in mock.requests[0].config.system_instruction.parts[0].text
 ```
@@ -258,6 +264,15 @@ with pytest.raises(ValueError):
         name='test',
         generate_content_config=types.GenerateContentConfig(
             system_instruction='nope'
+        ),
+    )
+
+# NOT allowed: response_schema (use Agent.output_schema instead)
+with pytest.raises(ValueError):
+    LlmAgent(
+        name='test',
+        generate_content_config=types.GenerateContentConfig(
+            response_schema={'type': 'object'}
         ),
     )
 ```

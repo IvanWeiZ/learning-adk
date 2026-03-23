@@ -26,7 +26,7 @@ Subagent Modes:
 │
 ├── task
 │   ├── Autonomous execution with optional clarification
-│   ├── Automatic return via complete_task()
+│   ├── Automatic return via finish_task tool (FinishTaskTool)
 │   └── Cannot have sub-agents of its own (leaf only)
 │
 └── single_turn
@@ -58,7 +58,7 @@ Subagent Modes:
 ```python
 # NOTE: Import paths are beta and subject to change in future pre-release versions.
 # If you hit ModuleNotFoundError, check the latest: pip show google-adk
-from google.adk.workflow.agents.llm_agent import Agent
+from google.adk import Agent  # or: from google.adk.agents.llm_agent import Agent
 
 support_agent = Agent(
     name="support_agent",
@@ -91,7 +91,7 @@ research_agent = Agent(
     name="research_agent",
     mode="task",
     model="gemini-2.5-flash",
-    instruction="""Research the given topic. When done, call complete_task().""",
+    instruction="""Research the given topic. When done, call the finish_task tool.""",
     input_schema=str,
     output_schema=ResearchResult,
     tools=[web_search, summarize_page],
@@ -148,7 +148,8 @@ Dynamic Workflows are an ADK 2.0 concept separate from, but complementary to, th
 ### The @node decorator
 
 ```python
-from google.adk import node, Context, Event
+from google.adk.workflow import node  # node is in google.adk.workflow, not top-level
+from google.adk import Context, Event
 
 @node(name="checker")
 async def check_code(ctx: Context, code: str) -> dict:
@@ -198,17 +199,19 @@ async def resilient_pipeline(ctx: Context, data: str) -> str:
 ### Human-in-the-loop with RequestInput
 
 ```python
-from google.adk import BaseNode, RequestInput, Context
+from google.adk.workflow import BaseNode  # BaseNode is in google.adk.workflow
+from google.adk.events import RequestInput  # RequestInput is in google.adk.events
+from google.adk import Context
 from typing import AsyncGenerator, Any
 
 class GetInput(BaseNode):
     rerun_on_resume = False
 
     def __init__(self, request: RequestInput, name: str):
+        super().__init__(name=name)
         self.request = request
-        self.name = name
 
-    async def run(self) -> AsyncGenerator[Any, None]:
+    async def run(self, *, ctx: Context, node_input: Any) -> AsyncGenerator[Any, None]:
         yield self.request
 
 @node(rerun_on_resume=True)
@@ -228,7 +231,8 @@ async def approval_workflow(ctx: Context, proposal: str) -> str:
 
 ```python
 import asyncio
-from google.adk import node, Context
+from google.adk.workflow import node
+from google.adk import Context
 
 @node(rerun_on_resume=True)
 async def parallel_analysis(ctx: Context, document: str) -> dict:
@@ -277,9 +281,12 @@ Storage
 
 Import paths changed
 │
-├── 1.x: from google.adk import Agent, Runner
-├── 2.0: from google.adk.workflow.agents.llm_agent import Agent
-│         (paths are beta — subject to change)
+├── 1.x: from google.adk.agents.llm_agent import Agent
+├── 2.0: from google.adk import Agent, Runner, Workflow, Context, Event
+│         (Agent is LlmAgent aliased at top level)
+├── @node: from google.adk.workflow import node
+├── BaseNode: from google.adk.workflow import BaseNode
+├── RequestInput: from google.adk.events import RequestInput
 └── New types: Workflow, Event(message=), Event(route=), @node, Context
 
 API additions (2.0-only)

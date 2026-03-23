@@ -80,8 +80,12 @@ class InMemoryRunner(Runner):
         app: App | None = None,
         plugin_close_timeout: float = 5.0,
     ):
+        # Note: default logic uses explicit None checks, not Python `or`:
+        # if app is None and app_name is None:
+        #     app_name = 'InMemoryRunner'
+        # This means empty string '' would NOT be replaced with 'InMemoryRunner'.
         super().__init__(
-            app_name=app_name or 'InMemoryRunner',
+            app_name=app_name,
             agent=agent,
             artifact_service=InMemoryArtifactService(),
             session_service=InMemorySessionService(),
@@ -109,6 +113,8 @@ These live in the adk-python source tree and must be copied or imported from the
 | `ModelContent` | Wraps parts with `role='model'` |
 | `UserContent` | Wraps a string with `role='user'` |
 | `append_user_content()` | Adds user messages to an existing session |
+| `create_test_agent()` | Creates a minimal `LlmAgent` for testing (default name `'test_agent'`) |
+| `get_user_content()` | Converts `ContentUnion` to `types.Content` with `role='user'` |
 
 ---
 
