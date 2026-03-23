@@ -4,9 +4,12 @@
 
 ## At a Glance
 
-State scoping diagram: see [08-sessions.md](08-sessions.md). Security implications below.
+A single session leak exposes conversation history, credentials, and tool outputs to the wrong user. This document covers:
 
-A single session leak exposes conversation history, credentials, and tool outputs to the wrong user. Multi-agent systems multiply the attack surface. This document covers common session/event leak vectors and their mitigations for multi-user/multi-tenant agent systems where session isolation matters.
+- **user_id enforcement** — the #1 session security mistake
+- **State prefix security** — what each scope exposes and to whom
+- **Event history leaks** — branch filtering and what agents see
+- **Data persistence** — what gets stored vs what stays in memory
 
 For the security checklist, threat model, and deployment hardening guide, see [security-checklist.md](security-checklist.md).
 
@@ -65,7 +68,7 @@ Scenario: User A's request arrives with user_id="user_b" (due to a bug)
 
 **Warning: list_sessions Can List ALL Users' Sessions**
 
-The `BaseSessionService.list_sessions()` accepts an **optional** `user_id`. If you call it without a `user_id`, it returns sessions for ALL users:
+**Danger:** `BaseSessionService.list_sessions()` accepts an **optional** `user_id`. Calling without it returns sessions for ALL users — never expose this without forcing `user_id`:
 
 ```python
 # DANGEROUS: If your API endpoint exposes this without forcing user_id
@@ -151,60 +154,21 @@ def extract_state_delta(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 **The Four Scopes and Their Security Implications**
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│ APP STATE (prefix: "app:")                                              │
-│ WHO SEES IT: Every user, every session, every agent in the application  │
-│ PERSISTED: Yes — stored permanently in your session backend             │
-│ DANGER: HIGHEST — anything here is globally visible                     │
-│ USE FOR: Feature flags, model versions, maintenance mode, counters      │
-│ NEVER FOR: User data, PII, credentials, tenant-specific config          │
-│                                                                         │
-│ ┌────────────────────────────────────────────────────────────────────┐   │
-│ │ USER STATE (prefix: "user:")                                      │   │
-│ │ WHO SEES IT: All sessions belonging to this user_id               │   │
-│ │ PERSISTED: Yes                                                    │   │
-│ │ DANGER: MEDIUM — leaks across conversations for same user         │   │
-│ │ USE FOR: Preferences, profile refs, accumulated stats             │   │
-│ │ NEVER FOR: Secrets, tokens, data that should stay in one chat     │   │
-│ │                                                                    │   │
-│ │ ┌──────────────────────────────────────────────────────────────┐   │   │
-│ │ │ SESSION STATE (no prefix)                                    │   │   │
-│ │ │ WHO SEES IT: Only this specific conversation                 │   │   │
-│ │ │ PERSISTED: Yes                                               │   │   │
-│ │ │ USE FOR: Cart, workflow step, conversation context            │   │   │
-│ │ │ NEVER FOR: Raw credentials, credit cards, SSNs               │   │   │
-│ │ │                                                              │   │   │
-│ │ │ ┌────────────────────────────────────────────────────────┐   │   │   │
-│ │ │ │ TEMP STATE (prefix: "temp:")                           │   │   │   │
-│ │ │ │ WHO SEES IT: Only this single request (invocation)     │   │   │   │
-│ │ │ │ PERSISTED: NO — in-memory only, gone after request     │   │   │   │
-│ │ │ │ USE FOR: Auth tokens, API keys, scratch data           │   │   │   │
-│ │ │ └────────────────────────────────────────────────────────┘   │   │   │
-│ │ └──────────────────────────────────────────────────────────────┘   │   │
-│ └────────────────────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-**Decision Tree: Which Prefix to Use**
+| Prefix | Scope | Persisted | Danger | Use for | Never for |
+|--------|-------|-----------|--------|---------|-----------|
+| `app:` | Every user, every session | Yes | **Highest** | Feature flags, model versions | User data, PII, credentials |
+| `user:` | All sessions for this user_id | Yes | Medium | Preferences, profile refs | Secrets, per-chat data |
+| *(none)* | This session only | Yes | Low | Cart, workflow step | Raw credentials, SSNs |
+| `temp:` | This request only | **No** | Lowest | Auth tokens, API keys, cache | Anything needed next turn |
 
 ```
-What kind of data are you storing?
+Which prefix?
 │
-├── Sensitive credential or token?
-│   └── temp: (never persisted, gone after this request)
-│
-├── Per-conversation data (cart, form progress)?
-│   └── No prefix (session scope)
-│
-├── Cross-conversation user data (preferences)?
-│   └── user: (shared across this user's sessions)
-│
-├── Global app configuration (feature flags)?
-│   └── app: (shared across ALL users)
-│
-└── Scratch/cache data for this request only?
-    └── temp: (in-memory, not persisted)
+├── Sensitive credential or token?     → temp:
+├── Per-conversation data?             → no prefix (session)
+├── Cross-conversation user data?      → user:
+├── Global app config?                 → app:
+└── Scratch/cache for this request?    → temp:
 ```
 
 ---
@@ -253,6 +217,7 @@ tool_context.state["last_topic"] = "HIV test results" # Session-only
 ### Event History Leaks in Multi-Agent Systems
 
 ```python
+# Branch is a dot-separated ancestor path in the agent tree (e.g., "root.search.summarizer")
 # DANGEROUS: Manually creating events without proper branch
 event = Event(
     author="internal_agent",
@@ -301,22 +266,7 @@ def lookup_customer(customer_id: str) -> str:
 
 ### Callback and Plugin Security
 
-```python
-# DANGEROUS: Callback with closure over mutable shared state
-collected_data = [] # Shared across ALL invocations!
-
-async def my_after_agent(callback_context):
-    collected_data.append(callback_context.state.get("result"))
-    return None
-# → User A's results leak into User B's processing
-
-# CORRECT: Use session state for per-session data
-async def my_after_agent(callback_context):
-    results = callback_context.state.get("results", [])
-    results.append(callback_context.state.get("result"))
-    callback_context.state["results"] = results
-    return None
-```
+> **Key rule:** Never capture mutable state in callback closures — use `session.state` instead. Closures are shared across ALL invocations, leaking User A's data into User B's processing. See [20-best-practices.md](20-best-practices.md) for the full wrong/correct pattern.
 
 ---
 
