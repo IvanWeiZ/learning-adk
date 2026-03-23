@@ -42,7 +42,7 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **CallbackContext** — Alias for `ToolContext`. These names are used interchangeably in ADK source; they refer to the same context object. → see: **ToolContext**
 
-- **Callback** — Hook functions on `LlmAgent` that intercept processing at defined points.
+- **Callback** — Hook functions on `LlmAgent` that intercept processing at defined points. Use callbacks to intercept processing without stopping it — log, validate, or modify state at defined hook points.
 
 - **Context** — Shorthand for `InvocationContext`. See **InvocationContext**. Use to intercept execution without stopping it (log, validate, modify state). Six slots: `before_agent_callback` / `after_agent_callback`, `before_model_callback` / `after_model_callback`, `before_tool_callback` / `after_tool_callback`. Error variants: `on_model_error_callback`, `on_tool_error_callback`. → [04-agents.md](../adk/04-agents.md), [21-advanced-patterns.md](../adk/21-advanced-patterns.md)
 
@@ -108,7 +108,7 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **Output key** — A state key (e.g., `state["output"]`) where an agent's final response is stored. Useful in `SequentialAgent` pipelines for passing results between sub-agents. → [04-agents.md](../adk/04-agents.md), [08-sessions.md](../adk/08-sessions.md)
 
-- **Output schema** — A Pydantic model or JSON schema dict (e.g., `Model.model_json_schema()`) that constrains the LLM's final response to a structured format. Set via `LlmAgent.output_schema`. → different from **Output key** (processor-specific storage key) → [04-agents.md](../adk/04-agents.md), [python-pydantic-deep-dive.md](../python/python-pydantic-deep-dive.md)
+- **Output schema** — A Pydantic model or JSON schema dict (e.g., `Model.model_json_schema()`) that constrains the LLM's final response to a structured format. Set via `LlmAgent.output_schema`. Example: `output_schema=MyResponseModel` (Pydantic BaseModel subclass). → different from **Output key** (processor-specific storage key) → [04-agents.md](../adk/04-agents.md), [python-pydantic-deep-dive.md](../python/python-pydantic-deep-dive.md)
 
 ## P
 
@@ -136,7 +136,7 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **SingleFlow** — A flow that makes exactly one model call with no tool execution loop. Useful for classification, summarization, or structured extraction tasks. → [05-flows.md](../adk/05-flows.md)
 
-- **State (scoped)** — Key-value data attached to a session. Three scopes: **session state** (`state["key"]`) — current session only; **user state** (`state["user:key"]`) — shared across sessions for a user; **app state** (`state["app:key"]`) — shared across all sessions. → [08-sessions.md](../adk/08-sessions.md), [24-faq.md](../adk/24-faq.md)
+- **State (scoped)** — Key-value data attached to a session. Three scopes: **session state** (`state["key"]`) — current session only; **user state** (`state["user:key"]`) — shared across sessions for a user; **app state** (`state["app:key"]`) — shared across all sessions. Example: `ctx.state["user:preferences"] = {"theme": "dark"}`. → [08-sessions.md](../adk/08-sessions.md), [24-faq.md](../adk/24-faq.md)
 
 - **StateDelta** — A dictionary of state changes carried in `EventActions`. Applied to the session when the event is committed. Enables event-sourced state management. → see: **State (scoped)** for scope prefix semantics → [07-events.md](../adk/07-events.md), [08-sessions.md](../adk/08-sessions.md)
 

@@ -540,17 +540,7 @@ public class ToolRegistry {
 
 > **See:** [python-decorators-deep-dive.md](python-decorators-deep-dive.md) — Section 3 covers `functools.wraps` in depth, including what attributes it copies (`__name__`, `__doc__`, `__annotations__`, `__wrapped__`) and why it matters for introspection.
 
-Already covered, but essential:
-
-```python
-import functools
-
-def my_decorator(func):
-    @functools.wraps(func)  # Copies __name__, __doc__, __annotations__, etc.
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-    return wrapper
-```
+Essential: `@functools.wraps(func)` on your wrapper function copies metadata (`__name__`, `__doc__`, `__annotations__`, `__wrapped__`) from the original function. ADK relies on this for tool schema generation from function signatures.
 
 #### `functools.partial`
 
@@ -718,115 +708,7 @@ print(v1 > v2)   # False (auto-generated)
 
 > **See:** [python-decorators-deep-dive.md](python-decorators-deep-dive.md) — The `function_to_schema` pattern (using `inspect.signature()` + `typing.get_type_hints()` + a `type_map`) is covered in detail there. The example below focuses on the registry wrapping class; the schema extraction logic follows the same pattern.
 
-This decorator reads a function's signature, generates a schema, and registers it:
-
-```python
-import functools
-import inspect
-import json
-import typing
-
-class ToolRegistry:
-    def __init__(self):
-        self._tools = {}
-        self._schemas = {}
-
-    def register_tool(self, category: str = "general"):
-        """Decorator to register a tool function with auto-generated schema."""
-        def decorator(func):
-            # Preserve function metadata
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            # Extract schema
-            sig = inspect.signature(func)
-            hints = typing.get_type_hints(func)
-
-            properties = {}
-            required = []
-
-            for param_name, param in sig.parameters.items():
-                if param_name in ('self', 'cls'):
-                    continue
-
-                param_type = hints.get(param_name, str)
-
-                # Map Python types to JSON schema
-                type_map = {
-                    int: "integer",
-                    float: "number",
-                    bool: "boolean",
-                    str: "string"
-                }
-                json_type = type_map.get(param_type, "string")
-
-                prop = {"type": json_type}
-                properties[param_name] = prop
-
-                if param.default == inspect.Parameter.empty:
-                    required.append(param_name)
-
-            schema = {
-                "name": func.__name__,
-                "description": func.__doc__ or "",
-                "category": category,
-                "parameters": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": required
-                }
-            }
-
-            # Register
-            self._tools[func.__name__] = func
-            self._schemas[func.__name__] = schema
-
-            return wrapper
-        return decorator
-
-    def get_tool(self, name):
-        """Retrieve a registered tool function."""
-        return self._tools.get(name)
-
-    def get_schema(self, name):
-        """Retrieve a tool's schema."""
-        return self._schemas.get(name)
-
-    def list_tools(self):
-        """List all registered tools with their schemas."""
-        return self._schemas
-
-    def call_tool(self, name: str, **kwargs):
-        """Execute a registered tool."""
-        tool = self._tools.get(name)
-        if not tool:
-            raise ValueError(f"Unknown tool: {name}")
-        return tool(**kwargs)
-
-# Usage
-registry = ToolRegistry()
-
-@registry.register_tool(category="search")
-def web_search(query: str, num_results: int = 10) -> list:
-    """Search the web for a query."""
-    return [f"Result {i}" for i in range(num_results)]
-
-@registry.register_tool(category="compute")
-def calculate(expression: str) -> float:
-    """Evaluate a mathematical expression safely."""
-    # In real code, use ast.literal_eval or similar
-    return eval(expression)
-
-# Inspect
-print("Available tools:")
-for name, schema in registry.list_tools().items():
-    print(f"  - {name}: {schema['description']}")
-
-# Call
-results = registry.call_tool("web_search", query="Python", num_results=5)
-print(results)
-```
+A decorator that reads a function's signature, generates a schema, and registers it in a central registry. The pattern: (1) use `@functools.wraps(func)` to preserve metadata, (2) call `inspect.signature()` and `typing.get_type_hints()` to extract parameter types, (3) map those types to JSON schema, (4) store both the function and its schema for later lookup. ADK's `FunctionTool` uses the same technique to auto-generate tool declarations sent to the LLM.
 
 #### Building a Callback Registration System
 

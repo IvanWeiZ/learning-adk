@@ -26,7 +26,7 @@ Java Developer Instinct              Python Reality
 
 ---
 
-<!-- Group 1: Semantics (Gotchas 1–6) -->
+### Part 1: Semantics (Gotchas 1-6)
 
 ## 1. The Mutable Default Argument Trap
 
@@ -256,7 +256,7 @@ def handle(self, text: str | None = None, count: int | None = None):
 
 ---
 
-<!-- Group 2: Runtime (Gotchas 7–9) -->
+### Part 2: Runtime (Gotchas 7-9)
 
 ## 7. String Gotchas
 
@@ -382,7 +382,7 @@ async def my_tool(query: str) -> str:
 
 ---
 
-<!-- Group 3: Object & Module System (Gotchas 10–13) -->
+### Part 3: Object & Module System (Gotchas 10-13)
 
 ## 10. Class System Surprises
 
