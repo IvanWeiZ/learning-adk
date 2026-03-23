@@ -72,7 +72,9 @@ jobs:
       - name: Check for stale b-suffix cross-references
         run: |
           # §3: Files were renamed from XXb-name.md — references should be updated
-          if grep -rn '[0-9]\+b-[a-z].*\.md' adk/*.md python/*.md reference/*.md 2>/dev/null; then
+          # Canonical b-suffix files (19b-, 20b-, 22b-, 22c-) are intentional — exclude them.
+          if grep -rn '[0-9]\+b-[a-z].*\.md' adk/*.md python/*.md reference/*.md 2>/dev/null \
+             | grep -v '19b-security-checklist\|20b-debugging-guide\|22b-testing-context-setup\|22c-testing-examples'; then
             echo "::error::Found stale b-suffix file references (files were renamed)"
             exit 1
           fi
