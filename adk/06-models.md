@@ -25,7 +25,7 @@ BaseLlm (base_llm.py) — abstract interface
 
 ```python
 class BaseLlm(BaseModel):
-    model: str # e.g. 'gemini-2.5-flash', 'claude-opus-4-5'
+    model: str # model name string — see subclass sections for provider-specific formats
 
     @classmethod
     def supported_models(cls) -> list[str]:
@@ -45,8 +45,7 @@ class BaseLlm(BaseModel):
         ...
 
     def connect(self, llm_request: LlmRequest) -> BaseLlmConnection:
-        # Bidirectional streaming for Live API (audio/video).
-        # Not all adapters support this.
+        # Bidirectional streaming for Live API (audio/video). Gemini only.
         ...
 ```
 
@@ -68,18 +67,14 @@ The final `partial=False` chunk is a complete aggregation. Use it for storage; p
 Function calls, thoughts, and blobs can also arrive as partial chunks.
 
 ```
-Streaming Timeline — what goes where:
+Streaming Timeline:
+│
+├─ chunk 1 (partial=True)  → "The weather"    → stream to UI (real-time)
+├─ chunk 2 (partial=True)  → " in Tokyo"      → stream to UI (real-time)
+├─ chunk 3 (partial=True)  → " is 18°C"       → stream to UI (real-time)
+└─ final   (partial=False) → full text         → persist to session (source of truth)
 
- chunk 1 (partial) chunk 2 (partial) chunk 3 (partial) final (partial=False)
- ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐
- │ "The weather" │ │ " in Tokyo" │ │ " is 18°C" │ │ full text │
- └───────┬───────┘ └───────┬───────┘ └───────┬───────┘ └─────────┬─────────┘
- │ │ │ │
- ▼ ▼ ▼ ▼
- stream to UI stream to UI stream to UI persist to session
- (real-time) (real-time) (real-time) (source of truth)
-
- partial=True events are FREE — append_event() skips them
+partial=True events are FREE — append_event() skips them
 ```
 
 ---
@@ -112,13 +107,13 @@ Model string resolution:
  ▼
  Return Gemini(model="gemini-2.5-flash")
 
- "claude-sonnet-4-5"
+ "claude-sonnet-4-5-20250514"
  │
  ▼
  AnthropicLlm.supported_models() → ["claude-.*"] ← MATCH
  │
  ▼
- Return AnthropicLlm(model="claude-sonnet-4-5")
+ Return AnthropicLlm(model="claude-sonnet-4-5-20250514")
 
  "openai/gpt-4o"
  │
@@ -135,6 +130,22 @@ Model string resolution:
 
 ---
 
+## Default Model
+
+```python
+LlmAgent.DEFAULT_MODEL = 'gemini-2.5-flash'
+```
+
+Override globally:
+
+```python
+LlmAgent.set_default_model('gemini-2.5-pro')
+```
+
+Model inheritance: if an `LlmAgent` has `model=''` (default), it walks up the `parent_agent` chain looking for a non-empty model. Only if no ancestor sets a model does it fall back to `DEFAULT_MODEL`. See [04-agents.md](04-agents.md) for agent field resolution.
+
+---
+
 ## LlmRequest
 
 The request object assembled by the flow before calling the model:
@@ -145,10 +156,10 @@ class LlmRequest:
     contents: list[types.Content] # conversation history
     config: types.GenerateContentConfig # system_instruction, tools, temperature, safety, etc.
     tools_dict: dict[str, BaseTool] # name → BaseTool (internal routing map)
-    cache_config: Optional[...] # context cache configuration
-    cache_metadata: Optional[...] # context cache metadata
+    cache_config: Optional[...] # context cache configuration (only when caching enabled)
+    cache_metadata: Optional[...] # context cache metadata (only when caching enabled)
     cacheable_contents_token_count: int # token count for cacheable contents
-    live_connect_config: Optional[...] # Live API connection config
+    live_connect_config: Optional[...] # Live API connection config (Gemini Live only)
     previous_interaction_id: Optional[str] # for resumable invocations
 
     # Note: system_instruction and tools live inside config (GenerateContentConfig),
@@ -176,23 +187,7 @@ class LlmResponse:
     error_message: ...
 ```
 
-`Event` extends `LlmResponse`, so events carry all response fields plus `author`, `invocation_id`, `actions`, and `branch`.
-
----
-
-## Default Model
-
-```python
-LlmAgent.DEFAULT_MODEL = 'gemini-2.5-flash'
-```
-
-Override globally:
-
-```python
-LlmAgent.set_default_model('gemini-2.5-pro')
-```
-
-Model inheritance: walks up `parent_agent` chain, falls back to default.
+`Event` extends `LlmResponse`, so events carry all response fields plus `author`, `invocation_id`, `actions`, and `branch`. See [07-events.md](07-events.md) for the full `Event` class hierarchy.
 
 ---
 
