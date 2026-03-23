@@ -32,6 +32,13 @@ What are you trying to do?
 │  ├─ Claude                         ► AnthropicLlm ("claude-*")
 │  └─ Custom model                   ► BaseLlm subclass + LLMRegistry
 │
+├─ Change how an agent thinks or responds?
+│  ├─ Custom reasoning / planning        ► Custom BasePlanner subclass
+│  └─ Run code the LLM generates         ► BaseCodeExecutor subclass
+│
+├─ Expose / consume agents across services?
+│  └─ A2A protocol (to_a2a / RemoteA2aAgent)
+│
 ├─ Stream to a web UI?
 │  └─ RunConfig(streaming_mode=StreamingMode.SSE)
 │
@@ -43,52 +50,7 @@ Decision guide for every ADK extensibility point: **what**, **when**, **when not
 
 ---
 
-## Key API
-
-### Quick Decision Tree
-
-```
-I need to...
-│
-├─ Do something the LLM can request (call an API, query a DB, run code)
-│  ├─ Single function, no setup/teardown          ► Plain function tool
-│  ├─ Needs state, complex logic, or is_long_running ► Custom BaseTool subclass
-│  └─ Many tools from one source (REST API, MCP)  ► Custom BaseToolset subclass
-│
-├─ Control HOW a single agent behaves
-│  ├─ Before/after the agent runs                 ► before/after_agent_callback
-│  ├─ Before/after each LLM call                  ► before/after_model_callback
-│  ├─ Before/after each tool call                  ► before/after_tool_callback
-│  └─ On LLM or tool errors                       ► on_model/tool_error_callback
-│
-├─ Control HOW ALL agents behave (app-wide)        ► Plugin
-│
-├─ Compose multiple agents
-│  ├─ Run A, then B, then C in order              ► SequentialAgent
-│  ├─ Run A, B, C at the same time                ► ParallelAgent
-│  ├─ Repeat until done or N times                ► LoopAgent
-│  └─ LLM decides which sub-agent to use          ► LlmAgent with sub_agents
-│
-├─ Change how an agent THINKS or RESPONDS
-│  ├─ Custom reasoning / planning                 ► Custom BasePlanner subclass
-│  └─ Run code the LLM generates                  ► BaseCodeExecutor subclass
-│
-├─ Use a non-Gemini model                          ► LiteLlm adapter or custom BaseLlm
-│
-├─ Remember past conversations / search knowledge  ► BaseMemoryService + load_memory_tool
-│
-├─ Stream tokens to a web UI in real-time          ► RunConfig(streaming_mode=SSE) or BIDI
-│
-├─ Expose / consume agents across services         ► A2A protocol (to_a2a / RemoteA2aAgent)
-│
-├─ Require user OAuth tokens for a tool            ► AuthenticatedFunctionTool
-│
-└─ Change where sessions/memory/artifacts are stored ► Custom service backend
-```
-
----
-
-## How It Works (diagram before prose)
+## Scenario Reference
 
 ### Real-World Use Cases → What to Build
 
@@ -107,13 +69,15 @@ Common scenarios mapped to ADK components.
 | Agent needs to export a report that takes 5 minutes to generate | `LongRunningFunctionTool` (or `BaseTool` subclass with `is_long_running=True`) |
 | Agent needs to trigger a Cloud Run job and wait for the result | `LongRunningFunctionTool` (or `BaseTool` subclass with `is_long_running=True`) |
 | Human-in-the-loop approval before executing an action | `LongRunningFunctionTool` — same pause mechanism as long-running tools. Invocation pauses, user's next message carries the approval. |
-| Agent needs to execute Python code it generates | `BaseCodeExecutor` subclass. Options: `BuiltInCodeExecutor` (model-native), `ContainerCodeExecutor` (Docker), `UnsafeLocalCodeExecutor` (no isolation), `VertexAiCodeExecutor`, `GkeCodeExecutor`, `AgentEngineSandboxCodeExecutor`. |
+| Agent needs to execute Python code it generates | `BaseCodeExecutor` subclass. Common options: `BuiltInCodeExecutor` (model-native, simplest), `ContainerCodeExecutor` (Docker, isolated), `UnsafeLocalCodeExecutor` (no isolation — dev only). Cloud: `VertexAiCodeExecutor`, `GkeCodeExecutor`, `AgentEngineSandboxCodeExecutor`. |
 | Agent should expose all tools from an MCP server | `McpToolset` (no code needed) |
 | Agent should only show certain tools based on user role | `BaseToolset` subclass with `get_tools()` that filters by `ctx.state` |
 | Agent connects to a third-party tool platform (LangChain, CrewAI) | `LangchainTool` / `CrewaiTool` wrapper |
 | Agent needs to recall past conversations or search knowledge | `BaseMemoryService` + `load_memory_tool`. Three backends: `InMemoryMemoryService` (dev), `VertexAiRagMemoryService` (production vector search), `VertexAiMemoryBankService` (LLM-distilled memory). Wire via `Runner(memory_service=...)`. See [11-memory.md](11-memory.md). |
 | Tool needs user OAuth tokens (e.g. Google Drive, GitHub) | `AuthenticatedFunctionTool` wraps any callable with the full OAuth flow. When credentials are missing, the invocation pauses for user authorization. See [13-auth.md](13-auth.md). |
-| Multiple independent API calls in one turn | Automatic. When the LLM returns multiple function calls in a single response, ADK runs them concurrently via `asyncio.gather`. No configuration needed. Don't confuse with `ParallelAgent` (concurrent sub-agents across invocations). |
+| Multiple independent API calls in one turn | Automatic via `asyncio.gather` — no configuration needed. |
+
+> **Note:** Parallel tool calls (automatic, within one turn) are different from `ParallelAgent` (concurrent sub-agents across invocations).
 
 #### Agent Callbacks (single-agent hooks)
 
@@ -171,19 +135,26 @@ Common scenarios mapped to ADK components.
 |---------------------|---------------|
 | Stream tokens to a web frontend in real-time | `RunConfig(streaming_mode=StreamingMode.SSE)`. Partial events (`event.partial=True`) arrive as LLM generates; final aggregated event follows. For bidirectional audio/video, use `runner.run_live()` with `StreamingMode.BIDI`. |
 
+### Quick Example: FunctionTool vs BaseTool
+
+```python
+# FunctionTool — just write a function, ADK wraps it automatically
+def get_weather(city: str) -> str:
+    return f"22°C in {city}"
+
+# BaseTool — when you need lifecycle hooks or custom schema
+class DatabaseTool(BaseTool):
+    async def run_async(self, *, args, tool_context):
+        conn = await self._pool.acquire()
+        try:
+            return await conn.fetch(args["query"])
+        finally:
+            await self._pool.release(conn)
+```
+
 ---
 
-## Examples
-
-### 1–8: Component Examples
-
-See inline code for each component: plain function tools, BaseTool subclass, BaseToolset, agent callbacks, plugins, custom agents, composition agents, and LLM-controlled transfer in [custom-use-cases.md](custom-use-cases.md).
-
----
-
-## Gotchas
-
-### Summary Table
+## Component Quick Reference
 
 | What to build | When | Key base class / pattern |
 |--------------|------|--------------------------|
