@@ -187,7 +187,7 @@ class DatabaseTool(BaseTool):
 
 ## Related
 
-- [custom-use-cases.md](custom-use-cases.md) — Custom use cases: parse-enrich-respond patterns with three implementation options
+- [24b-custom-use-cases.md](24b-custom-use-cases.md) — Custom use cases: parse-enrich-respond patterns with three implementation options
 - [01-request-lifecycle.md](01-request-lifecycle.md) — Full traced request
 - [09-tools.md](09-tools.md) — Tool system reference
 - [04-agents.md](04-agents.md) — Agent types deep dive
