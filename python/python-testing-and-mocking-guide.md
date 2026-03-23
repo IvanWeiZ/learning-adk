@@ -242,12 +242,14 @@ async def search_web(query: str) -> list[str]:
 # --- test_web_search.py ---
 from unittest.mock import patch, AsyncMock
 
-# WRONG: patching where fetch is defined
-@patch("my_agents.http_client.fetch")  # ❌ won't work!
+# WRONG when using `from my_agents.http_client import fetch`:
+# patching the definition site doesn't affect the already-imported name
+@patch("my_agents.http_client.fetch")  # ❌ won't work with `from X import Y`
 async def test_search():
     ...
 
-# RIGHT: patching where fetch is looked up (in web_search module)
+# RIGHT: patch where the name is looked up (in web_search module)
+# (also correct when using `import my_agents.http_client; my_agents.http_client.fetch(...)`)
 @patch("my_agents.tools.web_search.fetch")  # ✅ correct!
 async def test_search(mock_fetch):
     mock_fetch.return_value = {"results": ["result1", "result2"]}
@@ -261,12 +263,14 @@ async def test_search(mock_fetch):
 
 ##### Way 1: Decorator (`@patch`)
 
+> **Stacked `@patch` argument order (common gotcha):** When stacking multiple `@patch` decorators, the **bottom decorator corresponds to the first argument** and each higher decorator adds the next argument. This is the reverse of the visual reading order.
+
 ```python
 from unittest.mock import patch
 
-# The mock is injected as an argument (bottom decorator = first argument)
-@patch("my_module.service_b")
-@patch("my_module.service_a")
+# Bottom decorator = first argument; top decorator = last argument
+@patch("my_module.service_b")   # → mock_b (second arg)
+@patch("my_module.service_a")   # → mock_a (first arg)
 def test_with_decorators(mock_a, mock_b):
     # mock_a replaces my_module.service_a
     # mock_b replaces my_module.service_b
@@ -609,6 +613,7 @@ def mock_llm():
 def test_agent_uses_session(mock_session):
     assert mock_session.id == "test-session-123"
 
+@pytest.mark.asyncio
 async def test_llm_call(mock_llm):
     result = await mock_llm.generate_content_async("hello")
     assert result == "LLM response"
@@ -702,6 +707,38 @@ def mock_context(mock_session, mock_agent):
 def test_something(mock_context):
     # mock_context has mock_session and mock_agent already wired in
     assert mock_context.session.id == "session-1"
+```
+
+#### Fixture Chain with Teardown
+
+Use `yield` in a fixture to run cleanup code after the test:
+
+```python
+import pytest
+from unittest.mock import MagicMock, AsyncMock
+
+@pytest.fixture
+async def mock_session_service():
+    """Session service fixture with setup and teardown."""
+    service = AsyncMock()
+    session = MagicMock()
+    session.id = "test-session-1"
+    session.state = {}
+    service.get_or_create_session = AsyncMock(return_value=session)
+    service.save_session = AsyncMock()
+
+    yield service  # test runs here
+
+    # Teardown: verify session was saved
+    service.save_session.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_agent_persists_session(mock_session_service):
+    session = await mock_session_service.get_or_create_session("user-1", "app-1")
+    session.state["result"] = "done"
+    await mock_session_service.save_session(session)
+    assert session.state["result"] == "done"
 ```
 
 ---

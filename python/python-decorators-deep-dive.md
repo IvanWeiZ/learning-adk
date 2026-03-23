@@ -330,13 +330,15 @@ class Counter:
 c1 = Counter()
 c2 = Counter()
 print(Counter.get_instance_count())  # 2
+```
 
-# Java equivalent:
-// Usually you'd use a static variable + static method
-// public class Counter {
-//     static int instances = 0;
-//     static int getInstanceCount() { return instances; }
-// }
+Java equivalent: a static variable + static method:
+
+```java
+public class Counter {
+    static int instances = 0;
+    static int getInstanceCount() { return instances; }
+}
 ```
 
 ##### `@property`
@@ -430,13 +432,15 @@ result = flaky_api_call()  # May retry, then succeeds
 
 #### Pattern: Rate Limiting
 
+> **Warning: sync-only — unsafe in async ADK code.** This decorator uses `time.sleep()`, which blocks the entire event loop. Never apply it to async functions or use it inside ADK agents/tools. For async rate limiting, use `asyncio.Semaphore` (see [python-asyncio-advanced.md](python-asyncio-advanced.md)).
+
 ```python
 import functools
 import time
 from collections import deque
 
 def rate_limit(calls_per_second=1):
-    """Allow max N calls per second."""
+    """Allow max N calls per second. SYNC ONLY — do not use in async ADK code."""
     def decorator(func):
         last_calls = deque(maxlen=int(calls_per_second))
 
@@ -446,7 +450,7 @@ def rate_limit(calls_per_second=1):
             if len(last_calls) == last_calls.maxlen:
                 elapsed = now - last_calls[0]
                 if elapsed < 1.0:
-                    time.sleep(1.0 - elapsed)
+                    time.sleep(1.0 - elapsed)  # blocks event loop — sync only!
 
             last_calls.append(time.time())
             return func(*args, **kwargs)
@@ -464,12 +468,17 @@ for _ in range(5):
 
 #### Pattern: Timeout Decorator
 
+> **Unix/macOS only** — `signal.SIGALRM` is not available on Windows. This raises `AttributeError` on Windows systems.
+
 ```python
 import functools
 import signal
 
 def timeout(seconds=30):
-    """Raise TimeoutError if function takes longer than N seconds."""
+    """Raise TimeoutError if function takes longer than N seconds.
+
+    Unix/macOS only — signal.SIGALRM not available on Windows.
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -843,7 +852,7 @@ print(hints)
 
 #### Complete Example: Generating a JSON Schema from a Function
 
-This is **exactly** how ADK generates tool schemas:
+This illustrates the concept ADK uses; ADK delegates to Pydantic's `model_json_schema()` for full type support:
 
 ```python
 import inspect

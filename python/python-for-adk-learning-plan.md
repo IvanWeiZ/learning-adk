@@ -248,7 +248,7 @@ class FunctionTool(BaseTool):
 #### Day 8: Decorators & First-Class Functions
 
 **Why ADK needs this:**
-ADK's callback system and tool registration rely on passing functions as arguments and using decorators. `@tool`, callback registration, and plugin hooks all use these patterns.
+ADK's callback system and tool registration rely on passing functions as arguments and using decorators. Tool registration patterns, callback registration, and plugin hooks all use these patterns. Note: ADK has no `@tool` decorator — tools are registered via the `FunctionTool()` constructor or by passing plain functions directly to `LlmAgent(tools=[...])`.
 
 **Java to Python:**
 Java's `@FunctionalInterface` and lambdas are limited compared to Python. In Python, functions are truly first-class objects — you can assign them to variables, pass them as arguments, return them from functions, and modify them with decorators.
@@ -476,27 +476,7 @@ Integrate everything into one working project that mirrors ADK's architecture.
 8. **Error handling & logging** throughout
 9. **Tests** for every component
 
-This should be ~300-500 lines of Python and exercises every concept from the previous 13 days.
-
-## ADK in Practice
-
-The learning plan maps directly to ADK usage:
-
-| Day Topic | ADK Usage |
-|---|---|
-| Type hints | Tool schema auto-generation from function signatures |
-| Pydantic basics | Every ADK data structure (`Event`, `Session`, `EventActions`) |
-| Pydantic advanced | Discriminated unions for tool types, `model_copy` for contexts |
-| Generators | Event streaming throughout the framework |
-| asyncio | Every agent method, LLM call, and tool execution |
-| AsyncGenerator | `run_async() -> AsyncGenerator[Event, None]` — the core API |
-| ABCs/Protocols | `BaseAgent`, `BaseTool`, `BaseLlm`, `BaseSessionService` |
-| Decorators | Tool registration, callback hooks, plugin system |
-| Context managers | MCP toolset connections, session management |
-| Dict patterns | State management, `state_delta`, tool arguments |
-| Module system | ADK's namespace packages (`google.adk.*`) |
-| Error handling | Error callbacks, resilient agent execution |
-| Testing | Mocking LLM calls, testing tool functions, async test patterns |
+This is a **multi-session project** (not a single day). Expect ~300-500 lines of Python across multiple focused sessions, each exercising concepts from previous days.
 
 ## Common Mistakes
 
@@ -508,27 +488,9 @@ The learning plan maps directly to ADK usage:
 | Forgetting to `await` a coroutine | Python warns but won't raise — the coroutine never runs |
 | Using `asyncio.run()` inside async code | Just `await` directly — nested `run()` raises RuntimeError |
 
-## Quick Reference Card
+## Quick Reference
 
-```
-Java → Python Mental Model
-
-CompletableFuture<T>     →  async def + await        (single-threaded, cooperative)
-Stream<T>                →  Generator + comprehensions (lazy, maintains state)
-abstract class           →  ABC                       (multiple inheritance supported)
-interface                →  Protocol                  (structural / duck typing)
-@FunctionalInterface     →  Just pass the function    (functions are first-class)
-try-with-resources       →  async with                (__aenter__/__aexit__)
-Map<K,V>                 →  dict[K,V]                 (used everywhere)
-Optional<T>              →  T | None                  (no .get(), just check is None)
-Lombok @Data             →  Pydantic BaseModel        (validation + serialization built in)
-Jackson                  →  Pydantic model_dump_json() (built into the model)
-Bean Validation          →  Pydantic validators        (@field_validator)
-Spring DI                →  Constructor args / context objects (no framework magic)
-JUnit + Mockito          →  pytest + unittest.mock     (AsyncMock for async)
-setup.py / Maven         →  pyproject.toml             (modern standard)
-Checked exceptions       →  (don't exist)              (everything is unchecked)
-```
+For a full Java → Python side-by-side mapping, see [java-to-python-cheat-sheet.md](../reference/java-to-python-cheat-sheet.md).
 
 ---
 

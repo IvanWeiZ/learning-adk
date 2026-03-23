@@ -77,15 +77,15 @@ c["tools"].append("execute")
 print(a["tools"])             # unchanged
 ```
 
-**Java equivalent:** Like everything is a reference type and `clone()` is shallow by default.
+**Java equivalent:** Java has primitive types (`int[]`, `long`) with value semantics — Python has no such types. In Python, **everything** is an object with reference semantics, including ints and strings (though those are immutable). `clone()` in Java is shallow by default, but Python also lacks any `clone()` at all — you must use `copy.copy()` or `copy.deepcopy()` explicitly.
 
 **ADK context:** Session `state` is a dict. If you store a list in state and pass it around, mutations propagate. Always copy before modifying:
 
 ```python
-# In a tool function
-tools_list = list(ctx.state["available_tools"])  # copy!
+# In a tool function (simplified example — actual ADK uses session.state)
+tools_list = list(session_state["available_tools"])  # copy!
 tools_list.append("new_tool")
-ctx.state["available_tools"] = tools_list
+session_state["available_tools"] = tools_list
 ```
 
 ---
@@ -152,7 +152,16 @@ for i in range(3):
 [cb() for cb in callbacks]  # [0, 1, 2]
 ```
 
-**ADK context:** When building tool lists or callbacks in loops, use the default argument trick or `functools.partial`.
+**ADK context:** When building tool lists or callbacks in loops, use the default argument trick or `functools.partial`. In production code, `functools.partial` is the preferred alternative since it's explicit and doesn't require a keyword-argument trick:
+
+```python
+from functools import partial
+
+def make_callback(value):
+    return lambda: value
+
+callbacks = [partial(make_callback, i) for i in range(3)]
+```
 
 ---
 
@@ -353,6 +362,17 @@ async def fetch_all():
 ```
 
 **ADK context:** ADK is async-first. All concurrency is `asyncio`, not threads. `ParallelAgent` runs sub-agents concurrently via `asyncio.gather`, not threads. Never use `time.sleep()` — use `await asyncio.sleep()`.
+
+If you must call blocking code (a legacy library, a CPU-bound function) from inside an async ADK tool, use `asyncio.to_thread()` to avoid blocking the event loop:
+
+```python
+import asyncio
+
+async def my_tool(query: str) -> str:
+    # blocking_db_call() would freeze the event loop — offload it:
+    result = await asyncio.to_thread(blocking_db_call, query)
+    return result
+```
 
 ---
 

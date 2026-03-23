@@ -27,8 +27,6 @@
 
 Pydantic powers ALL data structures in Google ADK (Event, EventActions, Session, GenerateContentConfig, tool schemas). This guide covers everything from basic model definition through advanced patterns like discriminated unions and JSON schema generation, with Java comparisons throughout.
 
-## Core Concepts
-
 ## BaseModel Fundamentals
 
 #### What is BaseModel?
@@ -132,26 +130,7 @@ except Exception as e:
     print(e)  # Validation error
 ```
 
-#### Field Order
-
-In plain Python dataclasses, required fields after optional fields cause a `TypeError`. However, **Pydantic v2 allows any field order** -- you can freely mix required and optional fields:
-
-```python
-# ✓ Both orderings work in Pydantic v2
-class Config(BaseModel):
-    name: str  # Required, no default
-    timeout: int = 30  # Optional with default
-
-class ConfigReversed(BaseModel):
-    timeout: int = 30  # Optional with default
-    name: str  # Required field after optional — valid in Pydantic v2!
-
-# Both work:
-Config(name="my_app")
-ConfigReversed(name="my_app")
-```
-
-> **Note:** This is a Pydantic-specific feature. Standard Python `dataclass` and plain `class __init__` signatures still require required parameters before optional ones.
+> **Field order:** In plain Python dataclasses, required fields after optional fields cause a `TypeError`. Pydantic v2 allows any field order — you can freely mix required and optional fields. This is a Pydantic-specific feature; standard `dataclass` and plain `__init__` still require required parameters before optional ones.
 
 ---
 
@@ -289,6 +268,19 @@ print(doc.model_dump())
 ## Validation
 
 Pydantic validates data **on construction**, automatically catching errors before they propagate. This is more like Java's builder pattern with validation.
+
+> **Re-validation on field assignment:** By default, Pydantic does **not** re-validate when you assign to a field after construction (`model.field = new_value`). To enable re-validation on assignment, add `validate_assignment=True` to your `ConfigDict`:
+>
+> ```python
+> class MyModel(BaseModel):
+>     model_config = ConfigDict(validate_assignment=True)
+>     value: int
+>
+> m = MyModel(value=1)
+> m.value = "not-an-int"  # raises ValidationError only with validate_assignment=True
+> ```
+>
+> Without it, an invalid assignment silently succeeds. This is a common ADK gotcha when mutating model state after creation.
 
 #### Automatic Validation (Lax vs Strict Mode)
 
@@ -714,10 +706,10 @@ original = Document(
 
 # Shallow copy (default)
 shallow = original.model_copy()
-shallow.metadata.tags.append("addk")
+shallow.metadata.tags.append("adk")
 
-print(original.metadata.tags)  # ['python', 'pydantic', 'addk'] - SHARED!
-print(shallow.metadata.tags)   # ['python', 'pydantic', 'addk']
+print(original.metadata.tags)  # ['python', 'pydantic', 'adk'] - SHARED!
+print(shallow.metadata.tags)   # ['python', 'pydantic', 'adk']
 
 # Deep copy
 import copy
@@ -730,10 +722,10 @@ original2 = Document(
 )
 
 deep = original2.model_copy(deep=True)
-deep.metadata.tags.append("addk")
+deep.metadata.tags.append("adk")
 
 print(original2.metadata.tags)  # ['python', 'pydantic'] - NOT shared
-print(deep.metadata.tags)       # ['python', 'pydantic', 'addk']
+print(deep.metadata.tags)       # ['python', 'pydantic', 'adk']
 ```
 
 #### ADK Pattern: Nested Context
@@ -750,7 +742,7 @@ class InvocationContext(BaseModel):
     request_id: str
     parent_request_id: Optional[str] = None
     depth: int = 0
-    custom_metadata: dict[str, str] = {}
+    custom_metadata: dict[str, str] = Field(default_factory=dict)
 
     def create_child_context(self, child_request_id: str):
         """Create a child context for nested invocations."""
