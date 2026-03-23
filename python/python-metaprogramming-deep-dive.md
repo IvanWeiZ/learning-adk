@@ -2,6 +2,8 @@
 
 > **Part 1 is in [python-decorators-deep-dive.md](python-decorators-deep-dive.md)** — closures, basic decorators, decorators with arguments, class-based decorators, decorating classes, and the `inspect` module.
 
+This file covers Sections 8–14: descriptors, `__init_subclass__`, metaclasses, `functools` utilities, `__slots__`, dynamic class creation, and the tool registry pattern.
+
 ---
 
 ### 8. Descriptors
@@ -224,6 +226,8 @@ for (Tool tool : loader) {
 ---
 
 ### 10. Metaclasses
+
+> **ADK note:** Metaclasses are rarely written in ADK code. Their main use is *reading* existing code — Pydantic and ABCs use metaclasses internally. For new ADK components, prefer `__init_subclass__` (Section 9) unless you have a specific metaclass requirement.
 
 A **metaclass** is a "class of a class"—it defines how a class behaves. `type` is Python's default metaclass.
 
@@ -450,7 +454,10 @@ def web_search(query: str, limit: int = 10) -> list:
 @REGISTRY.register(category="compute")
 def calculate(expression: str) -> float:
     """Evaluate a mathematical expression."""
-    return eval(expression)
+    # ⚠️ WARNING: eval() is a serious security risk — never use in production ADK tools.
+    # An LLM could pass arbitrary Python code as the expression argument.
+    # Use a safe arithmetic library (e.g., simpleeval) or a whitelist parser instead.
+    return eval(expression)  # noqa: S307 — illustration only, not for production
 
 # Inspect
 print(REGISTRY.get_schema("web_search"))

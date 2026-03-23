@@ -109,14 +109,20 @@ async def test_timeout_handling():
 
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(mock_tool(), timeout=1.0)
-
-# Or test your own timeout wrapper
-async def test_graceful_timeout():
-    slow_mock = AsyncMock(side_effect=lambda: asyncio.sleep(10))
-
-    result = await run_with_timeout(slow_mock, timeout=0.1)
-    assert result == {"error": "timeout"}
 ```
+
+> **Note:** Testing a slow operation that actually takes time requires an async side_effect coroutine, not a lambda. `lambda: asyncio.sleep(10)` returns a coroutine object without awaiting it — use an `async def` instead:
+>
+> ```python
+> async def slow_side_effect(*args, **kwargs):
+>     await asyncio.sleep(10)
+>
+> @pytest.mark.asyncio
+> async def test_graceful_timeout():
+>     slow_mock = AsyncMock(side_effect=slow_side_effect)
+>     result = await run_with_timeout(slow_mock, timeout=0.1)
+>     assert result == {"error": "timeout"}
+> ```
 
 ---
 
@@ -190,7 +196,8 @@ async def async_iter(items):
         yield item
 
 
-# Option 3: Reusable async generator factory for tests
+# Option 3: Reusable async generator factory for tests — Recommended for ADK
+# Place this in your project's conftest.py so all test files can use it.
 def make_async_gen(*items):
     """Create an async generator function that yields the given items."""
     async def _gen(*args, **kwargs):
@@ -254,6 +261,8 @@ def test_file_read_easy():
 from unittest.mock import AsyncMock, MagicMock
 
 # For ADK: mocking session services, MCP connections, etc.
+# Place make_async_context_manager in your project's conftest.py — it's reusable
+# across all ADK tests that need to mock async context managers.
 def make_async_context_manager(return_value=None):
     """Helper to create a mock async context manager."""
     mock = MagicMock()
@@ -625,10 +634,24 @@ def test_tool_schema_generation():
     hints = get_type_hints(search_web)
     sig = inspect.signature(search_web)
 
+    # Verify type hints are correctly read
     assert hints["query"] is str
     assert hints["max_results"] is int
     assert hints["return"] == list[str]
     assert sig.parameters["max_results"].default == 5
+
+    # Verify schema generation produces correct structure
+    # Build a simple schema from the signature (mirrors ADK's approach via Pydantic)
+    properties = {}
+    required = []
+    for param_name, param in sig.parameters.items():
+        properties[param_name] = {"type": str(hints.get(param_name, str))}
+        if param.default is inspect.Parameter.empty:
+            required.append(param_name)
+
+    assert "query" in required
+    assert "max_results" not in required  # has default=5
+    assert set(properties.keys()) == {"query", "max_results"}
 ```
 
 ---
@@ -691,16 +714,26 @@ mock.genrate("hello")  # AttributeError: Mock object has no attribute 'genrate'
 #### Mistake 4: Testing Implementation Instead of Behavior
 
 ```python
-# ❌ BAD: brittle test tied to exact implementation
+# ❌ BAD: brittle test tied to exact implementation order
 async def test_brittle():
     with patch("my_agent.step1") as m1, patch("my_agent.step2") as m2:
         await run_agent("query")
-        # NOTE: `assert_called_before` does NOT exist on Mock objects.
-        # If you need ordering, use mock_parent.assert_has_calls([call...])
-        # with the calls in expected order. But usually ordering tests
-        # are brittle — prefer testing observable outputs instead.
+        # `assert_called_before` does NOT exist on Mock objects — this will AttributeError
 
-# ✅ GOOD: test the observable output
+# ✅ CORRECT: check call ordering with assert_has_calls (if you truly need ordering)
+from unittest.mock import call, Mock
+
+async def test_with_ordering():
+    parent = Mock()
+    parent.step1 = Mock(return_value="a")
+    parent.step2 = Mock(return_value="b")
+
+    with patch("my_agent.step1", parent.step1), patch("my_agent.step2", parent.step2):
+        await run_agent("query")
+        # assert_has_calls checks both presence and order
+        parent.assert_has_calls([call.step1("query"), call.step2("a")])
+
+# ✅ BEST: test observable outputs, not implementation order
 async def test_behavior():
     events = [e async for e in agent.run_async(ctx)]
     assert events[-1].content == "expected response"

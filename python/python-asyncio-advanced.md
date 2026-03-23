@@ -2,6 +2,8 @@
 
 > **Part 1 is in [python-asyncio-deep-dive.md](python-asyncio-deep-dive.md)** — event loop, coroutines, tasks, gather/wait, TaskGroup, async generators, and async context managers.
 
+This file covers Sections 9–18: synchronization primitives (Lock, Semaphore, Event, Queue), advanced task patterns, testing async code, bounded concurrency, and ADK-specific async patterns including the runner loop and callback chain.
+
 ---
 
 ### 9. Synchronization Primitives
@@ -554,6 +556,8 @@ async def debug_tasks():
 
 #### Pattern: Bounded Concurrency for API Calls
 
+> **ADK relevance:** This pattern directly applies to LLM rate limiting — use a `Semaphore` to cap concurrent calls to your LLM provider and avoid 429 errors.
+
 ```python
 async def process_all_queries(queries: list[str], max_concurrent: int = 10):
     """Process queries with bounded concurrency."""
@@ -594,6 +598,8 @@ async def llm_with_fallback(prompt: str) -> str:
 
 #### Pattern: Circuit Breaker
 
+> **Note:** This is a simplified example for illustration. In production, protect concurrent access with `asyncio.Lock` and avoid calling `asyncio.get_running_loop()` in `__init__` (it fails outside a coroutine).
+
 ```python
 class CircuitBreaker:
     def __init__(self, max_failures: int = 5, reset_timeout: float = 60.0):
@@ -602,6 +608,7 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time = 0.0
         self.state = "closed"  # closed = normal, open = failing, half-open = testing
+        self._lock = asyncio.Lock()  # protect concurrent access
 
     async def call(self, coro):
         if self.state == "open":
@@ -654,7 +661,7 @@ async def good():
 #### Pattern: The ADK Runner Loop
 
 ```python
-async def runner_loop(agent, session_service, query: str):
+async def runner_loop(agent, session_service, query: str) -> AsyncGenerator[Event, None]:
     """Simplified version of how ADK's Runner works."""
     session = await session_service.get_or_create_session("user-1", "app-1")
     ctx = InvocationContext(agent=agent, session=session, services=services)
@@ -679,6 +686,7 @@ async def runner_loop(agent, session_service, query: str):
             async for sub_event in target.run_async(ctx):
                 all_events.append(sub_event)
                 yield sub_event
+            continue  # skip yielding the transfer event itself
 
         yield event
 
@@ -810,7 +818,7 @@ class SessionService:
 | `StructuredTaskScope` (Java 21) | `asyncio.TaskGroup` (Python 3.11+) | Same concept |
 | `Stream<T>` | `AsyncGenerator[T, None]` | Lazy, streaming |
 | `@Async` (Spring) | `async def` | |
-| `Mono<T>` / `Flux<T>` (Reactor) | Coroutine / AsyncGenerator | Reactive vs coroutine |
+| `Mono<T>` / `Flux<T>` (Reactor) | Coroutine / AsyncGenerator | Reactive vs coroutine — note asyncio is **pull-based** (consumer drives iteration); Reactor is push-based (publisher pushes to subscriber). |
 
 #### Key Mindset Shifts
 
