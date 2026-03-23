@@ -15,7 +15,7 @@ This document collects the most common ADK mistakes, anti-patterns, and rules. E
 | 1 | Agent names must be valid Python identifiers | ADK validates at construction |
 | 2 | Return errors from tools, never raise exceptions | LLM handles strings, not stack traces |
 | 3 | Write clear tool docstrings | It's the only thing the LLM reads |
-| 4 | Don't use `output_schema` with tools | It silently disables all tools |
+| 4 | Understand `output_schema` + tools interaction | ADK uses `SetModelResponseTool` workaround, but tool behavior changes |
 | 5 | Each agent instance belongs to one parent only | Use `.clone()` for reuse |
 | 6 | Use exact callback parameter names | ADK uses names for injection |
 | 7 | Don't duplicate config in `generate_content_config` | ADK validates and crashes |
@@ -95,26 +95,29 @@ def search_products(query: str, category: str = "all") -> str:
     return catalog.search(query, category)
 ```
 
-### 4. The `output_schema` Trap — It Disables All Tools
+### 4. The `output_schema` + Tools Interaction
+
+When `output_schema` is set alongside tools, ADK adds a `SetModelResponseTool` that the model calls to produce structured output. This means tools are NOT silently disabled -- they still work, but the model must call the `set_model_response` tool to return the structured result. Be aware that this changes how the model interacts with tools:
 
 ```python
-# WRONG: output_schema + tools — tools are silently ignored!
+# This works — ADK injects SetModelResponseTool so the model can return
+# structured output AND use other tools
 agent = Agent(
     name="analyzer",
     output_schema=Analysis,
-    tools=[search_knowledge], # IGNORED!
+    tools=[search_knowledge], # Tools still available
 )
 
-# CORRECT: Use output_schema WITHOUT tools
+# Simpler: Use output_schema WITHOUT tools when no tools are needed
 analyzer = Agent(name="analyzer", output_schema=Analysis)
 
-# CORRECT: Or use tools WITHOUT output_schema
+# Simpler: Or use tools WITHOUT output_schema for plain text responses
 researcher = Agent(name="researcher", tools=[search_knowledge])
 ```
 
 ### 5. Agent Reuse — One Parent Only
 
-`clone()` is a deep-copy method on `LlmAgent` that creates a new independent instance. The `update` parameter accepts a dict of field overrides applied after copying, so you can rename the clone without affecting the original.
+`clone()` is a deep-copy method on `BaseAgent` (inherited by all agent types, including `LlmAgent`) that creates a new independent instance. The `update` parameter accepts a dict of field overrides applied after copying, so you can rename the clone without affecting the original.
 
 ```python
 # WRONG: Same instance in two parents
@@ -197,7 +200,7 @@ agent_b = Agent(name="b", output_key="result_b")
 
 ### 9. Model Inheritance — Don't Over-Specify
 
-Children inherit the model from their nearest ancestor that has one set. If **no ancestor** has a model and the child doesn't set one either, ADK raises a `ValueError` at runtime — not at construction time. This means the failure surfaces only when the child agent is actually invoked, which can be hard to debug in large hierarchies. Always set a model on the root agent.
+Children inherit the model from their nearest ancestor that has one set. If **no ancestor** has a model and the child doesn't set one either, ADK uses the class-level default model (`DEFAULT_MODEL = 'gemini-2.5-flash'`). This means agents without an explicit model will silently use `gemini-2.5-flash`, which may not be what you want. You can override the default via `LlmAgent.set_default_model()`. Always set a model on the root agent for clarity.
 
 ```python
 # WASTEFUL: Setting the same model on every agent
@@ -211,9 +214,9 @@ root = Agent(name="root", model="gemini-2.5-flash", sub_agents=[
     Agent(name="smart_child", model="gemini-2.5-pro"), # Override only when different
 ])
 
-# BROKEN: No model anywhere — fails at runtime when child_a is invoked
+# SURPRISING: No model anywhere — silently uses DEFAULT_MODEL (gemini-2.5-flash)
 root = Agent(name="root", sub_agents=[
-    Agent(name="child_a"), # ValueError at invocation time
+    Agent(name="child_a"), # Uses gemini-2.5-flash by default
 ])
 ```
 
@@ -280,7 +283,7 @@ sub_agents=[Agent(
 
 ## Gotchas
 
-- **`output_schema` silently disables all tools.** No warning.
+- **`output_schema` with tools changes behavior.** ADK injects `SetModelResponseTool` so tools still work, but the model must call the `set_model_response` tool to return structured output.
 - **Duplicate sub-agent names are not an error.** ADK only logs a warning, but agent transfer becomes unpredictable.
 - **Callback parameter names must be exact.** ADK injects by parameter name, not position.
 - **`generate_content_config` crashes on duplicates.** Hard crash, not a warning.

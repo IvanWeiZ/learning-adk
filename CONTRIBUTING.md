@@ -18,7 +18,7 @@ If you find a factual error (wrong class name, wrong method signature, outdated 
 
 ### Adding Content
 
-New documentation should follow the template in [CLAUDE.md](CLAUDE.md#documentation-preferences):
+New documentation should follow the template in [CLAUDE.md](CLAUDE.md#document-conventions):
 
 - **At a Glance** — compact visual (5-10 lines)
 - **Key API** — fields, methods, types
@@ -45,7 +45,7 @@ Runner.run_async()
        final text → exit
 ```
 
-Each node on its own line. Description on the next line, indented. Blank line between siblings. See [CLAUDE.md](CLAUDE.md#diagram-quality-rules-mandatory) for the full rules.
+Each node on its own line. Description on the next line, indented. Blank line between siblings. See [CLAUDE.md](CLAUDE.md#lessons-learned-do-not-repeat-these-mistakes) for the full rules.
 
 ### What NOT to Do
 

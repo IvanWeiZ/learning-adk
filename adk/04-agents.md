@@ -65,11 +65,11 @@ async def run_async(parent_context: InvocationContext) -> AsyncGenerator[Event, 
 
 ```python
 name: str # must be a valid Python identifier, unique in tree
-description: str # one-line summary; LLM uses this to decide delegation
+description: str = '' # one-line summary; LLM uses this to decide delegation
 sub_agents: list[BaseAgent] # child agents in the hierarchy
 parent_agent: Optional[BaseAgent] # set automatically, defaults to None, not in constructor
-before_agent_callback: ... # runs before _run_async_impl; can short-circuit
-after_agent_callback: ... # runs after _run_async_impl; can append events
+before_agent_callback: ... # single callback or list; sync or async; can short-circuit
+after_agent_callback: ... # single callback or list; sync or async; can append events
 ```
 
 **Agent name constraint:** Cannot be `"user"` (reserved for end-user messages). Must be a valid Python identifier. Names must be unique within the tree.
@@ -144,7 +144,7 @@ model: Union[str, BaseLlm] # e.g. 'gemini-2.5-flash'. Inherits from parent if em
 
 instruction: Union[str, InstructionProvider]
 # System prompt. Supports {variable} placeholders resolved from session state.
-# Can be a callable (ctx) -> str for dynamic instructions.
+# Can be a callable (ctx) -> str or (ctx) -> Awaitable[str] for dynamic instructions.
 
 static_instruction: Optional[types.ContentUnion]
 # Static content sent as-is (no variable substitution). Used for context caching.
@@ -153,7 +153,7 @@ tools: list[ToolUnion]
 # Accepts: BaseTool instances, BaseToolset instances, plain Python callables.
 
 generate_content_config: Optional[types.GenerateContentConfig] = None
-# Temperature, safety settings, etc. Tools/instructions must NOT be set here.
+# Temperature, safety settings, etc. Tools/instructions/response_schema must NOT be set here.
 
 output_schema: Optional[SchemaType]
 # Forces structured JSON output. When set, agent CANNOT use tools (mutual exclusion).
@@ -179,7 +179,7 @@ code_executor: Optional[BaseCodeExecutor] # run generated code blocks
 
 ### Callbacks on LlmAgent
 
-LlmAgent adds finer-grained hooks compared to BaseAgent:
+LlmAgent adds finer-grained hooks compared to BaseAgent. **All callbacks can be sync or async**, and **all accept a single callable or a list of callables** (`Union[SingleCallback, list[SingleCallback]]`). When a list is provided, callbacks run in order until one returns a non-None value.
 
 | Callback | When | Can short-circuit? |
 |----------|------|--------------------|
@@ -192,7 +192,7 @@ LlmAgent adds finer-grained hooks compared to BaseAgent:
 | `after_tool_callback` | After each tool run | Yes — return dict to replace result |
 | `on_tool_error_callback` | On tool error | Yes — return dict to recover |
 
-**Full signatures for error callbacks:**
+**Full signatures for error callbacks** (sync or async):
 
 ```python
 def on_model_error_callback(
@@ -200,6 +200,7 @@ def on_model_error_callback(
     llm_request: LlmRequest,
     error: Exception,
 ) -> Optional[LlmResponse]: ...
+# async variant: -> Awaitable[Optional[LlmResponse]]
 
 def on_tool_error_callback(
     tool: BaseTool,
@@ -207,6 +208,7 @@ def on_tool_error_callback(
     tool_context: ToolContext,
     error: Exception,
 ) -> Optional[dict]: ...
+# async variant: -> Awaitable[Optional[dict]]
 ```
 
 ### InvocationContext — The Shared Thread
@@ -218,6 +220,7 @@ def on_tool_error_callback(
 │  session        → Session (history+state) │
 │  invocation_id  → unique ID for this run  │
 │  branch         → routing path            │
+│  user_content   → Content that started it │
 │  end_invocation → bool: stop invocation   │
 └──────────────────┬───────────────────────┘
                    │
@@ -238,13 +241,14 @@ class InvocationContext:
     session: Session # the full conversation history + state
     invocation_id: str # unique ID for this run_async() call
     branch: Optional[str] = None # routing path (e.g. 'root.sub.leaf')
+    user_content: Optional[types.Content] = None # the user content that started this invocation
     end_invocation: bool # set to True to stop the entire invocation
 
     # Services injected by Runner:
     session_service: BaseSessionService
-    artifact_service: BaseArtifactService
-    memory_service: BaseMemoryService
-    credential_service: BaseCredentialService
+    artifact_service: Optional[BaseArtifactService] = None
+    memory_service: Optional[BaseMemoryService] = None
+    credential_service: Optional[BaseCredentialService] = None
     plugin_manager: PluginManager
 ```
 

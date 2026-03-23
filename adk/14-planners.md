@@ -129,6 +129,7 @@ Behavior:
   2. Interleave tool calls (`/*ACTION*/`) with reasoning (`/*REASONING*/`)
   3. Re-plan under `/*REPLANNING*/` if execution fails
   4. Produce a final answer under `/*FINAL_ANSWER*/`
+  - After appending the planning instruction, the processor calls `_remove_thought_from_request(llm_request)`, which strips `thought=True` from all parts in prior turns. This prevents the model from seeing its own thought markers in conversation history, which could confuse it.
 
 - **Response phase:** `process_planning_response()` parses the model's output:
   - Text starting with `/*PLANNING*/`, `/*REASONING*/`, `/*ACTION*/`, or `/*REPLANNING*/` is marked as `thought=True` (hidden from the user by default)
@@ -268,6 +269,8 @@ agent = Agent(
     ...
 )
 ```
+
+> **Warning:** The request processor (`_NlPlanningRequestProcessor`) only has explicit branches for `BuiltInPlanner` and `PlanReActPlanner` via `isinstance` checks. A custom `BasePlanner` subclass will pass through `_get_planner()` and be returned correctly, but the request processor will **not** call `build_planning_instruction()` on it — it silently skips instruction injection. However, the response processor (`_NlPlanningResponse`) **does** call `process_planning_response()` for any non-`BuiltInPlanner` planner. To work around this, either subclass `PlanReActPlanner` instead of `BasePlanner`, or inject instructions via `before_model_callback`.
 
 ---
 

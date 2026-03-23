@@ -23,7 +23,8 @@
 │    │  TrajectoryEvaluator               │
 │    │  ResponseEvaluator                 │
 │    ▼                                    │
-│  EvalCaseResult (PASSED / FAILED)       │
+│  EvalCaseResult (PASSED / FAILED /      │
+│                  NOT_EVALUATED)          │
 └─────────────────────────────────────────┘
 ```
 
@@ -59,27 +60,28 @@ class EvalCase(BaseModel):
 
     # Scenario description for the conversation:
     conversation_scenario: Optional[str] = None
+    # NOTE: exactly one of conversation or conversation_scenario must be provided (enforced by validator)
 
     # Rubrics for scoring (applied across the whole case):
-    rubrics: Optional[list[str]] = None
+    rubrics: Optional[list[Rubric]] = None # Rubric from eval_rubrics.py
 
     # Expected final session state after all turns:
-    final_session_state: Optional[dict[str, Any]] = None
+    final_session_state: Optional[dict[str, Any]] = Field(default_factory=dict)
 
     session_input: SessionInput | None = None # pre-seeded state/history
-    creation_timestamp: float
+    creation_timestamp: float = 0.0
 ```
 
 ### Invocation — One Turn in the Conversation
 
 ```python
 class Invocation(BaseModel):
-    invocation_id: str # unique ID for this turn
+    invocation_id: str = "" # unique ID for this turn
     user_content: types.Content # the user's message for this turn
     final_response: Optional[types.Content] = None # expected agent reply
     intermediate_data: Optional[IntermediateData] = None # expected tool calls/responses
-    rubrics: Optional[list[str]] = None # per-turn scoring rubrics
-    creation_timestamp: float
+    rubrics: Optional[list[Rubric]] = None # per-turn scoring rubrics (Rubric from eval_rubrics.py)
+    creation_timestamp: float = 0.0
 ```
 
 ### IntermediateData — Expected Tool Calls and Responses
@@ -88,7 +90,7 @@ class Invocation(BaseModel):
 class IntermediateData(BaseModel):
     tool_uses: list[FunctionCall] # expected tool calls (google.genai.types.FunctionCall)
     tool_responses: list[FunctionResponse] # expected tool responses
-    intermediate_responses: Optional[list[types.Content]] = None
+    intermediate_responses: list[tuple[str, list[types.Part]]] = [] # (author, parts) tuples
 ```
 
 ### EvalSet — A Suite of Cases
@@ -96,10 +98,10 @@ class IntermediateData(BaseModel):
 ```python
 class EvalSet(BaseModel):
     eval_set_id: str
-    name: str # human-readable name
+    name: Optional[str] = None # human-readable name
     description: Optional[str] = None
     eval_cases: list[EvalCase]
-    creation_timestamp: float
+    creation_timestamp: float = 0.0
 ```
 
 ### EvalMetric — What to Measure
@@ -107,13 +109,23 @@ class EvalSet(BaseModel):
 ```python
 class EvalMetric(BaseModel):
     metric_name: str # e.g. "tool_trajectory_avg_score", "response_match_score"
-    threshold: float # minimum passing score (0.0–1.0)
-    criterion: Optional[str] = None # rubric description for LLM judge
+    threshold: Optional[float] = None # deprecated — use criterion instead
+    criterion: Optional[BaseCriterion] = None # evaluation criterion (BaseCriterion or subclass)
     custom_function_path: Optional[str] = None # dotted path to custom metric function
 
-class PrebuiltMetrics:
+class PrebuiltMetrics(Enum): # 12 built-in metrics
     TOOL_TRAJECTORY_AVG_SCORE = "tool_trajectory_avg_score"
+    RESPONSE_EVALUATION_SCORE = "response_evaluation_score"
     RESPONSE_MATCH_SCORE = "response_match_score"
+    SAFETY_V1 = "safety_v1"
+    FINAL_RESPONSE_MATCH_V2 = "final_response_match_v2"
+    RUBRIC_BASED_FINAL_RESPONSE_QUALITY_V1 = "rubric_based_final_response_quality_v1"
+    HALLUCINATIONS_V1 = "hallucinations_v1"
+    RUBRIC_BASED_TOOL_USE_QUALITY_V1 = "rubric_based_tool_use_quality_v1"
+    PER_TURN_USER_SIMULATOR_QUALITY_V1 = "per_turn_user_simulator_quality_v1"
+    MULTI_TURN_TASK_SUCCESS_V1 = "multi_turn_task_success_v1"
+    MULTI_TURN_TRAJECTORY_QUALITY_V1 = "multi_turn_trajectory_quality_v1"
+    MULTI_TURN_TOOL_USE_QUALITY_V1 = "multi_turn_tool_use_quality_v1"
 ```
 
 ### EvalCaseResult — What You Get Back
@@ -122,20 +134,18 @@ class PrebuiltMetrics:
 class EvalCaseResult(BaseModel):
     eval_set_id: str
     eval_id: str # matches EvalCase.eval_id
-    final_eval_status: EvalStatus # PASSED | FAILED
+    final_eval_status: EvalStatus # PASSED | FAILED | NOT_EVALUATED
     overall_eval_metric_results: list[EvalMetricResult]
-    eval_metric_result_per_invocation: list[list[EvalMetricResult]] # per-turn results
+    eval_metric_result_per_invocation: list[EvalMetricResultPerInvocation] # per-turn results
     session_id: str # the session used for this run
-    session_details: Optional[dict] = None # full session state after eval
+    session_details: Optional[Session] = None # full Session object after eval
     user_id: Optional[str] = None
 ```
 
 ```python
-class EvalMetricResult(BaseModel):
-    metric_name: str
-    score: float # actual score (0.0–1.0)
-    threshold: float # passing threshold
-    eval_status: EvalStatus # PASSED | FAILED
+class EvalMetricResult(EvalMetric): # extends EvalMetric (inherits metric_name, threshold, criterion)
+    score: Optional[float] = None # actual score (0.0–1.0), None if not evaluated
+    eval_status: EvalStatus # PASSED | FAILED | NOT_EVALUATED
 ```
 
 ---
@@ -166,6 +176,9 @@ await AgentEvaluator.evaluate(
     agent_module="my_package.my_agent", # importable module with 'agent' variable
     eval_dataset_file_path_or_dir="tests/evals/", # directory with .test.json files
     num_runs=2, # default: 2
+    agent_name=None, # optional: evaluate a sub-agent instead of root
+    initial_session_file=None, # optional: JSON file with initial session state
+    print_detailed_results=True, # default: True — print per-invocation details
 )
 ```
 

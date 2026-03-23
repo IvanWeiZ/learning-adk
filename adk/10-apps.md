@@ -35,6 +35,10 @@ runner = Runner(app=App(name='my_app', root_agent=agent), session_service=...)
 
 # Without App (scripts/demos — no plugins, compaction, or caching):
 runner = Runner(agent=agent, app_name='my_app', session_service=...)
+
+# Deprecated: Runner also accepts a `plugins` parameter directly,
+# but this is deprecated — use App(plugins=[...]) instead:
+# runner = Runner(agent=agent, app_name='my_app', plugins=[...], session_service=...)
 ```
 
 | Feature | `app=App(...)` | `agent=..., app_name=...` |
@@ -83,7 +87,9 @@ EventsCompactionConfig:
 │
 ├── compaction_interval: int
 ├── overlap_size: int
-└── summarizer: Optional
+├── summarizer: Optional
+├── token_threshold: Optional[int]       # post-invocation compaction trigger (must pair with event_retention_size)
+└── event_retention_size: Optional[int]  # raw events to keep un-compacted (must pair with token_threshold)
 
 ContextCacheConfig:
 │

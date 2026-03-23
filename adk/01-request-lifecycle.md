@@ -24,7 +24,7 @@ A detailed trace of one user message through every ADK layer — from `run_async
 ## At a Glance
 
 ```
-runner.run_async(user_id, session_id, new_message)
+runner.run_async(user_id=..., session_id=..., new_message=...)
 │
 ├── Runner
 │   session bookkeeping: get/create session, append_event for each event
@@ -57,7 +57,7 @@ runner.run_async(user_id, session_id, new_message)
 
 ```
 CALLER
-  │  runner.run_async(user_id, session_id, new_message)
+  │  runner.run_async(user_id=..., session_id=..., new_message=...)
   ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │ RUNNER [runners.py]                                               │
@@ -112,8 +112,8 @@ CALLER
   │
   ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│ GEMINI LLM [models/google_llm.py]                                 │
-│   generate_content_async(LlmRequest) → AsyncIterator[LlmResponse] │
+│ GEMINI [models/google_llm.py]                                      │
+│   generate_content_async(LlmRequest, stream) → AsyncGenerator[LlmResponse, None] │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -261,11 +261,12 @@ No callbacks configured — both return `None`.
 
 **Source:** [`flows/llm_flows/base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py)
 
-Three processors mutate `LlmRequest` in order:
+Request processors mutate `LlmRequest` in order. The key ones for this trace:
 
 1. **`instructions.py`** — injects the system prompt (substitutes `{vars}` if any)
 2. **`contents.py`** — reads `session.events` filtered to the current branch — builds `contents` list
-3. **`functions.py`** — converts Python tools to `FunctionDeclaration` schemas
+
+Tool schemas (`FunctionDeclaration`) are populated separately by `_process_agent_tools()` in `base_llm_flow.py` — not by a request processor.
 
 **LlmRequest sent to the model:**
 
@@ -451,10 +452,10 @@ sequenceDiagram
     participant SessionSvc as Session Service
     participant BaseAgent
     participant LlmFlow as BaseLlmFlow
-    participant Gemini as GeminiLLM
+    participant Gemini as Gemini
     participant Tool as get_weather
 
-    Caller->>Runner: run_async(user_id, session_id, new_message)
+    Caller->>Runner: run_async(user_id=..., session_id=..., new_message=...)
 
     %% 1. RUNNER
     Runner->>SessionSvc: get_session()
@@ -572,7 +573,7 @@ State keys use prefixes to control scope: no prefix (session), `app:` (all users
 | `partial=True` events are never passed to `append_event` | [`base_session_service.py:L105`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py#L105) |
 | `state_delta` is applied atomically on `append_event` | [`base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) |
 | `temp:` keys are in-memory only — stripped from persisted delta | [`base_session_service.py:_apply_temp_state`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py#L118) |
-| LLM is never called directly — always through a flow | [`llm_agent.py:_run_async_impl`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py#L458) |
+| LLM is never called directly — always through a flow | [`llm_agent.py:_run_async_impl`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py#L459) |
 | Tool results feed into the next `LlmRequest.contents` | [`flows/llm_flows/contents.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/contents.py) |
 | Only `is_final_response()=True` events should be rendered | [`event.py:is_final_response`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event.py#L83) |
 | Callbacks: plugins first, agent list second; first non-None wins | [`base_agent.py:L434`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py#L434) |

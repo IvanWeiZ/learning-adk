@@ -97,7 +97,7 @@ def start_deployment(
         "message": f"Deployment {deploy_id} started. It will take ~5 minutes.",
     }
 
-deploy_tool = LongRunningFunctionTool(func=start_deployment)
+deploy_tool = LongRunningFunctionTool(start_deployment)  # func is positional, not keyword
 ```
 
 **AgentTool (wrap an agent as a tool):**
@@ -115,6 +115,8 @@ research_agent = Agent(
 research_tool = AgentTool(
     agent=research_agent,
     skip_summarization=False,
+    # include_plugins=True (default) — propagates parent plugins to the agent's runner.
+    # Set to False for isolated plugin environment.
 )
 
 root_agent = Agent(
@@ -154,20 +156,28 @@ AgentTool vs sub_agents comparison:
 
 ## 5. Custom Toolsets — Dynamic Tool Collections
 
-`BaseToolset` provides tools dynamically at runtime, based on context:
+`BaseToolset` provides tools dynamically at runtime, based on context.
+
+> **Import note:** `BaseToolset` is **not** exported from `google.adk.tools` (it is not in `__all__`). Import it directly: `from google.adk.tools.base_toolset import BaseToolset`.
 
 ```python
-from google.adk.tools import BaseToolset, BaseTool, FunctionTool
+from google.adk.tools.base_toolset import BaseToolset  # not in google.adk.tools.__all__
+from google.adk.tools import BaseTool, FunctionTool
 from google.adk.tools.tool_context import ToolContext
+from google.adk.agents.readonly_context import ReadonlyContext
+from typing import Optional
 
 class DatabaseToolset(BaseToolset):
     """Provides query tools based on user's database permissions."""
 
     def __init__(self, db_connection):
+        # BaseToolset.__init__ accepts optional tool_filter and tool_name_prefix:
+        #   tool_filter: Optional[Union[ToolPredicate, list[str]]] — filter tools by predicate or name list
+        #   tool_name_prefix: Optional[str] — prefix prepended to all tool names
         super().__init__()
         self.db = db_connection
 
-    async def get_tools(self, readonly_context) -> list[BaseTool]:
+    async def get_tools(self, readonly_context: Optional[ReadonlyContext] = None) -> list[BaseTool]:
         """Return tools based on user permissions."""
         user_role = readonly_context.state.get("user:role", "viewer")
         tools = []
@@ -217,6 +227,7 @@ The following topics are covered in depth in their own files. Brief summaries an
 
 ## Gotchas
 
+- **`ToolContext` is an alias for `Context`** — `tool_context.py` defines `ToolContext = Context`. They are the same class, not a subclass relationship. Import either from `google.adk.tools.tool_context` or `google.adk.agents.context`.
 - **`AgentTool` creates isolated sessions** — the child agent gets its own session and conversation history. State changes in the child do not propagate to the parent unless explicitly handled via state deltas.
 - **`BaseToolset.get_tools()` is called per-request** — tools are resolved dynamically before each LLM call. If your toolset is expensive to evaluate, cache the results.
 - **Auth flow requires resumability** — credential requests pause the agent. Without proper `ResumabilityConfig`, the flow cannot resume after the user provides credentials.

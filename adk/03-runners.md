@@ -137,8 +137,9 @@ Runner.run_async(user_id, session_id, new_message)
 │     ► session_service.get_session(...)
 │     ► auto-creates if auto_create_session=True, else raises
 │
-├─ 2. _setup_context_for_new_invocation(session, new_message, run_config)
+├─ 2. _setup_context_for_new_invocation(session, new_message, run_config, state_delta)
 │     ► Appends user message Event to session
+│     ► Applies state_delta to session state (if provided)
 │     ► Creates InvocationContext with invocation_id, branch, services
 │
 ├─ 3. agent.run_async(invocation_context)
@@ -167,9 +168,15 @@ class RunConfig:
     streaming_mode: StreamingMode # NONE, SSE, BIDI
     max_llm_calls: int = 500 # safety cap; <= 0 disables. Raises LlmCallsLimitExceededError
     get_session_config: Optional[GetSessionConfig] = None # partial session loading
-    support_cfc: bool # client function calling
-    custom_metadata: dict # attached to all events from this run
+    support_cfc: bool # Compositional Function Calling (experimental, SSE only)
+    custom_metadata: Optional[dict[str, Any]] = None # attached to all events from this run
     # save_input_blobs_as_artifacts: bool  # DEPRECATED — use SaveFilesAsArtifactsPlugin
+    #
+    # Additional fields for live/audio agents (not shown above):
+    #   speech_config, response_modalities, output_audio_transcription,
+    #   input_audio_transcription, realtime_input_config, enable_affective_dialog,
+    #   proactivity, session_resumption, context_window_compression,
+    #   save_live_blob, tool_thread_pool_config
 ```
 
 ### Plugins
@@ -181,7 +188,7 @@ Runner initializes `PluginManager`. Plugins hook into:
 Provide via `App` (preferred). See [10-apps.md](10-apps.md) for `BasePlugin` interface and examples.
 
 ```python
-app = App(root_agent=agent, plugins=[MyPlugin()])
+app = App(name='my_app', root_agent=agent, plugins=[MyPlugin()])
 runner = Runner(app=app, session_service=InMemorySessionService())
 ```
 

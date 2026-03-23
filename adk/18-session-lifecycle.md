@@ -42,7 +42,7 @@ The session service loads context before execution, persists events during execu
 
 ### The `append_event` Base Implementation
 
-This is the critical method. Every subclass calls `super().append_event()` first:
+This is the critical method. `InMemorySessionService` calls `super().append_event()` directly. `DatabaseSessionService` performs all DB operations first (state decomposition, stale-session check, locking, SQL commit) and calls `super().append_event()` **last** to update the in-memory session object:
 
 ```python
 async def append_event(self, session: Session, event: Event) -> Event:
@@ -88,9 +88,13 @@ session = await self.session_service.create_session(
 
 **Why:** Convenience for development/testing. In production, sessions are typically pre-created. If missing and auto-create is disabled, `SessionNotFoundError` is raised.
 
+**Between Calls 2 and 3: `_setup_context_for_new_invocation`**
+
+After the session is obtained, the Runner calls `_setup_context_for_new_invocation()` (or `_setup_context_for_resumed_invocation()` for resumable apps). This method: (1) creates the `InvocationContext` in memory, (2) handles the new message (runs callbacks and appends the user event), and (3) finds the correct agent to run (checking for pending `transfer_to_agent` from a previous invocation).
+
 **Call 3: `append_event` — Persist the user's input message**
 
-**Where:** `_append_new_message_to_session()` (called from `_handle_new_message`)
+**Where:** `_append_new_message_to_session()` (called from `_handle_new_message` inside `_setup_context_for_new_invocation`)
 
 ```python
 await self.session_service.append_event(session=session, event=event)

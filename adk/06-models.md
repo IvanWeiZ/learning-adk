@@ -86,7 +86,7 @@ partial=True events are FREE — append_event() skips them
 ```python
 # Registration (done at module import time in each adapter):
 LLMRegistry.register(Gemini)
-# Gemini.supported_models() = [r'gemini-.*', r'learnlm-.*', ...]
+# Gemini.supported_models() = [r'gemini-.*', r'model-optimizer-.*', <vertex patterns>]
 
 # Resolution:
 llm = LLMRegistry.new_llm('gemini-2.5-flash')
@@ -110,7 +110,7 @@ Model string resolution:
  "claude-sonnet-4-20250514"
  │
  ▼
- AnthropicLlm.supported_models() → ["claude-.*"] ← MATCH
+ AnthropicLlm.supported_models() → ["claude-3-.*", "claude-.*-4.*"] ← MATCH
  │
  ▼
  Return AnthropicLlm(model="claude-sonnet-4-20250514")
@@ -118,7 +118,7 @@ Model string resolution:
  "openai/gpt-4o"
  │
  ▼
- LiteLlm.supported_models() → [".+/.+"] ← MATCH (provider/model format)
+ LiteLlm.supported_models() → ["openai/.*", "azure/.*", ...16 prefixes] ← MATCH
  │
  ▼
  Return LiteLlm(model="openai/gpt-4o")
@@ -151,19 +151,21 @@ Model inheritance: if an `LlmAgent` has `model=''` (default), it walks up the `p
 The request object assembled by the flow before calling the model:
 
 ```python
-class LlmRequest:
+class LlmRequest(BaseModel):
     model: Optional[str] = None # model name to use
-    contents: list[types.Content] # conversation history
-    config: types.GenerateContentConfig # system_instruction, tools, temperature, safety, etc.
-    tools_dict: dict[str, BaseTool] # name → BaseTool (internal routing map)
-    cache_config: Optional[...] # context cache configuration (only when caching enabled)
-    cache_metadata: Optional[...] # context cache metadata (only when caching enabled)
+    contents: list[types.Content] = Field(default_factory=list) # conversation history
+    config: types.GenerateContentConfig = Field(default_factory=types.GenerateContentConfig)
+    live_connect_config: types.LiveConnectConfig = Field(default_factory=types.LiveConnectConfig)
+    tools_dict: dict[str, BaseTool] = Field(default_factory=dict) # name → BaseTool (internal routing map)
+    cache_config: Optional[ContextCacheConfig] = None # context cache configuration
+    cache_metadata: Optional[CacheMetadata] = None # context cache metadata
     cacheable_contents_token_count: Optional[int] = None # token count for cacheable contents
-    live_connect_config: Optional[...] # Live API connection config (Gemini Live only)
-    previous_interaction_id: Optional[str] # for resumable invocations
+    previous_interaction_id: Optional[str] = None # for stateful interactions API
 
     # Note: system_instruction and tools live inside config (GenerateContentConfig),
     # not as top-level fields on LlmRequest.
+    # Note: config and live_connect_config use default_factory, so they are
+    # always present (not Optional) — no need to pass them at construction time.
 
     def append_tools(self, tools: list[BaseTool]) -> None:
         # Adds FunctionDeclarations to config.tools and populates tools_dict.
@@ -176,15 +178,26 @@ class LlmRequest:
 The response object returned by the model:
 
 ```python
-class LlmResponse:
-    content: Optional[types.Content] # text, function calls, thoughts, blobs
-    partial: Optional[bool] # True = streaming chunk, False = final
-    usage_metadata: ... # token counts
-    grounding_metadata: ... # search grounding info
-    input_transcription: ... # Live API: what user said
-    output_transcription: ... # Live API: what model said
-    error_code: ...
-    error_message: ...
+class LlmResponse(BaseModel):
+    model_version: Optional[str] = None # model version used to generate the response
+    content: Optional[types.Content] = None # text, function calls, thoughts, blobs
+    grounding_metadata: Optional[types.GroundingMetadata] = None # search grounding info
+    partial: Optional[bool] = None # True = streaming chunk, False = final
+    turn_complete: Optional[bool] = None # whether model response is complete (streaming/bidi)
+    finish_reason: Optional[types.FinishReason] = None # why the model stopped generating
+    error_code: Optional[str] = None # error code if response is an error
+    error_message: Optional[str] = None # error message if response is an error
+    interrupted: Optional[bool] = None # LLM was interrupted (e.g. user interruption in bidi)
+    custom_metadata: Optional[dict[str, Any]] = None # optional key-value labels (JSON serializable)
+    usage_metadata: Optional[types.GenerateContentResponseUsageMetadata] = None # token counts
+    live_session_resumption_update: Optional[types.LiveServerSessionResumptionUpdate] = None # session resumption update
+    input_transcription: Optional[types.Transcription] = None # Live API: what user said
+    output_transcription: Optional[types.Transcription] = None # Live API: what model said
+    avg_logprobs: Optional[float] = None # average log probability of generated tokens
+    logprobs_result: Optional[types.LogprobsResult] = None # detailed log probabilities
+    cache_metadata: Optional[CacheMetadata] = None # context cache metadata
+    citation_metadata: Optional[types.CitationMetadata] = None # citation metadata
+    interaction_id: Optional[str] = None # interactions API: chain stateful conversations
 ```
 
 `Event` extends `LlmResponse`, so events carry all response fields plus `author`, `invocation_id`, `actions`, and `branch`. See [07-events.md](07-events.md) for the full `Event` class hierarchy.

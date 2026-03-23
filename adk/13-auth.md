@@ -57,12 +57,25 @@ class AuthCredentialTypes(str, Enum):
     SERVICE_ACCOUNT = "serviceAccount"
 ```
 
+### BaseModelWithConfig
+
+All auth data classes inherit from `BaseModelWithConfig`, not `BaseModel`. This adds camelCase alias generation and `extra="allow"`:
+
+```python
+class BaseModelWithConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+        alias_generator=alias_generators.to_camel,
+        populate_by_name=True,
+    )
+```
+
 ### AuthCredential
 
 The core credential container. Which fields are populated depends on `auth_type`:
 
 ```python
-class AuthCredential(BaseModel):
+class AuthCredential(BaseModelWithConfig):
     auth_type: AuthCredentialTypes
     resource_ref: str | None = None # future: resource reference
     api_key: str | None = None # for API_KEY type
@@ -73,15 +86,15 @@ class AuthCredential(BaseModel):
 
 ### HttpAuth and HttpCredentials
 
-For HTTP authentication schemes (Basic, Bearer, etc.):
+For HTTP authentication schemes (Basic, Bearer, etc.). These are **not** exported from `google.adk.auth` — import directly from `google.adk.auth.auth_credential`:
 
 ```python
-class HttpCredentials(BaseModel):
+class HttpCredentials(BaseModelWithConfig):
     username: str | None = None
     password: str | None = None
     token: str | None = None
 
-class HttpAuth(BaseModel):
+class HttpAuth(BaseModelWithConfig):
     scheme: str # e.g., "basic", "bearer"
     credentials: HttpCredentials
     additional_headers: dict[str, str] | None = None
@@ -92,7 +105,7 @@ class HttpAuth(BaseModel):
 Holds all the fields needed for an OAuth2 flow lifecycle:
 
 ```python
-class OAuth2Auth(BaseModel):
+class OAuth2Auth(BaseModelWithConfig):
     client_id: str | None = None
     client_secret: str | None = None
     auth_uri: str | None = None # generated authorization URL
@@ -116,10 +129,10 @@ class OAuth2Auth(BaseModel):
 
 ### ServiceAccount
 
-For Google Cloud service account authentication:
+For Google Cloud service account authentication. **Not** exported from `google.adk.auth` — import directly from `google.adk.auth.auth_credential`:
 
 ```python
-class ServiceAccount(BaseModel):
+class ServiceAccount(BaseModelWithConfig):
     service_account_credential: ServiceAccountCredential | None = None
     scopes: list[str] | None = None
     use_default_credential: bool | None = False
@@ -157,7 +170,7 @@ class OpenIdConnectWithConfig(SecurityBase):
 The configuration object that ties scheme + credential together and gets passed through the auth flow:
 
 ```python
-class AuthConfig(BaseModel):
+class AuthConfig(BaseModelWithConfig):
     auth_scheme: AuthScheme
     raw_auth_credential: AuthCredential | None = None
     exchanged_auth_credential: AuthCredential | None = None
@@ -167,7 +180,7 @@ class AuthConfig(BaseModel):
 - `auth_scheme`: Describes the type of auth required (OpenAPI security scheme).
 - `raw_auth_credential`: The initial credential from the tool (e.g., client_id + secret for OAuth).
 - `exchanged_auth_credential`: Filled in by ADK during the flow. For OAuth, this gets the `auth_uri` and `state` added, then later the access token after exchange.
-- `credential_key`: Stable key for storing/loading this credential. If not provided, one is auto-generated from a hash of the scheme and credential.
+- `credential_key`: Stable key for storing/loading this credential. If not provided, `__init__` auto-populates it: first it checks `model_extra` on the raw credential and auth scheme for a `credential_key` or `credentialKey` field, then falls back to `get_credential_key()` which generates a hash-based key.
 
 ### AuthHandler
 
@@ -191,6 +204,45 @@ class AuthHandler:
 ```
 
 `generate_auth_request` uses `authlib` to build the authorization URL. Without `authlib`, returns raw credential.
+
+### BaseAuthProvider
+
+Abstract base class for custom authentication providers (experimental, gated behind `PLUGGABLE_AUTH` feature flag). Exported from `google.adk.auth`:
+
+```python
+class BaseAuthProvider(ABC):
+    @abstractmethod
+    async def get_auth_credential(
+        self, auth_config: AuthConfig, context: CallbackContext
+    ) -> AuthCredential | None:
+        """Provide an AuthCredential, or None if unavailable."""
+```
+
+### OAuthGrantType
+
+Enum mapping OAuth2 flows to grant types. Defined in `auth_schemes.py`:
+
+```python
+class OAuthGrantType(str, Enum):
+    CLIENT_CREDENTIALS = "client_credentials"
+    AUTHORIZATION_CODE = "authorization_code"
+    IMPLICIT = "implicit"
+    PASSWORD = "password"
+```
+
+Has a `from_flow(flow: OAuthFlows)` static method that converts an `OAuthFlows` object to the corresponding grant type.
+
+### ExtendedOAuth2
+
+Experimental OAuth2 scheme that adds auto-discovery via an issuer URL. Defined in `auth_schemes.py`:
+
+```python
+@experimental
+class ExtendedOAuth2(OAuth2):
+    issuer_url: str | None = None  # Used for endpoint-discovery
+```
+
+> Neither `OAuthGrantType` nor `ExtendedOAuth2` is exported from `google.adk.auth` — import directly from `google.adk.auth.auth_schemes`.
 
 ---
 
@@ -260,10 +312,12 @@ Use `save_credential`/`load_credential` for custom credential backends or when y
 
 ## Credential Key
 
-`credential_key` determines storage location (`"temp:{key}"`). If unset:
+`credential_key` determines storage location (`"temp:{key}"`). `AuthConfig.__init__` auto-populates it if unset:
 
-1. ADK checks `model_extra` on the raw credential and auth scheme for a `credential_key` or `credentialKey` field.
-2. If still not found, it auto-generates a key by hashing the auth scheme and raw credential: `"adk_{scheme_type}_{scheme_hash}_{cred_type}_{cred_hash}"`.
+1. Checks `model_extra` on the raw credential and auth scheme for a `credential_key` or `credentialKey` field.
+2. If still not found, calls `get_credential_key()` which auto-generates a key by hashing the auth scheme and raw credential: `"adk_{scheme_type}_{scheme_hash}_{cred_type}_{cred_hash}"`.
+
+> **Deprecation:** `get_credential_key()` is deprecated. Set `credential_key` explicitly for stability across code changes instead of relying on auto-generation.
 
 Set `credential_key` explicitly for stability across code changes.
 
@@ -373,13 +427,8 @@ async def list_calendar_events(
 
 ```python
 from fastapi.openapi.models import SecurityScheme, SecuritySchemeType, HTTPBase
-from google.adk.auth import (
-    AuthCredential,
-    AuthCredentialTypes,
-    AuthConfig,
-    HttpAuth,
-    HttpCredentials,
-)
+from google.adk.auth import AuthCredential, AuthCredentialTypes, AuthConfig
+from google.adk.auth.auth_credential import HttpAuth, HttpCredentials
 from google.adk.tools import ToolContext
 
 bearer_scheme = SecurityScheme(
@@ -410,7 +459,8 @@ async def call_bearer_api(
 ### Tool with Service Account
 
 ```python
-from google.adk.auth import AuthCredential, AuthCredentialTypes, ServiceAccount
+from google.adk.auth import AuthCredential, AuthCredentialTypes
+from google.adk.auth.auth_credential import ServiceAccount
 
 sa_credential = AuthCredential(
     auth_type=AuthCredentialTypes.SERVICE_ACCOUNT,

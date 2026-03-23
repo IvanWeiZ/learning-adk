@@ -43,17 +43,18 @@ Tools let agents take actions beyond text generation. The LLM requests a tool ca
 
 ```
 BaseTool (ABC)
-├── FunctionTool        — wraps plain Python functions
-├── AgentTool           — wraps a sub-agent as a tool
-├── LongRunningFunctionTool — async operations with polling
-├── GoogleSearchTool    — Google Search grounding
-└── VertexAiSearchTool  — Vertex AI Search
+├── FunctionTool              — wraps plain Python functions
+│   ├── LongRunningFunctionTool — async operations with polling
+│   ├── LangchainTool         — LangChain tool adapter (google.adk.integrations.langchain)
+│   └── CrewaiTool            — CrewAI tool adapter (google.adk.integrations.crewai)
+├── AgentTool                 — wraps a sub-agent as a tool
+├── GoogleSearchTool          — Google Search grounding (use `google_search` instance from `google.adk.tools`)
+├── VertexAiSearchTool        — Vertex AI Search
+└── ExampleTool               — few-shot examples for LLM
 
 BaseToolset (ABC)
 ├── McpToolset          — Model Context Protocol
 ├── OpenAPIToolset      — REST APIs via OpenAPI spec
-├── LangchainTool       — LangChain tool wrapper
-├── CrewaiTool          — CrewAI tool wrapper
 └── BigQueryToolset     — BigQuery operations
 ```
 
@@ -73,9 +74,10 @@ class BaseTool(ABC):
         # Returns the OpenAPI-style schema shown to the LLM.
         # Return None for built-in tools (e.g. GoogleSearch) that don't need it.
 
-    async def run_async(self, *, args: dict, tool_context: ToolContext) -> Any:
+    async def run_async(self, *, args: dict[str, Any], tool_context: ToolContext) -> Any:
         # Execute the tool. Return value becomes the FunctionResponse content.
         # Can be a dict, string, or any JSON-serializable value.
+        # Not @abstractmethod — default raises NotImplementedError.
 
     async def process_llm_request(self, *, tool_context, llm_request) -> None:
         # Called during preprocessing to add this tool to the LlmRequest.
@@ -113,20 +115,20 @@ class ToolContext:
     actions: EventActions # tool_context.actions.transfer_to_agent = 'agent_name'
 
     # Store files:
-    async def save_artifact(filename, artifact) -> int # returns version
+    async def save_artifact(filename, artifact, custom_metadata=None) -> int # returns version
     async def load_artifact(filename, version=None) # returns artifact
 
     # Request OAuth credentials:
     def request_credential(auth_config: AuthConfig) -> None
 
     # Request human confirmation before proceeding:
-    def request_confirmation(hint: str, payload: dict) -> None
+    def request_confirmation(*, hint: str | None = None, payload: Any | None = None) -> None
 
     # Interact with memory:
     async def search_memory(query: str) -> SearchMemoryResponse
 ```
 
-> **ToolContext vs InvocationContext:** `ToolContext` is the high-level API passed to tools — it exposes state, artifacts, memory, and actions. `InvocationContext` is the internal runtime context threaded through the entire call chain (Runner → Agent → Flow → Tool). `ToolContext` wraps `InvocationContext` and provides a friendlier surface. `CallbackContext` is the same as `ToolContext` (they are aliases). See [`tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) and [`invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py).
+> **ToolContext vs InvocationContext:** `ToolContext`, `CallbackContext`, and `Context` are all the same class — `ToolContext` and `CallbackContext` are aliases for `Context` (defined in [`agents/context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/context.py)). `Context` is the high-level API passed to tools — it exposes state, artifacts, memory, and actions. `InvocationContext` is the internal runtime context threaded through the entire call chain (Runner → Agent → Flow → Tool). `Context` wraps `InvocationContext` and provides a friendlier surface. See [`tool_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/tool_context.py) (alias definition), [`agents/context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/context.py) (actual class), and [`invocation_context.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/invocation_context.py).
 
 ### Built-in Tools
 
@@ -137,9 +139,9 @@ class ToolContext:
 | `BuiltInCodeExecutor` | `google.adk.code_executors` | Model-native code execution |
 | `McpToolset` | `google.adk.tools.mcp_tool` | Model Context Protocol tools |
 | `OpenAPIToolset` | `google.adk.tools.openapi_tool` | Any REST API via OpenAPI spec |
-| `LangchainTool` | `google.adk.tools.langchain_tool` | Wrap any LangChain tool |
-| `CrewaiTool` | `google.adk.tools.crewai_tool` | Wrap any CrewAI tool |
-| `BigQueryToolset` | `google.adk.tools` | BigQuery operations |
+| `LangchainTool` | `google.adk.integrations.langchain` | Wrap any LangChain tool (deprecated: `google.adk.tools.langchain_tool`) |
+| `CrewaiTool` | `google.adk.integrations.crewai` | Wrap any CrewAI tool (deprecated: `google.adk.tools.crewai_tool`) |
+| `BigQueryToolset` | `google.adk.tools.bigquery.bigquery_toolset` | BigQuery operations |
 
 > `BuiltInCodeExecutor` appears only in this table (not in the class hierarchy above) because it's a code executor, not a `BaseTool` subclass — it plugs into `LlmAgent.code_executor`, not `tools`.
 
@@ -180,7 +182,7 @@ Tools are resolved at each LLM turn — callables are auto-wrapped, `BaseTool` i
 ```python
 agent = LlmAgent(tools=[
     my_function, # → FunctionTool(func=my_function)
-    GoogleSearchTool(), # → used as-is (BaseTool)
+    google_search, # → pre-built GoogleSearchTool instance (BaseTool)
     my_toolset, # → BaseToolset.get_tools() called per LLM turn
 ])
 ```
@@ -348,7 +350,7 @@ How MCP fits into ADK:
 │
 ├── Connection
 │      StdioServerParameters  — launch server as subprocess (stdin/stdout)
-│      SseServerParams        — connect to running server via HTTP SSE
+│      SseConnectionParams    — connect to running server via HTTP SSE
 │
 ├── McpToolset
 │      wraps MCP connection as a BaseToolset
@@ -392,11 +394,10 @@ agent = LlmAgent(
 ```python
 # Example: Connect to a running MCP server via SSE
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-# Note: deep import path — alias used for readability
-from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams as SseServerParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 api_tools = McpToolset(
-    connection_params=SseServerParams(
+    connection_params=SseConnectionParams(
         url="http://localhost:8080/mcp",
     ),
 )

@@ -13,7 +13,7 @@ Safety depends on session service + session_id:
 ├─ Different session_id → always safe (no shared state)
 ├─ Same session_id + DatabaseSessionService → safe (asyncio lock + DB row lock)
 ├─ Same session_id + InMemorySessionService → NOT safe (no locks, data race)
-└─ Same session_id + SQLite across processes → NOT safe (no row-level lock)
+└─ Same session_id + SqliteSessionService → NOT safe (no application-level locks)
 
 Danger zones:
 ├─ Parallel tools writing same state key → last-write-wins (silent data loss)
@@ -30,7 +30,7 @@ ADK is async-first and generally safe for concurrent requests across different s
 SessionService
  ├── InMemorySessionService   (no locks — not production-safe for concurrency)
  ├── DatabaseSessionService   (asyncio lock + DB row lock — production-safe)
- └── SqliteSessionService     (in-process lock only — not cross-process safe)
+ └── SqliteSessionService     (no locks — relies on SQLite's own file locking only)
 
 ParallelAgent (agents/parallel_agent.py — runs sub-agents concurrently)
 
@@ -46,9 +46,9 @@ ParallelAgent (agents/parallel_agent.py — runs sub-agents concurrently)
 | Operation | Safe? | Notes |
 |---|---|---|
 | Same `Runner`, different `session_id` | Yes | Runner is stateless |
-| Same `Runner`, same `session_id` with `DatabaseSessionService` (MySQL/PostgreSQL) | Yes | DB lock serializes `append_event` |
+| Same `Runner`, same `session_id` with `DatabaseSessionService` (MySQL/MariaDB/PostgreSQL) | Yes | DB lock serializes `append_event` |
 | Same `Runner`, same `session_id` with `InMemorySessionService` | No | No locks, last writer wins, silent data loss |
-| Same `Runner`, same `session_id` with `DatabaseSessionService` + SQLite across processes | No | Only in-process asyncio lock; cross-process writes corrupt |
+| Same `Runner`, same `session_id` with `SqliteSessionService` | No | No application-level locks; concurrent writes risk data loss |
 | Sharing `Agent` instances across invocations | Yes | Agents are pure config (Pydantic models) |
 | Sharing `Session` objects across invocations | No | Let session service return fresh copies |
 | Parallel tools writing same state key | No | `deep_merge_dicts` uses last-write-wins |
@@ -94,7 +94,7 @@ Collision Scenario — both tools write same state key:
 `functions.py` dispatches multiple tool calls via `asyncio.gather`:
 
 - All tool coroutines launch concurrently.
-- `return_exceptions=True` is **not** used — one failing tool re-raises immediately. Other coroutines continue to the next `await` point before cancellation (potential resource leak).
+- `return_exceptions=True` is **not** used — one failing tool raises immediately. The remaining coroutines are **not** cancelled; they continue running to completion in the background (potential resource leak).
 - State deltas from parallel tools are merged via `deep_merge_dicts`. On key conflicts the last-merged tool's value wins silently.
 
 ### Session Locking
@@ -102,8 +102,8 @@ Collision Scenario — both tools write same state key:
 #### DatabaseSessionService — Two-Layer Locking
 
 1. **In-process asyncio lock** keyed by `(app_name, user_id, session_id)` with reference counting. Ensures only one coroutine within a single process touches a session at a time.
-2. **Database row-level locking** (`SELECT FOR UPDATE`) on MySQL and PostgreSQL only. SQLite does not support this, so cross-process safety is not guaranteed with SQLite.
-3. **Staleness detection:** compares `update_time` timestamps on load and reloads the session if the stored version is newer than the in-memory copy.
+2. **Database row-level locking** (`SELECT FOR UPDATE`) on MySQL, MariaDB, and PostgreSQL. SQLite does not support this, so cross-process safety is not guaranteed with SQLite.
+3. **Staleness detection:** primarily compares `_storage_update_marker` (an exact revision marker set by `DatabaseSessionService`). Falls back to `update_time` timestamps for marker-less sessions. Raises `ValueError` if the session is stale (does not auto-reload).
 
 #### InMemorySessionService — No Locking
 
@@ -129,24 +129,25 @@ ToolThreadPoolConfig — sync vs async tool execution paths
 │
 ├── ToolThreadPoolConfig NOT set (default)
 │   ├── Sync tool
-│   │   └── Wrapped with asyncio.to_thread → runs in default executor
+│   │   └── Called directly (blocks the event loop until it returns!)
 │   └── Async tool
 │       └── Runs directly as coroutine in main event loop
 │
 └── ToolThreadPoolConfig SET (opt-in thread pool)
     ├── Sync tool
-    │   └── Submitted to global ThreadPoolExecutor
+    │   └── Submitted to ThreadPoolExecutor (keyed by max_workers — different
+    │       │   max_workers values create separate pools)
     │       └── Runs in worker thread directly
     │       └── ToolContext shared with main loop (NOT thread-safe!)
     │
     └── Async tool
-        └── Submitted to global ThreadPoolExecutor
+        └── Submitted to ThreadPoolExecutor (same pool lookup by max_workers)
             └── Brand-new event loop created per worker thread
             └── Cannot share asyncio primitives (locks, queues) with main loop
             └── ToolContext shared with main loop (NOT thread-safe!)
 ```
 
-> **Warning:** `ToolContext` is shared with the main event loop but is **not thread-safe**. Accessing it from pool workers is undefined behavior. The pool is global and process-wide — never destroyed.
+> **Warning:** `ToolContext` is shared with the main event loop but is **not thread-safe**. Accessing it from pool workers is undefined behavior. Pools are process-wide (keyed by `max_workers`) and never destroyed.
 
 ---
 
