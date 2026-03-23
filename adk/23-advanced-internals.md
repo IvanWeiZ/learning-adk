@@ -45,8 +45,16 @@ This file covers the processor pipeline that builds prompts and handles response
 │ ⑥ compaction           Compact long conversation history             │
 │ │                                                                    │
 │ ⑦ contents             Build conversation messages array             │
-│ │                       Only events on the current agent's branch    │
-│ │                       are included in the message array            │
+│ │                       Filters events by branch + content rules:    │
+│ │                       Empty content? → SKIP                        │
+│ │                       Wrong branch? → SKIP                         │
+│ │                       Framework event? → SKIP                      │
+│ │                       Thought-only? → SKIP (unless planning)       │
+│ │                       Compaction event? → INCLUDE as summary        │
+│ │                       Rewind event? → Undo previous events          │
+│ │                       Normal content? → INCLUDE                     │
+│ │                       Modes: 'default' = full history              │
+│ │                              'none' = current turn only            │
 │ │                                                                    │
 │ ⑧ context_cache        Set up context caching for long prompts       │
 │ │                                                                    │
