@@ -4,6 +4,23 @@
 
 A detailed trace of one user message through every ADK layer — from `run_async()` to the final streamed event. For setup and first agent examples, see [00-onboarding-guide.md](00-onboarding-guide.md).
 
+## Key Concepts
+
+| Concept | What It Is |
+|---------|-----------|
+| **Runner** | Orchestrates a request: load session → call agent → stream events → save session |
+| **Session** | One conversation: event history + key-value state dict |
+| **Event** | Universal data unit. Every action (user msg, LLM reply, tool call) = one Event |
+| **EventActions** | Side effects on an Event: `state_delta`, `transfer_to_agent`, `escalate` |
+| **Flow** | Reason-act loop inside LlmAgent: build prompt → call LLM → run tools → repeat |
+| **Tool** | Python function the LLM can call. ADK auto-generates the schema |
+| **ToolContext** | Runtime context passed to tools: session state, artifacts, memory, auth |
+| **Callback** | Hooks on LlmAgent: before/after agent, model, tool. Return None = proceed, return value = short-circuit |
+| **InvocationContext** | Thread through every call: carries session, agent, services. Cloned for sub-agents |
+| **MCP** | Model Context Protocol: connect to external tool servers via `McpToolset` |
+
+> Full glossary: [reference/glossary.md](../reference/glossary.md)
+
 ## At a Glance
 
 ```
@@ -33,25 +50,6 @@ runner.run_async(user_id, session_id, new_message)
            function calls found → go to step 1
            final text response  → yield Event, EXIT
 ```
-
-Trace of one user message from `run_async()` to the final streamed event. Five layers participate: Runner handles session bookkeeping (load, persist every event), BaseAgent runs before/after callbacks, LlmAgent delegates to the flow and saves `output_key` if set, BaseLlmFlow runs the reason-act loop (build request, call LLM, dispatch tools, repeat), and SessionSvc commits state atomically on every `append_event()`. The flow loops until the LLM returns no function calls. A tool-using turn typically loops 2x: tool call, then final answer.
-
-## Key Concepts
-
-| Concept | What It Is |
-|---------|-----------|
-| **Runner** | Orchestrates a request: load session → call agent → stream events → save session |
-| **Session** | One conversation: event history + key-value state dict |
-| **Event** | Universal data unit. Every action (user msg, LLM reply, tool call) = one Event |
-| **EventActions** | Side effects on an Event: `state_delta`, `transfer_to_agent`, `escalate` |
-| **Flow** | Reason-act loop inside LlmAgent: build prompt → call LLM → run tools → repeat |
-| **Tool** | Python function the LLM can call. ADK auto-generates the schema |
-| **ToolContext** | Runtime context passed to tools: session state, artifacts, memory, auth |
-| **Callback** | Hooks on LlmAgent: before/after agent, model, tool. Return None = proceed, return value = short-circuit |
-| **InvocationContext** | Thread through every call: carries session, agent, services. Cloned for sub-agents |
-| **MCP** | Model Context Protocol: connect to external tool servers via `McpToolset` |
-
-> Full glossary: [reference/glossary.md](../reference/glossary.md)
 
 ## How It Works
 
@@ -304,6 +302,8 @@ chunk 1 (partial=True): FunctionCall(name="get_weather", args={"city": "Tokyo"})
 chunk 2 (partial=False): FunctionCall(name="get_weather", args={"city": "Tokyo"})
 ```
 
+> Unlike text streaming (where partial chunks are substrings), function-call streaming yields incomplete JSON objects — the partial chunk may have missing fields until `partial=False`.
+
 > If the call raises, **`on_model_error_callback`** fires. Return `None` to re-raise; return an `LlmResponse` to suppress.
 > After success, **`after_model_callback`** fires. Return `None` to use the real response; return an `LlmResponse` to replace it.
 
@@ -398,7 +398,7 @@ partial chunk 3: " with partly cloudy skies."
 final chunk: "The weather in Tokyo is currently 18°C with partly cloudy skies."
 ```
 
-Partial events are yielded but not persisted (no session I/O).
+Partial events are yielded but not persisted (no session I/O). This is why the Step 8 session snapshot contains only 4 events — the partial chunks (`evt-004a/b/c`) are not stored.
 
 > `after_model_callback` fires after the final (non-partial) chunk arrives.
 
@@ -427,6 +427,7 @@ Event(
 #### Step 8 — Session After the Request
 
 ```python
+# Pseudocode — field names abbreviated for readability
 Session(
     id="sess-abc123",
     state={}, # unchanged — no state_delta was applied in this turn
@@ -526,41 +527,18 @@ Plugins run first (stop at first non-None), then agent callbacks. Each can be a 
 
 #### Signatures and Return Effects
 
-```python
-# ── AGENT ────────────────────────────────────────────────────────────────────
+| Callback | Return `None` | Return value |
+|----------|--------------|-------------|
+| `before_agent_callback` | Proceed | Skip agent entirely |
+| `after_agent_callback` | No extra event | Yield one more Event with that content |
+| `before_model_callback` | Call LLM | Skip LLM, use returned `LlmResponse` |
+| `after_model_callback` | Use real response | Replace with returned `LlmResponse` |
+| `on_model_error_callback` | Re-raise | Suppress error, use returned `LlmResponse` |
+| `before_tool_callback` | Run tool | Skip tool, use returned dict as result |
+| `after_tool_callback` | Use real result | Replace with returned dict |
+| `on_tool_error_callback` | Re-raise | Suppress error, use returned dict |
 
-# Before _run_async_impl(). Non-None → skip agent entirely.
-def before_agent_callback(callback_context: CallbackContext) -> Optional[types.Content]: ...
-
-# After _run_async_impl(). Non-None → yield one more Event with that content.
-def after_agent_callback(callback_context: CallbackContext) -> Optional[types.Content]: ...
-
-# ── MODEL ────────────────────────────────────────────────────────────────────
-
-# After LlmRequest built, before LLM call. Non-None → skip the LLM.
-# llm_request may be mutated in place.
-def before_model_callback(callback_context: CallbackContext, llm_request: LlmRequest) -> Optional[LlmResponse]: ...
-
-# After LLM returns. Non-None → replace the response.
-def after_model_callback(callback_context: CallbackContext, llm_response: LlmResponse) -> Optional[LlmResponse]: ...
-
-# When LLM call raises. Non-None → suppress error, use this response.
-def on_model_error_callback(callback_context: CallbackContext, llm_request: LlmRequest, error: Exception) -> Optional[LlmResponse]: ...
-
-# ── TOOL ─────────────────────────────────────────────────────────────────────
-
-# Before tool.run_async(). Non-None → skip tool, use dict as result.
-# args may be mutated in place.
-def before_tool_callback(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext) -> Optional[dict]: ...
-
-# After tool succeeds. Non-None → replace the result.
-def after_tool_callback(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, tool_response: dict) -> Optional[dict]: ...
-
-# When tool raises. Non-None → suppress error, use dict as result.
-def on_tool_error_callback(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, error: Exception) -> Optional[dict]: ...
-```
-
-For a summary table of each callback's None/non-None effects, see [04-agents.md](04-agents.md).
+For full signatures and type annotations, see [04-agents.md](04-agents.md).
 
 #### Plugin-Only Callbacks
 
@@ -581,13 +559,9 @@ Plugins add four more hooks:
 
 Runner makes one `get_session` call at start, one `append_event` for the user message, and one `append_event` per non-partial event. See [18-session-lifecycle.md](18-session-lifecycle.md) for the complete annotated timeline.
 
-See [18-session-lifecycle.md](18-session-lifecycle.md) for the full `append_event` pseudocode and step-by-step breakdown.
-
 #### State Key Scopes
 
 State keys use prefixes to control scope: no prefix (session), `app:` (all users), `user:` (cross-session), `temp:` (current invocation only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules, persistence behavior, and code examples.
-
-See [08-sessions.md](08-sessions.md) for the backend comparison table and [18-session-lifecycle.md](18-session-lifecycle.md) for latency and concurrency details.
 
 ### Key Invariants
 
