@@ -32,7 +32,7 @@ pydantic.BaseModel
  Event (events/event.py — adds author, invocation_id, actions, branch)
 ```
 
-`Event` extends `LlmResponse` (contains `content: Optional[types.Content]`). Carries text, function calls, function responses, blobs, or thoughts.
+`Event` extends `LlmResponse`. The `content` field (`Optional[types.Content]`) carries text, function calls, function responses, blobs, or thoughts.
 
 ## Key API
 
@@ -90,11 +90,6 @@ class EventActions(BaseModel):
 
 ```python
 event.is_final_response() -> bool
-# True when the event is the last thing an agent yields for this turn.
-# Also returns True when long_running_tool_ids is set (runner pauses for
-# long-running tools) or when skip_summarization is set on the event actions.
-# False if: event has function calls, function responses, partial=True,
-# or has trailing code execution results.
 
 event.get_function_calls() -> list[FunctionCall]
 # Extract tool invocations the LLM requested.
@@ -103,8 +98,9 @@ event.get_function_responses() -> list[FunctionResponse]
 # Extract tool results (after tools have run).
 
 event.has_trailing_code_execution_result() -> bool
-# True if the last part of content is a code execution result.
 ```
+
+`is_final_response()` returns `True` when the event is the last thing an agent yields for this turn. It also returns `True` when `long_running_tool_ids` is set (runner pauses for long-running tools) or when `skip_summarization` is set. Returns `False` if the event has function calls, function responses, `partial=True`, or trailing code execution results.
 
 ## How It Works
 
@@ -115,8 +111,8 @@ event.has_trailing_code_execution_result() -> bool
 │ Event                                               │
 │                                                     │
 │ ┌─ Identity ──────────────────────────────────────┐ │
-│ │ id: "evt-002"                                   │ │
-│ │ invocation_id: "e-inv-9f2a"                     │ │
+│ │ id: "auto-generated UUID"                       │ │
+│ │ invocation_id: "ties all events in one run"     │ │
 │ │ author: "weather_agent"                         │ │
 │ │ branch: None                                    │ │
 │ │ timestamp: 1741996801.891                       │ │
@@ -135,16 +131,6 @@ event.has_trailing_code_execution_result() -> bool
 │ └─────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────┘
 ```
-
-`Event` is the universal data type. Every action produces one:
-
-- A user sends a message → Event
-- The LLM replies with text → Event
-- The LLM calls a tool → Event
-- The tool returns a result → Event
-- An agent transfers control to a sub-agent → Event
-
-A `Session` is an ordered list of Events.
 
 ### Events in a Single Turn
 
@@ -221,43 +207,30 @@ write_agent (branch="write_agent"):
   (never sees search_agent events — different sibling branch)
 ```
 
-### How Events Flow End-to-End
-
-```
-Runner.run_async(user_id, session_id, new_message)
-│
-├── 1. User sends message
-│   └── Runner creates Event(author='user', content=user_message)
-│       └── appended to Session.events
-│
-├── 2. LLM responds with text
-│   └── Flow creates Event(author=agent.name, content=llm_text)
-│       └── appended to Session.events
-│
-├── 3. LLM calls a tool
-│   └── Flow creates Event(author=agent.name, content=[FunctionCall(...)])
-│       └── tool executes
-│
-├── 4. Tool returns result
-│   └── Flow creates Event(author=agent.name, content=[FunctionResponse(...)])
-│       └── appended to Session.events
-│
-└── 5. All events stream back to caller via Runner.run_async()
-```
-
 ## Examples
 
-A tool-calling agent produces 4 events for one user turn (see "Events in a Single Turn" diagram above). The key pattern:
+```python
+async for event in runner.run_async(
+    user_id="user1",
+    session_id=session.id,
+    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather?")]),
+):
+    print(f"[{event.author}] partial={event.partial}")
 
-1. Runner creates the user event and appends it to the session (not yielded)
-2. LLM decides to call a tool — event contains a `FunctionCall` (yielded)
-3. Tool executes and returns a `FunctionResponse` (yielded)
-4. LLM synthesizes the final answer — `is_final_response()` returns `True` (yielded, rendered to user)
+    if event.actions and event.actions.state_delta:
+        print(f"  state_delta: {event.actions.state_delta}")
+
+    if event.get_function_calls():
+        for fc in event.get_function_calls():
+            print(f"  tool call: {fc.name}({fc.args})")
+
+    if event.is_final_response():
+        print(f"  FINAL: {event.content.parts[0].text}")
+```
 
 ## Gotchas
 
-- `is_final_response()` also returns `True` when `long_running_tool_ids` is set (runner pauses for long-running tools) or when `skip_summarization` is set — not just on the final text response.
-- The user event (evt-001) is persisted but **not yielded** by the runner — you won't see it in the async generator output.
+- The user event is persisted but **not yielded** by the runner — you won't see it in the async generator output.
 - `branch` filtering means sibling agents cannot see each other's events — only their own lineage from the root.
 
 ## Related
