@@ -447,43 +447,6 @@ asyncio.run(main(), debug=True)
 
 ---
 
-### 14. asyncio Streams — TCP/Network I/O
-
-```python
-# Low-level network I/O (rarely needed directly in ADK, but good to understand)
-
-# TCP Client
-async def tcp_client():
-    reader, writer = await asyncio.open_connection("example.com", 80)
-
-    writer.write(b"GET / HTTP/1.0\r\nHost: example.com\r\n\r\n")
-    await writer.drain()  # flush the write buffer
-
-    data = await reader.read(4096)
-    print(data.decode())
-
-    writer.close()
-    await writer.wait_closed()
-
-# TCP Server
-async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-    data = await reader.readline()
-    message = data.decode().strip()
-    print(f"Received: {message}")
-
-    writer.write(f"Echo: {message}\n".encode())
-    await writer.drain()
-    writer.close()
-    await writer.wait_closed()
-
-async def tcp_server():
-    server = await asyncio.start_server(handle_client, "127.0.0.1", 8888)
-    async with server:
-        await server.serve_forever()
-```
-
----
-
 ### 15. Debugging asyncio
 
 #### Debug Mode

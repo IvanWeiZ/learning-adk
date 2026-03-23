@@ -536,6 +536,8 @@ public class ToolRegistry {
 
 #### `functools.wraps`
 
+> **See:** [python-decorators-deep-dive.md](python-decorators-deep-dive.md) — Section 3 covers `functools.wraps` in depth, including what attributes it copies (`__name__`, `__doc__`, `__annotations__`, `__wrapped__`) and why it matters for introspection.
+
 Already covered, but essential:
 
 ```python
@@ -711,6 +713,8 @@ print(v1 > v2)   # False (auto-generated)
 ### 13. ADK-Specific Patterns
 
 #### Building a `@register_tool` Decorator
+
+> **See:** [python-decorators-deep-dive.md](python-decorators-deep-dive.md) — The `function_to_schema` pattern (using `inspect.signature()` + `typing.get_type_hints()` + a `type_map`) is covered in detail there. The example below focuses on the registry wrapping class; the schema extraction logic follows the same pattern.
 
 This decorator reads a function's signature, generates a schema, and registers it:
 

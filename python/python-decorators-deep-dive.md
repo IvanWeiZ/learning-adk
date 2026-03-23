@@ -948,5 +948,17 @@ Parameter[] params = method.getParameters();
 
 ---
 
+## ADK in Practice
+
+| Decorator Pattern | ADK Component | How It Is Used |
+|---|---|---|
+| `@functools.wraps` | `FunctionTool` | Preserves `__name__` and `__doc__` when wrapping user functions; ADK reads `__name__` as the tool name |
+| `inspect.signature()` | Tool schema generation | ADK reads parameter names, types, and defaults to build the JSON schema sent to the LLM |
+| `@field_validator` / `@model_validator` | `LlmAgent`, `BaseTool` subclasses | Pydantic validators on agent/tool config fields act as declarative pre-condition checks |
+| Class decorator (registry) | `LLMRegistry` | ADK registers model adapters by string key; class decorators enable the `@register("gemini")` pattern |
+| `@contextmanager` / `__enter__`/`__exit__` | `BaseSessionService` | Session service uses context-manager semantics for database connections and transaction scoping |
+
+---
+
 > **Continued in [python-metaprogramming-deep-dive.md](python-metaprogramming-deep-dive.md)** — descriptors, metaclasses, `__init_subclass__`, the registry pattern, `functools` toolkit, ADK-specific patterns, decorator stacking, and common pitfalls.
 

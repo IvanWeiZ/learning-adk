@@ -24,6 +24,8 @@ Java Developer Instinct              Python Reality
 
 ---
 
+<!-- Group 1: Semantics (Gotchas 1–6) -->
+
 ## 1. The Mutable Default Argument Trap
 
 The single most common Python bug for Java developers.
@@ -252,6 +254,8 @@ def handle(self, text: str | None = None, count: int | None = None):
 
 ---
 
+<!-- Group 2: Runtime (Gotchas 7–9) -->
+
 ## 7. String Gotchas
 
 ```python
@@ -375,6 +379,8 @@ async def my_tool(query: str) -> str:
 ```
 
 ---
+
+<!-- Group 3: Object & Module System (Gotchas 10–13) -->
 
 ## 10. Class System Surprises
 
@@ -509,6 +515,8 @@ from tools import MyTool      # WRONG if running as script — ModuleNotFoundErr
 print("Config loaded!")       # prints every time config is imported
 API_KEY = os.getenv("KEY")    # evaluated at import time, not call time
 ```
+
+> **ADK-specific:** Importing `google.adk.*` modules at the top of a file raises `ModuleNotFoundError` in test environments where ADK is not installed. Prefer lazy imports inside functions or use conditional guards (`try: import google.adk ... except ImportError: ...`) to keep test discovery fast.
 
 ---
 
