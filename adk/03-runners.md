@@ -33,11 +33,11 @@
 └──────────────────────────────────────────┘
 ```
 
-`Runner` owns the lifecycle of a single user request: fetch or create a session, build an invocation context, call the root agent, stream events back to the caller, persist them, and optionally compact old events. Runner is stateless — all state lives in `Session` — so one Runner handles many concurrent invocations safely.
+`Runner` owns the lifecycle of a single user request: fetch or create a session, build an invocation context, call the root agent, stream events back to the caller, and persist them. Runner is stateless — all state lives in `Session` — so one Runner instance serves many concurrent users.
 
 ---
 
-## Class Hierarchy
+## Runner vs Agent vs Session
 
 ```
 Runner (stateless)              Agent (stateless)              Session (stateful)
@@ -156,9 +156,7 @@ Runner.run_async(user_id, session_id, new_message)
 
 ### Session Auto-Creation
 
-Default `auto_create_session=False` raises `SessionNotFoundError` for unknown sessions.
-
-`auto_create_session=True` silently creates sessions on first use (demos, scripts).
+Set `auto_create_session=True` for demos/scripts; defaults to `False` (see Gotchas).
 
 ### RunConfig
 
@@ -180,7 +178,12 @@ Runner initializes `PluginManager`. Plugins hook into:
 - `before_agent_callback` / `after_agent_callback` (at the Runner level, runs for every agent)
 - Session lifecycle
 
-Provide via `App` (preferred) or deprecated `plugins=` on Runner.
+Provide via `App` (preferred). See [10-apps.md](10-apps.md) for `BasePlugin` interface and examples.
+
+```python
+app = App(root_agent=agent, plugins=[MyPlugin()])
+runner = app.create_runner(session_service=InMemorySessionService())
+```
 
 ### Event Compaction
 
@@ -217,6 +220,8 @@ Prevents unbounded event growth.
 ## Examples
 
 ```python
+from google.genai import types
+
 runner = Runner(
     agent=root_agent,
     app_name='my_app',
@@ -247,7 +252,7 @@ for event in runner.run(
 
 - `auto_create_session` defaults to `False` — you get `SessionNotFoundError` if you forget to create a session first or set this flag.
 - `run_async` parameters are all **keyword-only** — positional args raise `TypeError`.
-- Runner is stateless but not thread-safe for a single invocation — each call to `run_async` should use its own `session_id`.
+- Each concurrent invocation must use a different `session_id` — sharing a session_id across concurrent calls causes undefined behavior because `Session` is stateful.
 
 ---
 
