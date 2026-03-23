@@ -6,7 +6,7 @@
 
 ## What It Is
 
-`Memory` lets agents recall information from past sessions. Unlike `Session.state` (one conversation), memory stores searchable entries that persist across conversations.
+`Memory` lets agents recall information from past sessions. Unlike `Session.state` (one conversation), memory stores searchable entries that persist across conversations. Storage is not automatic — requires explicit `add_session_to_memory()` call or a callback wired to trigger it.
 
 Comparison:
 
@@ -19,6 +19,21 @@ Comparison:
 | Typical content | Cart, draft, current task | User preferences, past decisions, facts |
 
 Optional. Skip for agents that don't need cross-session recall.
+
+### When to Use Memory vs Session State
+
+```
+Need to remember something?
+│
+├── Within this conversation only?
+│   └── Use session.state (via state_delta in EventActions)
+│
+├── Across conversations, exact key known?
+│   └── Use user-scoped state: state['user:preference_key']
+│
+└── Across conversations, needs semantic search?
+    └── Use memory_service.add_session_to_memory() + search_memory()
+```
 
 ---
 
@@ -92,7 +107,7 @@ Two methods. Complexity lives in implementations.
 
 ### InMemoryMemoryService
 
-Stores event text in a list; search is substring matching.
+Stores event text in a list; search is case-insensitive exact substring matching (not fuzzy/semantic).
 
 ```python
 from google.adk.memory import InMemoryMemoryService
@@ -130,20 +145,25 @@ memory_service = VertexAiMemoryBankService(
 ### Visual: Cross-Session Timeline
 
 ```
-Session A (March 1) Session B (March 5)
-─────────────────── ───────────────────
+Session A (March 1)
+│
+├── User: "I love sushi"
+├── Agent: "Great taste!"
+└── End of session:
+    └── add_session_to_memory(session_A)
+        └── stored in MemoryService
 
-User: "I love sushi" User: "Where should I eat?"
-Agent: "Great taste!"
- ┌─ load_memory_tool ─────────┐
-End of session: │ search_memory("eat") │
- add_session_to_memory() │ → finds: "User loves sushi"│
- → stored in MemoryService │ → injected into LLM prompt │
- └────────────────────────────┘
+        ↓ days pass...
 
- Agent: "Since you love sushi,
- try Tsukiji restaurant!"
- ↑ memory informed this answer
+Session B (March 5)
+│
+├── User: "Where should I eat?"
+├── load_memory_tool triggers:
+│   └── search_memory("eat")
+│       └── finds: "User loves sushi" (from Session A)
+│           └── injected into LLM prompt
+│
+└── Agent: "Since you love sushi, try Tsukiji restaurant!"
 ```
 
 ### Without Memory vs With Memory
@@ -181,13 +201,12 @@ runner = Runner(
 After a session completes, call `add_session_to_memory`:
 
 ```python
+# Refetch session to get complete event history (the runner loop may have ended)
 session = await session_service.get_session(
     app_name="my_app", user_id="alice", session_id="sess_123"
 )
 await memory_service.add_session_to_memory(session)
 ```
-
-Some apps do this automatically in an `after_agent_callback` or as a post-processing step.
 
 ### Querying Memory in a Tool
 
@@ -209,33 +228,20 @@ ADK automatically injects `tool_context` when the function parameter is named `t
 
 ---
 
-## Memory vs Session State — Decision Guide
-
-```
-Need to remember something?
-│
-├── Within this conversation only?
-│ └── Use session.state (via state_delta in EventActions)
-│
-├── Across conversations, exact key known?
-│ └── Use user-scoped state: state['user:preference_key']
-│
-└── Across conversations, needs semantic search?
- └── Use memory_service.add_session_to_memory() + search_memory()
-```
-
----
-
 ## Practical Patterns
 
 ### Pattern 1: Automatic Memory on Session End
 
 ```python
 from google.adk.agents import LlmAgent
-from google.adk.tools import ToolContext
 
+# Note: add_session_to_memory() lives on BaseMemoryService, not on CallbackContext.
+# The callback accesses the memory service via the invocation context.
 async def after_agent(callback_context) -> None:
-    await callback_context.add_session_to_memory()
+    session = callback_context._invocation_context.session
+    memory_service = callback_context._invocation_context.memory_service
+    if memory_service:
+        await memory_service.add_session_to_memory(session)
 
 agent = LlmAgent(
     name="my_agent",
@@ -256,7 +262,10 @@ async def inject_memories(callback_context, llm_request) -> None:
         snippets = "\n".join(
             f"- {m.content.parts[0].text}" for m in results.memories[:3]
         )
-        llm_request.config.system_instruction += f"\n\nRelevant past context:\n{snippets}"
+        memory_block = f"\n\nRelevant past context:\n{snippets}"
+        # Guard: system_instruction may be None or str
+        existing = llm_request.config.system_instruction or ""
+        llm_request.config.system_instruction = existing + memory_block
 ```
 
 ### Pattern 3: Explicit Memory Tool
@@ -270,7 +279,7 @@ async def search_my_memory(topic: str, tool_context: ToolContext) -> str:
     if not results.memories:
         return "Nothing relevant found."
     return "\n".join(
-        f"{m.content.parts[0].text}"
+        m.content.parts[0].text
         for m in results.memories[:5]
     )
 
@@ -283,18 +292,7 @@ agent = LlmAgent(
 
 ---
 
-## Java Comparison
-
-| Java concept | ADK equivalent |
-|---|---|
-| `EntityManager` / JPA | `BaseMemoryService` |
-| Full-text search index | `search_memory()` |
-| `@Cacheable` across requests | `add_session_to_memory` + `search_memory` |
-| `HttpSession` attributes | `Session.state` (per-session, not cross-session) |
-
----
-
-## Related Files
+## Related
 
 - [`memory/base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) — abstract interface
 - [`memory/in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) — dev implementation
