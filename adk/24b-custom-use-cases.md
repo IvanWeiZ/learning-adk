@@ -114,6 +114,7 @@ def parse_user_message(raw: str) -> tuple[str, dict]:
 # --- The callback: runs before any agent in the pipeline ---
 async def enrich_before_pipeline(callback_context: CallbackContext):
     # Read the raw user message from context
+    # WARNING: _invocation_context is private — may change between ADK versions.
     user_content = callback_context._invocation_context.user_content
     if not user_content or not user_content.parts:
         return None

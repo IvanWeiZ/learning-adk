@@ -207,6 +207,27 @@ write_agent (branch="write_agent"):
   (never sees search_agent events — different sibling branch)
 ```
 
+### How Events Become LLM Context
+
+The `contents.py` preprocessor (step ⑦ in the flow pipeline) filters events before each LLM call:
+
+```
+For each event in session.events:
+├── Empty content?        → SKIP
+├── Wrong branch?         → SKIP
+├── Framework event?      → SKIP (auth, confirmation, framework internal)
+├── Thought-only parts?   → SKIP (unless planning mode is active)
+├── Compaction event?     → INCLUDE as summary
+├── Rewind event?         → Undo previous events
+└── Normal content?       → INCLUDE
+
+Modes (set on LlmAgent):
+├── include_contents='default' → full filtered history
+└── include_contents='none'    → current turn only (stateless agent)
+```
+
+See [23-advanced-internals.md](23-advanced-internals.md) for the full processor pipeline.
+
 ## Examples
 
 ```python

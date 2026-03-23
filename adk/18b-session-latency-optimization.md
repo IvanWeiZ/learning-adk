@@ -219,8 +219,8 @@ LLM calls are 80-95% of total latency.
 |-------|-------------|---------------|-------------|
 | `gemini-2.5-flash` | ~200ms | ~500-1500ms | Default — fast and capable |
 | `gemini-2.5-pro` | ~500ms | ~1000-3000ms | Complex reasoning only |
-| `claude-haiku-4-5-20251001` | ~300ms | ~800-2000ms | Fast Anthropic option |
-| `claude-sonnet-4-5-20250514` | ~500ms | ~1500-4000ms | High quality, slower |
+| `claude-haiku-4-20250514` | ~300ms | ~800-2000ms | Fast Anthropic option |
+| `claude-sonnet-4-20250514` | ~500ms | ~1500-4000ms | High quality, slower |
 
 ```python
 # Use the fastest model that's good enough
