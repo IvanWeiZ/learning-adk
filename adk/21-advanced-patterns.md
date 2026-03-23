@@ -2,6 +2,8 @@
 
 > **Official docs:** [Samples](https://google.github.io/adk-docs/get-started/samples/) | **Source:** [`contributing/samples/`](https://github.com/google/adk-python/tree/main/contributing/samples) | **Prereqs:** [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 This file collects advanced ADK patterns drawn from the official samples: YAML-defined agent hierarchies, retry plugins, request-level injection, triage gates, callback composition, structured output, and human-in-the-loop confirmation flows.

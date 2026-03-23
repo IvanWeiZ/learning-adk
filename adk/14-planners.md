@@ -2,6 +2,8 @@
 
 > **Official docs:** [LLM Agents](https://google.github.io/adk-docs/agents/llm-agents/) | **Source:** [`planners/base_planner.py`](https://github.com/google/adk-python/blob/main/src/google/adk/planners/base_planner.py) · [`planners/built_in_planner.py`](https://github.com/google/adk-python/blob/main/src/google/adk/planners/built_in_planner.py) · [`planners/plan_re_act_planner.py`](https://github.com/google/adk-python/blob/main/src/google/adk/planners/plan_re_act_planner.py) | **Prereqs:** [04-agents.md](04-agents.md), [05-flows.md](05-flows.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## At a Glance

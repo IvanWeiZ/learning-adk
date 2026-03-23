@@ -2,6 +2,8 @@
 
 > **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`sessions/state.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/state.py) · [`sessions/base_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/base_session_service.py) · [`sessions/in_memory_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/in_memory_session_service.py) · [`sessions/database_session_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/database_session_service.py) · [`sessions/_session_util.py`](https://github.com/google/adk-python/blob/main/src/google/adk/sessions/_session_util.py) | **Prereqs:** [08-sessions.md](08-sessions.md), [07-events.md](07-events.md), [20-best-practices.md](20-best-practices.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 A single session leak exposes conversation history, credentials, and tool outputs to the wrong user. This document covers:

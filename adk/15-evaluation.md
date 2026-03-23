@@ -2,6 +2,8 @@
 
 > **Official docs:** [Evaluation](https://google.github.io/adk-docs/evaluate/) | **Source:** [`evaluation/eval_case.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_case.py) · [`evaluation/eval_set.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/eval_set.py) · [`evaluation/agent_evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/agent_evaluator.py) · [`evaluation/evaluator.py`](https://github.com/google/adk-python/blob/main/src/google/adk/evaluation/evaluator.py) | **Prereqs:** [09-tools.md](09-tools.md), [03-runners.md](03-runners.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## At a Glance

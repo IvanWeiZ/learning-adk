@@ -2,6 +2,8 @@
 
 > **ADK relevance:** ADK is async-first -- every agent, LLM call, and tool execution uses asyncio | **Estimated time:** 4-6 hours
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

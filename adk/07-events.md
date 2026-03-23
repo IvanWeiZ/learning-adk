@@ -2,6 +2,8 @@
 
 > **Official docs:** [Events](https://google.github.io/adk-docs/events/) | **Source:** [`events/event.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event.py) · [`events/event_actions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/events/event_actions.py) | **Prereqs:** [04-agents.md](04-agents.md), [05-flows.md](05-flows.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

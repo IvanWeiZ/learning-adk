@@ -2,6 +2,8 @@
 
 > **Part 1 is in [python-decorators-deep-dive.md](python-decorators-deep-dive.md)** — closures, basic decorators, decorators with arguments, class-based decorators, decorating classes, and the `inspect` module.
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 This file covers Sections 8–14: descriptors, `__init_subclass__`, metaclasses, `functools` utilities, `__slots__`, dynamic class creation, and the tool registry pattern.
 
 ---

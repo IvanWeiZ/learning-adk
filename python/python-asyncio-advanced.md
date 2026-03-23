@@ -2,6 +2,8 @@
 
 > **Part 1 is in [python-asyncio-deep-dive.md](python-asyncio-deep-dive.md)** — event loop, coroutines, tasks, gather/wait, TaskGroup, async generators, and async context managers.
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 This file covers Sections 9–18: synchronization primitives (Lock, Semaphore, Event, Queue), advanced task patterns, testing async code, bounded concurrency, and ADK-specific async patterns including the runner loop and callback chain.
 
 ---

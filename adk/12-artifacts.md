@@ -2,6 +2,8 @@
 
 > **Official docs:** [Artifacts](https://google.github.io/adk-docs/runtime/artifacts/) | **Source:** [`base_artifact_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/artifacts/base_artifact_service.py) · [`in_memory_artifact_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/artifacts/in_memory_artifact_service.py) · [`file_artifact_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/artifacts/file_artifact_service.py) · [`gcs_artifact_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/artifacts/gcs_artifact_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## At a Glance

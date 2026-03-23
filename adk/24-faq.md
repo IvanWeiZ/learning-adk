@@ -2,6 +2,8 @@
 
 > **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** patterns across all ADK modules | **Prereqs:** [04-agents.md](04-agents.md), [08-sessions.md](08-sessions.md), [09-tools.md](09-tools.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

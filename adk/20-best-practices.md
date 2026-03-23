@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** ADK source code (agents, tools, sessions, runners modules) | **Prereqs:** [00-onboarding-guide.md](00-onboarding-guide.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 Full debugging checklist: see [20b-debugging-guide.md](20b-debugging-guide.md).

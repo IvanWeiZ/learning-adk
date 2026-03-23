@@ -2,6 +2,8 @@
 
 > **Part 1 is in [python-testing-and-mocking-guide.md](python-testing-and-mocking-guide.md)** — pytest basics, Mock/MagicMock/AsyncMock, patching, side_effect, spec/autospec, assertion methods, and fixtures.
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ### 8. Testing Async Code

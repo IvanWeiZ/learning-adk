@@ -2,6 +2,8 @@
 
 > **Official docs:** [Runtime](https://google.github.io/adk-docs/runtime/) | **Source:** [`apps/app.py`](https://github.com/google/adk-python/blob/main/src/google/adk/apps/app.py) · [`apps/compaction.py`](https://github.com/google/adk-python/blob/main/src/google/adk/apps/compaction.py) · [`plugins/base_plugin.py`](https://github.com/google/adk-python/blob/main/src/google/adk/plugins/base_plugin.py) | **Prereqs:** [03-runners.md](03-runners.md), [04-agents.md](04-agents.md), [09-tools.md](09-tools.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

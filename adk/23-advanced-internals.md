@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [adk-python](https://github.com/google/adk-python) | **Prereqs:** [00-onboarding-guide.md](00-onboarding-guide.md), [20-best-practices.md](20-best-practices.md), [05-flows.md](05-flows.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

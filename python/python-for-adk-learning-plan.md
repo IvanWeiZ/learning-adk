@@ -2,6 +2,8 @@
 
 > **ADK relevance:** Every Python feature here is directly used in ADK agent development | **Estimated time:** ~10 working days, 6-8 hours/day
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 **For:** Experienced Java developer with basic Python knowledge

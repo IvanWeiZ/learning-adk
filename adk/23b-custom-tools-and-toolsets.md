@@ -2,6 +2,8 @@
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [adk-python](https://github.com/google/adk-python) | **Prereqs:** [23-advanced-internals.md](23-advanced-internals.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *This file continues from [23-advanced-internals.md](23-advanced-internals.md), which covers the processor pipeline, reason-act loop, and plugin system.*
 
 ---

@@ -2,6 +2,8 @@
 
 > **ADK relevance:** Every ADK data structure (Event, Session, EventActions, tool schemas) is a Pydantic model | **Estimated time:** 4-5 hours
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

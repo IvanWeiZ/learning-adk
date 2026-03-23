@@ -2,6 +2,8 @@
 
 > **Official docs:** [Quickstart](https://google.github.io/adk-docs/get-started/quickstart/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) · [`base_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/base_agent.py) · [`llm_agent.py`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/llm_agent.py) · [`base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) | **Prereqs:** [00-onboarding-guide.md](00-onboarding-guide.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 A detailed trace of one user message through every ADK layer — from `run_async()` to the final streamed event. For setup and first agent examples, see [00-onboarding-guide.md](00-onboarding-guide.md).
 
 ## Key Concepts

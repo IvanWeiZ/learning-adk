@@ -1,5 +1,7 @@
 # Python Decorators — Deep Dive
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ## At a Glance
 
 ```

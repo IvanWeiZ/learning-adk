@@ -2,6 +2,8 @@
 
 > **Part 1 is in [python-pydantic-deep-dive.md](python-pydantic-deep-dive.md)** — BaseModel fundamentals, Field() configuration, validation, serialization, model_copy, and nested models.
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 ---
 
 ## Discriminated Unions

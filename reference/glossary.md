@@ -1,5 +1,7 @@
 # ADK Glossary
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 Quick-reference for ADK terminology. Terms link to the relevant deep-dive documentation.
 
 ---

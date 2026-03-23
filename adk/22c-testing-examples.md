@@ -2,6 +2,8 @@
 
 > **Official docs:** [Evaluation](https://google.github.io/adk-docs/evaluate/) | **Source:** [`tests/unittests/testing_utils.py`](https://github.com/google/adk-python/blob/main/tests/unittests/testing_utils.py) | **Prereqs:** [22-testing.md](22-testing.md)
 
+> **Note:** AI-generated content, human-reviewed. May contain errors — verify against official docs.
+
 *This file continues from [22-testing.md](22-testing.md), which covers MockModel, InMemoryRunner, simplify_events, and creating test dependencies.*
 
 ---
