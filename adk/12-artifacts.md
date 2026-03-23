@@ -14,7 +14,18 @@ Use artifacts when a tool needs to:
 - Share binary data between tools within a session
 - Persist outputs that survive session deletion
 
-Artifacts are stored as `google.genai.types.Part` objects, which can hold `text`, `inline_data` (binary blob with MIME type), or `file_data` (external URI reference).
+Artifacts are stored as `google.genai.types.Part` objects, which can hold `text`, `inline_data` (binary blob with MIME type), or `file_data` (external URI reference). Note: `file_data` is unsupported in `FileArtifactService` and `GcsArtifactService`.
+
+### Session State vs Memory vs Artifacts
+
+| | Session State | Memory | Artifacts |
+|---|---|---|---|
+| **What** | Key-value dict | Searchable text entries | Versioned named files |
+| **Scope** | One session | Cross-session | Session or user-scoped |
+| **Access** | Direct key lookup | Semantic/vector search | By filename + version |
+| **Content** | Primitives, dicts | Conversation summaries | Files (text, images, PDFs, binary) |
+| **Written by** | Agent via `state_delta` | Explicit `add_session_to_memory()` | Tool via `save_artifact()` |
+| **Deep dive** | [08-sessions.md](08-sessions.md) | [11-memory.md](11-memory.md) | This file |
 
 ---
 
@@ -29,134 +40,20 @@ BaseArtifactService (abstract interface)
 
 ---
 
-## ArtifactVersion Metadata
-
-Every saved artifact version gets an `ArtifactVersion` record:
-
-```python
-class ArtifactVersion(BaseModel):
-    version: int # 0-based, monotonically increasing
-    canonical_uri: str # URI pointing to the persisted payload
-    custom_metadata: dict[str, Any] = {} # user-supplied key-value pairs
-    create_time: float # unix timestamp (seconds)
-    mime_type: str | None = None # MIME type of the payload
-```
-
-Fields use camelCase aliases for JSON serialization (`populate_by_name=True`).
-
----
-
 ## BaseArtifactService Interface
 
-All methods are `async` with keyword-only arguments, scoped by `app_name`, `user_id`, and optional `session_id`.
+All methods are `async` with keyword-only arguments, scoped by `app_name`, `user_id`, and optional `session_id` (see Scoping section below).
 
-### save_artifact
+| Method | Returns | Purpose |
+|--------|---------|---------|
+| `save_artifact(filename, artifact)` | `int` (version) | Save new version; returns 0 for first save, +1 each call |
+| `load_artifact(filename, version=None)` | `Part \| None` | Load specific version; `None` = latest |
+| `list_artifact_keys()` | `list[str]` | All filenames (session + user-scoped) |
+| `delete_artifact(filename)` | `None` | Delete all versions |
+| `list_versions(filename)` | `list[int]` | Version numbers only (lightweight) |
+| `list_artifact_versions(filename)` | `list[ArtifactVersion]` | Full metadata per version (heavier) |
 
-```python
-async def save_artifact(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    filename: str,
-    artifact: types.Part | dict[str, Any],
-    session_id: str | None = None,
-    custom_metadata: dict[str, Any] | None = None,
-) -> int:
-```
-
-Saves a new version of the artifact identified by `filename`. Returns the version number (0 for the first save, incremented by 1 after each save). Accepts a `types.Part` or a plain dict (normalized internally via `ensure_part`).
-
-### load_artifact
-
-```python
-async def load_artifact(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    filename: str,
-    session_id: str | None = None,
-    version: int | None = None,
-) -> types.Part | None:
-```
-
-Loads a specific version. If `version` is `None`, returns the latest version. Returns `None` if not found.
-
-### list_artifact_keys
-
-```python
-async def list_artifact_keys(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    session_id: str | None = None,
-) -> list[str]:
-```
-
-Returns all artifact filenames. If `session_id` is provided, returns both session-scoped and user-scoped filenames. If `session_id` is `None`, returns only user-scoped filenames.
-
-### delete_artifact
-
-```python
-async def delete_artifact(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    filename: str,
-    session_id: str | None = None,
-) -> None:
-```
-
-Deletes all versions of an artifact.
-
-### list_versions
-
-```python
-async def list_versions(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    filename: str,
-    session_id: str | None = None,
-) -> list[int]:
-```
-
-Returns a list of version numbers (integers) available for the artifact.
-
-### list_artifact_versions
-
-```python
-async def list_artifact_versions(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    filename: str,
-    session_id: str | None = None,
-) -> list[ArtifactVersion]:
-```
-
-Returns full `ArtifactVersion` metadata for every version.
-
-### get_artifact_version
-
-```python
-async def get_artifact_version(
-    self,
-    *,
-    app_name: str,
-    user_id: str,
-    filename: str,
-    session_id: str | None = None,
-    version: int | None = None,
-) -> ArtifactVersion | None:
-```
-
-Returns metadata for one version. If `version` is `None`, returns metadata for the latest.
+> `list_versions` returns just ints (lightweight check); `list_artifact_versions` returns full `ArtifactVersion` objects with URIs, timestamps, and custom metadata.
 
 ---
 
@@ -202,48 +99,31 @@ Version Timeline:
 | Init | `InMemoryArtifactService()` | `FileArtifactService(root_dir="./artifacts")` | `GcsArtifactService(bucket_name="my-bucket")` |
 | Thread-safe | No (dev/test only) | Yes (via `asyncio.to_thread`) | Yes (via `asyncio.to_thread`) |
 | Persistence | Process lifetime only | Survives restarts | Durable cloud storage |
-| `file_data` support | Stores as-is (artifact refs) | Not supported (raises error) | Not supported (raises `NotImplementedError`) |
+| `file_data` support | Stores as-is (URI reference kept in memory) | Not supported (`NotImplementedError`) | Not supported (`NotImplementedError`) |
 | Custom metadata | Stored in `ArtifactVersion` | Written to `metadata.json` per version | Stored as GCS blob metadata |
 
-### InMemoryArtifactService
-
-Stores artifacts as a `dict[str, list[_ArtifactEntry]]` keyed by path. Suitable for tests and prototyping. Extends `BaseModel` (Pydantic), so its state is serializable.
-
-### FileArtifactService
-
-Writes artifacts to a directory tree under `root_dir`:
-
-```
-root_dir/
-└── users/
- └── {user_id}/
- ├── sessions/
- │ └── {session_id}/
- │ └── artifacts/
- │ └── {artifact_path}/
- │ └── versions/
- │ └── {version}/
- │ ├── {original_filename}
- │ └── metadata.json
- └── artifacts/ # user-scoped
- └── {artifact_path}/...
-```
-
-Filenames can include path separators (`"images/photo.png"`) to create nested directories. Path traversal (`"../../secret.txt"`) is rejected with `InputValidationError`.
-
-### GcsArtifactService
-
-Uses `google.cloud.storage` to read/write blobs. Blob names follow the pattern `{app_name}/{user_id}/{session_id}/{filename}/{version}`. The GCS client is imported lazily inside `__init__`, so the `google-cloud-storage` package is only needed when this backend is used.
+> `InMemoryArtifactService` extends `BaseModel` (Pydantic), making its state serializable — useful for snapshotting or persisting in-memory artifacts between sessions. `FileArtifactService` rejects path traversal (`"../../secret.txt"`) with `InputValidationError`.
 
 ---
 
 ## Versioning Semantics
 
+Every saved artifact version gets an `ArtifactVersion` record:
+
+```python
+class ArtifactVersion(BaseModel):
+    version: int # 0-based, monotonically increasing
+    canonical_uri: str # URI pointing to the persisted payload
+    custom_metadata: dict[str, Any] = {} # user-supplied key-value pairs
+    create_time: float # unix timestamp (seconds)
+    mime_type: str | None = None # MIME type of the payload
+```
+
 - Version numbering starts at **0** and increments by 1 with each `save_artifact` call.
 - Every save creates a new version; existing versions are never overwritten.
 - `load_artifact(version=None)` returns the latest version.
 - `delete_artifact` removes all versions at once.
-- The `artifact_delta` on `EventActions` records which artifacts were created/updated during a tool call, mapping `filename -> version`.
+- The `artifact_delta` on `EventActions` (see [07-events.md](07-events.md)) records which artifacts were created/updated during a tool call, mapping `filename -> version`.
 
 ---
 
@@ -280,7 +160,15 @@ async def get_artifact_version(
     """Gets metadata for a specific artifact version."""
 ```
 
-These methods raise `ValueError` if no `artifact_service` is configured on the Runner.
+These methods raise `ValueError` if no `artifact_service` is configured on the Runner:
+
+```python
+# Guard in tools that require artifacts:
+try:
+    version = await tool_context.save_artifact("report.pdf", artifact)
+except ValueError:
+    return {"error": "Artifact service not configured on Runner"}
+```
 
 ---
 
@@ -290,40 +178,15 @@ Pass the artifact service when creating the `Runner`:
 
 ```python
 from google.adk.runners import Runner
-from google.adk.artifacts import InMemoryArtifactService
-from google.adk.sessions import InMemorySessionService
+from google.adk.artifacts import InMemoryArtifactService, FileArtifactService, GcsArtifactService
 
 runner = Runner(
     app_name="my_app",
     agent=my_agent,
-    artifact_service=InMemoryArtifactService(),
-    session_service=InMemorySessionService(),
-)
-```
-
-For production with GCS:
-
-```python
-from google.adk.artifacts import GcsArtifactService
-
-runner = Runner(
-    app_name="my_app",
-    agent=my_agent,
-    artifact_service=GcsArtifactService(bucket_name="my-artifacts-bucket"),
     session_service=session_service,
-)
-```
-
-For local file-based persistence:
-
-```python
-from google.adk.artifacts import FileArtifactService
-
-runner = Runner(
-    app_name="my_app",
-    agent=my_agent,
-    artifact_service=FileArtifactService(root_dir="./artifact_store"),
-    session_service=session_service,
+    artifact_service=InMemoryArtifactService(),              # dev/test
+    # artifact_service=FileArtifactService(root_dir="./artifacts"),  # local persistence
+    # artifact_service=GcsArtifactService(bucket_name="my-bucket"), # production
 )
 ```
 
