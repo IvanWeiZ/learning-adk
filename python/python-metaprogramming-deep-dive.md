@@ -2,8 +2,6 @@
 
 > **Part 1 is in [python-decorators-deep-dive.md](python-decorators-deep-dive.md)** — closures, basic decorators, decorators with arguments, class-based decorators, decorating classes, and the `inspect` module.
 
-This file covers Sections 8–13: descriptors, `__init_subclass__`, metaclasses, the `functools` toolkit, the registry pattern, and ADK-specific metaprogramming patterns.
-
 ---
 
 ### 8. Descriptors
@@ -226,8 +224,6 @@ for (Tool tool : loader) {
 ---
 
 ### 10. Metaclasses
-
-> **ADK note:** You will rarely write metaclasses in ADK. Their main use is *reading* existing code — Pydantic and ABCs use metaclasses internally. For new ADK components, prefer `__init_subclass__` (Section 9) unless you have a specific metaclass requirement.
 
 A **metaclass** is a "class of a class"—it defines how a class behaves. `type` is Python's default metaclass.
 
@@ -453,15 +449,8 @@ def web_search(query: str, limit: int = 10) -> list:
 
 @REGISTRY.register(category="compute")
 def calculate(expression: str) -> float:
-    """Evaluate a mathematical expression.
-
-    WARNING: Never use eval() in production ADK tools — it executes arbitrary
-    Python code and is a critical security vulnerability when expression comes
-    from user input or LLM output. Use a safe math library (e.g., simpleeval,
-    asteval) or restrict to a pre-defined set of operations instead.
-    """
-    # INSECURE — shown for illustration only; do not use in production
-    raise NotImplementedError("Replace eval() with a safe math library")
+    """Evaluate a mathematical expression."""
+    return eval(expression)
 
 # Inspect
 print(REGISTRY.get_schema("web_search"))
@@ -540,7 +529,17 @@ public class ToolRegistry {
 
 #### `functools.wraps`
 
-See [python-decorators-deep-dive.md](python-decorators-deep-dive.md) Section 3 for the full `functools.wraps` coverage. In short: always apply `@functools.wraps(func)` inside decorators to preserve `__name__`, `__doc__`, and `__annotations__` — ADK reads these for tool schema generation.
+Already covered, but essential:
+
+```python
+import functools
+
+def my_decorator(func):
+    @functools.wraps(func)  # Copies __name__, __doc__, __annotations__, etc.
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+```
 
 #### `functools.partial`
 
@@ -706,11 +705,12 @@ print(v1 > v2)   # False (auto-generated)
 
 #### Building a `@register_tool` Decorator
 
-This decorator wraps a function and registers it in a registry. The schema extraction logic (type mapping, `inspect.signature`, `typing.get_type_hints`) is covered in detail in [python-decorators-deep-dive.md](python-decorators-deep-dive.md) Section 7 — here we focus on the registry pattern (wrapping and storing the function):
+This decorator reads a function's signature, generates a schema, and registers it:
 
 ```python
 import functools
 import inspect
+import json
 import typing
 
 class ToolRegistry:
@@ -726,16 +726,47 @@ class ToolRegistry:
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
 
-            # Schema extraction: see python-decorators-deep-dive.md §7
-            # (type_map + inspect.signature loop omitted here to avoid duplication)
+            # Extract schema
+            sig = inspect.signature(func)
+            hints = typing.get_type_hints(func)
+
+            properties = {}
+            required = []
+
+            for param_name, param in sig.parameters.items():
+                if param_name in ('self', 'cls'):
+                    continue
+
+                param_type = hints.get(param_name, str)
+
+                # Map Python types to JSON schema
+                type_map = {
+                    int: "integer",
+                    float: "number",
+                    bool: "boolean",
+                    str: "string"
+                }
+                json_type = type_map.get(param_type, "string")
+
+                prop = {"type": json_type}
+                properties[param_name] = prop
+
+                if param.default == inspect.Parameter.empty:
+                    required.append(param_name)
+
             schema = {
                 "name": func.__name__,
                 "description": func.__doc__ or "",
                 "category": category,
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required
+                }
             }
 
             # Register
-            self._tools[func.__name__] = wrapper
+            self._tools[func.__name__] = func
             self._schemas[func.__name__] = schema
 
             return wrapper

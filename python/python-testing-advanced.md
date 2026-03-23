@@ -110,14 +110,9 @@ async def test_timeout_handling():
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(mock_tool(), timeout=1.0)
 
-# Test your own timeout wrapper
+# Or test your own timeout wrapper
 async def test_graceful_timeout():
-    # ✅ Correct: side_effect must be a coroutine function, not a lambda returning a coroutine
-    # (a lambda returns the coroutine object; it does not await it)
-    async def slow_side_effect():
-        await asyncio.sleep(10)
-
-    slow_mock = AsyncMock(side_effect=slow_side_effect)
+    slow_mock = AsyncMock(side_effect=lambda: asyncio.sleep(10))
 
     result = await run_with_timeout(slow_mock, timeout=0.1)
     assert result == {"error": "timeout"}
@@ -195,8 +190,7 @@ async def async_iter(items):
         yield item
 
 
-# Option 3 (Recommended for ADK): Reusable async generator factory for tests
-# Most flexible — use this in your conftest.py for ADK agent testing
+# Option 3: Reusable async generator factory for tests
 def make_async_gen(*items):
     """Create an async generator function that yields the given items."""
     async def _gen(*args, **kwargs):
@@ -260,7 +254,6 @@ def test_file_read_easy():
 from unittest.mock import AsyncMock, MagicMock
 
 # For ADK: mocking session services, MCP connections, etc.
-# Place this helper in your project's conftest.py so all test files can use it
 def make_async_context_manager(return_value=None):
     """Helper to create a mock async context manager."""
     mock = MagicMock()
@@ -514,37 +507,6 @@ class InvocationContext:
         self.agent = agent
         self.services = services
 
-# Minimal concrete agent classes used by the tests below
-class MySearchAgent:
-    """Minimal search agent for testing — replace with your real agent."""
-    def __init__(self, model: str):
-        self.model = model
-
-    async def _call_llm(self, query: str) -> str:
-        raise NotImplementedError
-
-    async def run_async(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-        result = await self._call_llm(ctx.session.state.get("query", ""))
-        yield Event(author=self.model, content=result)
-
-class MyAgent(MySearchAgent):
-    """Extended agent with tool execution."""
-    def __init__(self):
-        super().__init__(model="gemini-2.0-flash")
-
-    async def execute_tool(self, *, tool_name: str, **kwargs):
-        raise NotImplementedError
-
-    async def run_async(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-        result = await self._call_llm(ctx.session.state.get("query", ""))
-        yield Event(author=self.model, content=result)
-
-class CounterAgent:
-    """Agent that increments a session state counter."""
-    async def run_async(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-        ctx.session.state["counter"] = ctx.session.state.get("counter", 0) + 1
-        yield Event(author="counter", content="incremented")
-
 
 # --- Fixture: reusable mock context ---
 @pytest.fixture
@@ -663,29 +625,10 @@ def test_tool_schema_generation():
     hints = get_type_hints(search_web)
     sig = inspect.signature(search_web)
 
-    # Verify type hints are correctly read
     assert hints["query"] is str
     assert hints["max_results"] is int
     assert hints["return"] == list[str]
     assert sig.parameters["max_results"].default == 5
-
-    # Verify schema generation produces correct structure
-    from pydantic import TypeAdapter
-    import typing
-
-    # Build a simple schema from the signature (mirrors ADK's approach via Pydantic)
-    properties = {}
-    required = []
-    for param_name, param in sig.parameters.items():
-        param_type = hints.get(param_name, str)
-        properties[param_name] = {"type": str(param_type)}
-        if param.default is inspect.Parameter.empty:
-            required.append(param_name)
-
-    assert "query" in required
-    assert "max_results" not in required  # has default=5
-    assert set(properties.keys()) == {"query", "max_results"}
-    assert properties["query"]["type"] == str(str)  # "<class 'str'>"
 ```
 
 ---
@@ -748,26 +691,16 @@ mock.genrate("hello")  # AttributeError: Mock object has no attribute 'genrate'
 #### Mistake 4: Testing Implementation Instead of Behavior
 
 ```python
-# ❌ BAD: brittle test tied to exact implementation order
+# ❌ BAD: brittle test tied to exact implementation
 async def test_brittle():
     with patch("my_agent.step1") as m1, patch("my_agent.step2") as m2:
         await run_agent("query")
-        # `assert_called_before` does NOT exist on Mock objects — this will AttributeError
+        # NOTE: `assert_called_before` does NOT exist on Mock objects.
+        # If you need ordering, use mock_parent.assert_has_calls([call...])
+        # with the calls in expected order. But usually ordering tests
+        # are brittle — prefer testing observable outputs instead.
 
-# ✅ CORRECT: check call ordering with assert_has_calls (if you truly need ordering)
-from unittest.mock import call, Mock
-
-async def test_with_ordering():
-    parent = Mock()
-    parent.step1 = Mock(return_value="a")
-    parent.step2 = Mock(return_value="b")
-
-    with patch("my_agent.step1", parent.step1), patch("my_agent.step2", parent.step2):
-        await run_agent("query")
-        # assert_has_calls checks both presence and order
-        parent.assert_has_calls([call.step1("query"), call.step2("a")])
-
-# ✅ BEST: test observable outputs, not implementation order
+# ✅ GOOD: test the observable output
 async def test_behavior():
     events = [e async for e in agent.run_async(ctx)]
     assert events[-1].content == "expected response"

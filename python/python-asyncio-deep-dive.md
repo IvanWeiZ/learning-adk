@@ -61,7 +61,7 @@ async def main():
     db_result = await db_task
 ```
 
-asyncio runs everything on **one thread**. When a coroutine hits `await` (an I/O wait), it **yields control** back to the event loop, which runs other coroutines. No OS-level threads, no OS-level context switching overhead. There *is* Python-level context switching at every `await` point — the event loop decides which coroutine runs next — but this is far cheaper than OS thread context switches because no kernel interaction is required.
+asyncio runs everything on **one thread**. When a coroutine hits `await` (an I/O wait), it **yields control** back to the event loop, which runs other coroutines. No threads, no locks, no context switching overhead.
 
 #### The Key Insight
 
@@ -350,21 +350,22 @@ async def main():
 #### Fire and Forget (Background Tasks)
 
 ```python
-# ✅ CORRECT: hold a reference to prevent silent GC and exception loss
+# Sometimes you want to start a task and not await it
 async def log_event(event: dict):
     await db.insert(event)
 
-background_tasks = set()
-
 async def handle_request(query: str):
+    # Fire and forget — don't wait for logging
+    asyncio.create_task(log_event({"query": query}))
+
+    # But WARNING: if the task raises an exception, it's silently lost!
+    # Python 3.12 warns about this. Best practice:
+
+    background_tasks = set()
+
     task = asyncio.create_task(log_event({"query": query}))
     background_tasks.add(task)
-    task.add_done_callback(background_tasks.discard)  # keep alive until done
-
-# ❌ WRONG: task may be garbage-collected before it runs; exceptions silently lost
-async def handle_request_bad(query: str):
-    asyncio.create_task(log_event({"query": query}))  # no reference held!
-    # Python 3.12+ warns about this
+    task.add_done_callback(background_tasks.discard)  # prevent GC
 ```
 
 ---
@@ -657,8 +658,6 @@ async def sequential_agents(agents, query) -> AsyncGenerator[Event, None]:
             yield event
 ```
 
-> **Why `async yield from` doesn't exist:** The limitation is deeper than syntax. Python's `async for` loop fully consumes a sub-generator before your outer generator can yield again — there is no way to interleave events from two sub-generators on the same coroutine frame. The explicit `async for` loop above is not just a workaround; it's the correct model: consume each agent's events fully before moving to the next agent.
-
 #### Composing Async Generators (Parallel Agents)
 
 ```python
@@ -682,11 +681,6 @@ async def parallel_agents(agents, query) -> AsyncGenerator[Event, None]:
             tg.create_task(run_and_enqueue(agent))
 
     # Yield events after TaskGroup exits (all tasks done)
-    # ⚠️ STREAMING NOTE: Events are buffered until ALL agents finish.
-    # The caller does not see any events until the slowest agent completes.
-    # True streaming (interleaved events as agents run) requires a different
-    # approach: yield from the queue inside the TaskGroup using a separate
-    # draining coroutine, but that prevents TaskGroup from using `yield`.
     while not queue.empty():
         event = queue.get_nowait()
         if event is not None:
@@ -804,9 +798,7 @@ async def main(tool_configs: list):
 ```python
 # ADK's McpToolset is a BaseToolset passed directly to an agent
 # (MCPToolset is deprecated; use McpToolset instead)
-# Note: verify the exact import path against your installed ADK version;
-# the path below reflects google-adk >= 0.4.0
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+from google.adk.tools import McpToolset
 
 toolset = McpToolset(
     connection_params=StdioServerParameters(

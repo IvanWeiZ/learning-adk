@@ -27,8 +27,6 @@
 
 Pydantic powers ALL data structures in Google ADK (Event, EventActions, Session, GenerateContentConfig, tool schemas). This guide covers everything from basic model definition through advanced patterns like discriminated unions and JSON schema generation, with Java comparisons throughout.
 
-## Core Concepts
-
 ## BaseModel Fundamentals
 
 #### What is BaseModel?
@@ -714,10 +712,10 @@ original = Document(
 
 # Shallow copy (default)
 shallow = original.model_copy()
-shallow.metadata.tags.append("addk")
+shallow.metadata.tags.append("adk")
 
-print(original.metadata.tags)  # ['python', 'pydantic', 'addk'] - SHARED!
-print(shallow.metadata.tags)   # ['python', 'pydantic', 'addk']
+print(original.metadata.tags)  # ['python', 'pydantic', 'adk'] - SHARED!
+print(shallow.metadata.tags)   # ['python', 'pydantic', 'adk']
 
 # Deep copy
 import copy
@@ -730,10 +728,10 @@ original2 = Document(
 )
 
 deep = original2.model_copy(deep=True)
-deep.metadata.tags.append("addk")
+deep.metadata.tags.append("adk")
 
 print(original2.metadata.tags)  # ['python', 'pydantic'] - NOT shared
-print(deep.metadata.tags)       # ['python', 'pydantic', 'addk']
+print(deep.metadata.tags)       # ['python', 'pydantic', 'adk']
 ```
 
 #### ADK Pattern: Nested Context
@@ -750,7 +748,7 @@ class InvocationContext(BaseModel):
     request_id: str
     parent_request_id: Optional[str] = None
     depth: int = 0
-    custom_metadata: dict[str, str] = {}
+    custom_metadata: dict[str, str] = Field(default_factory=dict)
 
     def create_child_context(self, child_request_id: str):
         """Create a child context for nested invocations."""

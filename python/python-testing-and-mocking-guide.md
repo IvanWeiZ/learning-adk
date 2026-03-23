@@ -704,41 +704,6 @@ def test_something(mock_context):
     assert mock_context.session.id == "session-1"
 ```
 
-#### Fixture Chain with Teardown
-
-Use `yield` in a fixture to run cleanup code after the test:
-
-```python
-import pytest
-from unittest.mock import MagicMock, AsyncMock
-
-@pytest.fixture
-async def mock_session_service():
-    """Session service fixture with setup and teardown."""
-    service = AsyncMock()
-    service.sessions = {}
-
-    # Setup: create a test session
-    session = MagicMock()
-    session.id = "test-session-1"
-    session.state = {}
-    service.get_or_create_session = AsyncMock(return_value=session)
-    service.save_session = AsyncMock()
-
-    yield service  # test runs here
-
-    # Teardown: verify session was saved
-    service.save_session.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_agent_persists_session(mock_session_service):
-    session = await mock_session_service.get_or_create_session("user-1", "app-1")
-    session.state["result"] = "done"
-    await mock_session_service.save_session(session)
-    assert session.state["result"] == "done"
-```
-
 ---
 
 

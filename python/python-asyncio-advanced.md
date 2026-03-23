@@ -2,8 +2,6 @@
 
 > **Part 1 is in [python-asyncio-deep-dive.md](python-asyncio-deep-dive.md)** — event loop, coroutines, tasks, gather/wait, TaskGroup, async generators, and async context managers.
 
-This file covers Sections 9–18: synchronization primitives (Lock, Semaphore, Event, Queue), mixing sync/async code, error handling, timeouts, cancellation, performance patterns, ADK-specific async patterns, and a Java → Python async mapping.
-
 ---
 
 ### 9. Synchronization Primitives
@@ -449,8 +447,6 @@ asyncio.run(main(), debug=True)
 
 ### 14. asyncio Streams — TCP/Network I/O
 
-> **ADK relevance:** This section covers low-level TCP networking, which is not used directly in ADK. Skip unless you are building a custom transport layer or MCP server. ADK's networking is handled by the `httpx`/`grpc` libraries internally.
-
 ```python
 # Low-level network I/O (rarely needed directly in ADK, but good to understand)
 
@@ -558,8 +554,6 @@ async def debug_tasks():
 
 #### Pattern: Bounded Concurrency for API Calls
 
-> **ADK rate limiting:** This pattern directly applies to LLM API rate limits. When running a `ParallelAgent` with many sub-agents, wrap each LLM call in a shared `asyncio.Semaphore` to stay within your API's requests-per-minute limit.
-
 ```python
 async def process_all_queries(queries: list[str], max_concurrent: int = 10):
     """Process queries with bounded concurrency."""
@@ -599,8 +593,6 @@ async def llm_with_fallback(prompt: str) -> str:
 ```
 
 #### Pattern: Circuit Breaker
-
-> **Note:** The implementation below is simplified for illustration. It is **not production-safe**: it does not use `asyncio.Lock` to protect concurrent access to shared state, and calling `asyncio.get_running_loop().time()` in `__init__` will fail outside a running event loop. For production use, add an `asyncio.Lock` and initialize `last_failure_time` lazily inside an async method.
 
 ```python
 class CircuitBreaker:
@@ -662,9 +654,7 @@ async def good():
 #### Pattern: The ADK Runner Loop
 
 ```python
-from typing import AsyncGenerator
-
-async def runner_loop(agent, session_service, query: str) -> AsyncGenerator[Event, None]:
+async def runner_loop(agent, session_service, query: str):
     """Simplified version of how ADK's Runner works."""
     session = await session_service.get_or_create_session("user-1", "app-1")
     ctx = InvocationContext(agent=agent, session=session, services=services)
@@ -682,15 +672,13 @@ async def runner_loop(agent, session_service, query: str) -> AsyncGenerator[Even
                 else:
                     session.state[key] = value
 
-        # Handle agent transfer — yield the transfer event ONCE, then sub-events
+        # Handle agent transfer
         if event.actions and event.actions.transfer_to_agent:
-            yield event  # yield the transfer event before switching agents
             target = find_agent(event.actions.transfer_to_agent)
             ctx = ctx.model_copy(update={"agent": target})
             async for sub_event in target.run_async(ctx):
                 all_events.append(sub_event)
                 yield sub_event
-            continue  # skip the duplicate yield below
 
         yield event
 
@@ -822,7 +810,7 @@ class SessionService:
 | `StructuredTaskScope` (Java 21) | `asyncio.TaskGroup` (Python 3.11+) | Same concept |
 | `Stream<T>` | `AsyncGenerator[T, None]` | Lazy, streaming |
 | `@Async` (Spring) | `async def` | |
-| `Mono<T>` / `Flux<T>` (Reactor) | Coroutine / AsyncGenerator | Reactive (push-based) vs asyncio (pull-based): in Reactor, the publisher pushes items to subscribers; in asyncio, the consumer pulls by calling `async for` or `await`. The event loop drives execution on demand, not on data arrival. |
+| `Mono<T>` / `Flux<T>` (Reactor) | Coroutine / AsyncGenerator | Reactive vs coroutine |
 
 #### Key Mindset Shifts
 

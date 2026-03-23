@@ -330,14 +330,13 @@ class Counter:
 c1 = Counter()
 c2 = Counter()
 print(Counter.get_instance_count())  # 2
-```
 
-**Java equivalent:** A static variable and static method:
-```java
-public class Counter {
-    static int instances = 0;
-    static int getInstanceCount() { return instances; }
-}
+# Java equivalent:
+// Usually you'd use a static variable + static method
+// public class Counter {
+//     static int instances = 0;
+//     static int getInstanceCount() { return instances; }
+// }
 ```
 
 ##### `@property`
@@ -431,15 +430,13 @@ result = flaky_api_call()  # May retry, then succeeds
 
 #### Pattern: Rate Limiting
 
-> **Sync-only — unsafe in async ADK code.** This implementation uses `time.sleep()`, which blocks the entire asyncio event loop. Do **not** use it in async ADK tools or agents. For async rate limiting, use `asyncio.Semaphore` (see `python-asyncio-advanced.md` Section 16).
-
 ```python
 import functools
 import time
 from collections import deque
 
 def rate_limit(calls_per_second=1):
-    """Allow max N calls per second. SYNC ONLY — blocks with time.sleep()."""
+    """Allow max N calls per second."""
     def decorator(func):
         last_calls = deque(maxlen=int(calls_per_second))
 
@@ -470,7 +467,6 @@ for _ in range(5):
 ```python
 import functools
 import signal
-# Unix/macOS only — signal.SIGALRM is not available on Windows
 
 def timeout(seconds=30):
     """Raise TimeoutError if function takes longer than N seconds."""
@@ -847,7 +843,7 @@ print(hints)
 
 #### Complete Example: Generating a JSON Schema from a Function
 
-This illustrates the concept ADK uses; ADK delegates to Pydantic's `model_json_schema()` for full type support rather than the manual type mapping shown here:
+This is **exactly** how ADK generates tool schemas:
 
 ```python
 import inspect
@@ -940,18 +936,6 @@ Method method = myClass.getMethod("search", String.class, int.class);
 Parameter[] params = method.getParameters();
 // Then you manually extract type info—Python's inspect is simpler
 ```
-
----
-
-## ADK in Practice
-
-| Decorator Pattern | ADK Usage |
-|---|---|
-| `@functools.wraps` | Preserve `__name__` and `__doc__` so ADK can read tool metadata |
-| `inspect.signature()` | ADK reads function signatures to extract parameter names and types |
-| `typing.get_type_hints()` | ADK resolves type annotations for schema generation |
-| Pydantic `model_json_schema()` | ADK's actual schema generation — delegates to Pydantic, not manual type mapping |
-| Decorator with arguments | Tool registration patterns, callback configuration |
 
 ---
 
