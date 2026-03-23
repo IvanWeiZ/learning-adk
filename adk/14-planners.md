@@ -101,7 +101,10 @@ Key `ThinkingConfig` fields:
 
 Behavior:
 
-- **Request phase:** The flow processor (`_NlPlanningRequestProcessor`) calls `planner.apply_thinking_config(llm_request)` directly -- it does **not** call `build_planning_instruction()` for `BuiltInPlanner`. The `build_planning_instruction()` method on `BuiltInPlanner` simply returns `None`. `apply_thinking_config` sets `llm_request.config.thinking_config`. If a `thinking_config` was already set in `generate_content_config`, the planner's config overwrites it (with a `debug`-level log).
+- **Request phase:**
+  - The flow processor (`_NlPlanningRequestProcessor`) calls `planner.apply_thinking_config(llm_request)` directly.
+  - It does **not** call `build_planning_instruction()` — that method returns `None` for `BuiltInPlanner`.
+  - `apply_thinking_config` sets `llm_request.config.thinking_config`. If a `thinking_config` was already set in `generate_content_config`, the planner's config overwrites it (with a `debug`-level log).
 - **Response phase:** Returns `None` (no post-processing). The model's thinking output is handled natively by the Gemini API.
 - **Model requirement:** Only works with models that support thinking mode. An error is returned if used with unsupported models.
 

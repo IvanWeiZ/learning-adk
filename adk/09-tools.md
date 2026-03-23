@@ -420,7 +420,7 @@ agent = LlmAgent(
 - `GoogleSearchTool` and `VertexAiSearchTool` cannot mix with function tools in one API call — ADK auto-creates a hidden sub-agent for isolation
 - If your tool raises an exception and no `on_tool_error_callback` is set, the exception **propagates up** and terminates the entire invocation — the LLM does **not** get a chance to retry
 - `ToolConfirmation` uses `hint` and `payload` fields, not `title`/`message`
-- Tool `name` must match exactly what the LLM will call
+- Tool `name` must match exactly what the LLM calls
 - A parameter named `tool_context: ToolContext` is auto-injected and hidden from the LLM schema
 
 ## Related

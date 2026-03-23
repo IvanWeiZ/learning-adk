@@ -183,4 +183,4 @@ See [22-testing.md](../adk/22-testing.md) for ADK-specific testing with `MockMod
 
 ---
 
-See also: [glossary.md](glossary.md) | [25-onboarding-guide.md](../adk/00-onboarding-guide.md) | [20-best-practices.md](../adk/20-best-practices.md)
+See also: [glossary.md](glossary.md) | [00-onboarding-guide.md](../adk/00-onboarding-guide.md) | [20-best-practices.md](../adk/20-best-practices.md)

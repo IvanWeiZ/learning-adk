@@ -236,6 +236,41 @@ URLs inside `` ``` `` blocks aren't clickable. Use markdown tables or inline lin
 
 ---
 
+## Readability Edit Rules
+
+When editing documentation for readability, follow these rules strictly.
+
+### Allowed
+
+| Type | Example |
+|------|---------|
+| Fix typos / grammar | "will raise" → "raises" |
+| Fix factual errors | Wrong class name, wrong model ID |
+| Fix broken links | `25-onboarding-guide.md` → `00-onboarding-guide.md` |
+| Rename headings | "Quick Decision Tree" → "Decision Tree" |
+| Clean up authoring notes | Remove "(big-picture diagram first...)" from heading |
+| Backward cross-reference for dedup | Add "See [01-request-lifecycle.md]" from file `05` — **only higher → lower number** |
+| Add "See [file]" notes | When content exists in two places, link to the earlier doc |
+| Fix formatting | Missing heading space, stray `---` |
+| Improve sentence clarity | Break a run-on sentence into bullets |
+| Add missing context callouts | "> Not needed for ADK — listed for completeness" |
+| Add vale tooling | `.vale.ini`, `.gitignore`, `validate.sh` updates |
+| Fix contradictory statements | Clarify one to be consistent — don't delete either |
+| Fix future tense → present tense | "will raise" → "raises" (mechanical, not content-changing) |
+
+### Not Allowed
+
+| Type | Why |
+|------|-----|
+| Delete sections or paragraphs | Content stays, even if duplicated |
+| Remove code examples | Including Java comparison blocks |
+| Shorten code blocks | Don't collapse 3 examples into 1 |
+| Restructure file layout | Don't move sections between files |
+| Split over-limit files | Keep files as-is even if over 600/1000 lines |
+| Forward cross-references | Don't add "See [07]" from inside `01` — only backward refs |
+
+---
+
 ## Core ADK Architecture
 
 Understanding these layers is essential for adding or updating documentation:

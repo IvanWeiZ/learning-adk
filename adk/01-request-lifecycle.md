@@ -402,7 +402,7 @@ Partial events are yielded but not persisted (no session I/O).
 
 > `after_model_callback` fires after the final (non-partial) chunk arrives.
 
-**Event #4 — the final authoritative event, yielded and persisted:**
+**Event #4 — the final authoritative event, yielded, and persisted:**
 
 ```python
 Event(

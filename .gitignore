@@ -20,6 +20,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Vale (downloaded style packages)
+styles/
+
 # MkDocs
 site/
 
