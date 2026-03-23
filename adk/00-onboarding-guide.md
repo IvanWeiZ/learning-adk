@@ -86,6 +86,8 @@ What happens when the user asks "What's the weather in Tokyo?":
 
 ## 3. Run It
 
+To run an agent, you need a Runner (orchestrates requests) and a SessionService (stores conversation history).
+
 ```python
 import asyncio
 from google.adk.runners import Runner
@@ -100,9 +102,9 @@ async def main():
     async for event in runner.run_async(
         user_id="user_1",
         session_id=session.id,
-        new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),
+        new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),  # the user's message
     ):
-        if event.is_final_response():
+        if event.is_final_response():  # stream ends when final_response is True
             print(event.content.parts[0].text)
 
 asyncio.run(main())
