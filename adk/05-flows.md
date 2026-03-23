@@ -6,7 +6,7 @@
 
 ## What It Is
 
-`BaseLlmFlow` implements the core **reason-act loop**. `LlmAgent._run_async_impl` delegates to `self._llm_flow.run_async(ctx)`.
+`BaseLlmFlow` implements the core **reason-act loop**. `LlmAgent` selects and assigns the flow at construction time based on its configuration, then `_run_async_impl` delegates to `self._llm_flow.run_async(ctx)`.
 
 The flow is responsible for:
 1. Building the LLM request (history, system prompt, tool definitions)
@@ -30,53 +30,25 @@ BaseLlmFlow (base_llm_flow.py) — abstract, implements the loop
 - `SingleFlow` when `disallow_transfer_to_parent=True`, `disallow_transfer_to_peers=True`, and no `sub_agents`
 - `AutoFlow` in all other cases (the default)
 
+`AutoFlow` extends `SingleFlow` — it adds the `agent_transfer.py` response processor on top of the basic loop. See [04-agents.md](04-agents.md) for the full flow selection logic and [23-advanced-internals.md](23-advanced-internals.md) for the complete processor pipeline.
+
 ---
 
 ## Loop Iteration Flowchart
 
 ```
-┌─────────────────────────────────────────────┐
-│ BaseLlmFlow Loop │
-│ │
-│ ┌─────────────┐ │
-│ │ preprocess │ ← build LlmRequest │
-│ │ (history + │ from session.events │
-│ │ tools) │ │
-│ └──────┬───────┘ │
-│ ▼ │
-│ ┌─────────────┐ │
-│ │ call LLM │ │
-│ └──────┬───────┘ │
-│ ▼ │
-│ Has function ──── No ──── ► yield │
-│ calls? final │
-│ │ Event │
-│ Yes (EXIT) │
-│ ▼ │
-│ ┌─────────────┐ │
-│ │ execute │ │
-│ │ tool(s) │ │
-│ └──────┬───────┘ │
-│ │ │
-│ └──────── loop back ─────────────┘ │
-└─────────────────────────────────────────────┘
-```
-
-### Two Iterations in Practice
-
-```
-User: "What's the weather in Tokyo?"
-
-Iteration 1:
- preprocess → LlmRequest with [user message]
- LLM returns → FunctionCall(get_weather, city="Tokyo")
- execute → get_weather("Tokyo") → {temp: 18, condition: "cloudy"}
- → loop back
-
-Iteration 2:
- preprocess → LlmRequest with [user message + function call + function response]
- LLM returns → "The weather in Tokyo is 18°C and cloudy."
- no function calls → yield final Event → EXIT
+BaseLlmFlow Loop
+│
+├─ 1. PREPROCESS
+│     build LlmRequest from session.events (history + tools)
+│
+├─ 2. CALL LLM
+│     model.generate_content_async(request, stream=...)
+│
+├─ 3. CHECK RESPONSE
+│     ├─ Has function calls? → execute tool(s) → loop back to step 1
+│     ├─ Agent transfer?     → delegate to target agent → exit
+│     └─ Final text?         → yield Event → exit
 ```
 
 ---
@@ -121,29 +93,11 @@ BaseLlmFlow.run_async(ctx)
 
 ---
 
-## Request Processors (Preprocessors)
+## Processors
 
-Each implements `BaseLlmRequestProcessor`, mutating `LlmRequest` before the model call.
+The flow runs **request processors** (build `LlmRequest`) before each LLM call, and **response processors** (dispatch tools, handle transfers) after. Key processors: `instructions.py` (system prompt), `contents.py` (history), `functions.py` (tool definitions + tool dispatch), `agent_transfer.py` (routing in AutoFlow).
 
-| Processor | What it does |
-|-----------|-------------|
-| `instructions.py` | Injects `instruction` as system prompt; resolves `{variable}` placeholders from session state |
-| `contents.py` | Builds the conversation history from `session.events`, filtered by branch |
-| `functions.py` | Adds `FunctionDeclaration` for each tool; handles auth tool injection |
-| `context_cache.py` | Applies explicit context cache tokens when configured |
-| `output_schema.py` | Injects `response_schema` to force structured JSON output |
-
----
-
-## Response Processors (Postprocessors)
-
-Each implements `BaseLlmResponseProcessor`.
-
-| Processor | What it does |
-|-----------|-------------|
-| `functions.py` | Dispatches `FunctionCall`s to the right tool; runs tools; appends function response Events |
-| `code_execution.py` | If LLM outputs code blocks and `code_executor` is set, executes them |
-| `agent_transfer.py` (AutoFlow) | Intercepts `transfer_to_agent` function calls; routes to the target agent |
+For the complete processor pipeline with all 12 processors, see [23-advanced-internals.md](23-advanced-internals.md).
 
 ---
 
@@ -152,42 +106,39 @@ Each implements `BaseLlmResponseProcessor`.
 When the LLM returns a function call:
 
 ```
-LLM → FunctionCall(name='search', args={'query': 'ADK'})
- → functions.py finds the matching BaseTool by name
- → Runs before_tool_callback (can skip execution)
- → tool.run_async(args=..., tool_context=...)
- → Runs after_tool_callback (can replace result)
- → Creates Event(author=agent.name, content=[FunctionResponse(...)])
- → Appends to session, yields event
- → Flow loops → LLM gets the tool result → continues reasoning
+LLM returns FunctionCall(name='search', args={'query': 'ADK'})
+ 1. functions.py finds the matching BaseTool by name
+ 2. Runs before_tool_callback (can skip execution)
+ 3. tool.run_async(args=..., tool_context=...)
+ 4. Runs after_tool_callback (can replace result)
+ 5. Creates Event(author=agent.name, content=[FunctionResponse(...)])
+ 6. Appends to session, yields event
+ 7. Flow loops back — LLM gets the tool result and continues reasoning
 ```
 
 ---
 
-## Live Mode
+## Example
 
-`run_live(ctx)` supports Gemini Live API (bidirectional streaming) via `model.connect()` and `LiveRequestQueue`.
+A tool-use turn through the flow — the loop runs twice (tool call, then final answer):
+
+```python
+async for event in runner.run_async(
+    user_id="user1",
+    session_id=session.id,
+    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Tokyo?")]),
+):
+    if event.content and event.content.parts:
+        for part in event.content.parts:
+            if part.function_call:
+                print(f"Tool call: {part.function_call.name}({part.function_call.args})")
+            elif part.text:
+                print(f"Response: {part.text}")
+```
 
 ---
 
-## Auth Flow
-
-When a tool requires OAuth credentials:
-1. Tool calls `tool_context.request_credential(auth_config)`
-2. Flow yields an auth request Event with `EventActions.requested_auth_configs`
-3. The client (UI/caller) presents the OAuth flow to the user
-4. On the next invocation, the credential is available and the tool proceeds
-
----
-
-## Cross-References
-
-- [09-tools.md](09-tools.md) — tool system that flows dispatch during the postprocess phase
-- [14-planners.md](14-planners.md) — planning processors that plug into the flow's request pipeline
-- [04-agents.md](04-agents.md) — agents that delegate to flows via `_run_async_impl`
-- [13-auth.md](13-auth.md) — auth flow triggered by `request_credential` during tool execution
-
-## Related Files
+## Related
 
 - [`flows/llm_flows/base_llm_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/base_llm_flow.py) — the loop
 - [`flows/llm_flows/single_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/single_flow.py) — no-routing variant
