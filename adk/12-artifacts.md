@@ -4,7 +4,7 @@
 
 ---
 
-## What Artifacts Are
+## At a Glance
 
 Artifacts are versioned, named files (text, images, PDFs, binary) stored outside the event stream.
 
@@ -40,7 +40,7 @@ BaseArtifactService (abstract interface)
 
 ---
 
-## BaseArtifactService Interface
+## Key API
 
 All methods are `async` with keyword-only arguments, scoped by `app_name`, `user_id`, and optional `session_id` (see Scoping section below).
 
@@ -192,7 +192,7 @@ runner = Runner(
 
 ---
 
-## Code Examples
+## Examples
 
 ### Saving and loading text artifacts in a tool
 
@@ -279,7 +279,7 @@ async def inspect_artifacts(tool_context: ToolContext) -> dict[str, Any]:
 
 ---
 
-## Cross-References
+## Related
 
 - [09-tools.md](09-tools.md) — tools access artifacts via `ToolContext.save_artifact()` and `ToolContext.load_artifact()`
 - [10-apps.md](10-apps.md) — `App` container that holds the artifact service
