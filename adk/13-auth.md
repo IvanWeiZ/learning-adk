@@ -131,7 +131,7 @@ Validation: `service_account_credential` is required when `use_default_credentia
 
 ### AuthScheme and AuthSchemeType
 
-`AuthScheme` is a union of OpenAPI `SecurityScheme` (from FastAPI's models) and ADK's `OpenIdConnectWithConfig`:
+`AuthScheme` is a union of OpenAPI `SecurityScheme` (from FastAPI's models) and ADK's `OpenIdConnectWithConfig`. ADK reuses FastAPI's OpenAPI security scheme models (`pip install fastapi` required).
 
 ```python
 AuthScheme = Union[SecurityScheme, OpenIdConnectWithConfig]
@@ -196,45 +196,13 @@ class AuthHandler:
 
 ## The OAuth Round-Trip Flow
 
-### Visual: Two-Invocation Sequence
-
-```
-ADK Agent User / Browser
-───────── ──────────────
-
-Invocation 1:
- Tool needs credentials
- → request_credential(auth_config)
- → Event with auth_uri sent to caller ──────────► User visits auth_uri
- User logs in + authorizes
- Invocation pauses ◄────────── Redirect with auth code
- Code stored in session state
-
-Invocation 2:
- get_auth_response(auth_config)
- → credential found in session state
- → Tool executes with valid token
- → Final response to user
-```
-
-### Before / After: What Auth Does for Your Tool
-
-```python
-# WITHOUT auth — fails when API requires OAuth
-def search_gmail(query: str) -> dict:
-    return gmail_api.search(query) # ← no token, 401 error
-
-# WITH auth — ADK handles the OAuth flow automatically
-def search_gmail(query: str, credential: AuthCredential) -> dict:
-    return gmail_api.search(query, token=credential.oauth2.access_token)
-# Wrap with: AuthenticatedFunctionTool(func=search_gmail, auth_config=...)
-```
-
 ### Detailed Steps
 
 The detailed sequence for OAuth2 authorization code flow:
 
 1. **Tool calls `request_credential`**: This adds the `AuthConfig` to `EventActions.requested_auth_configs`, keyed by `function_call_id`.
+
+> These are internal details — you don't normally interact with `EventActions` or `temp:` keys directly.
 
 2. **ADK calls `AuthHandler.generate_auth_request()`**: If the raw credential has `client_id` and `client_secret` but no `auth_uri`, ADK uses `authlib.OAuth2Session` to generate the authorization URL and CSRF state. The result is stored in `exchanged_auth_credential.oauth2.auth_uri`.
 
@@ -250,7 +218,7 @@ The detailed sequence for OAuth2 authorization code flow:
 
 ## Context Methods for Auth
 
-The `CallbackContext` (and its subclass used in tools) provides these auth methods:
+The `CallbackContext` (and its subclass used in tools) provides these auth methods. Tools receive this as `ToolContext` — the two are aliases (see [09-tools.md](09-tools.md)).
 
 ### request_credential
 
@@ -268,6 +236,8 @@ def get_auth_response(self, auth_config: AuthConfig) -> AuthCredential | None:
 
 Retrieves the credential stored after the user completed auth. Returns `None` if the user has not yet responded. Uses the `credential_key` to look up `"temp:{credential_key}"` in session state.
 
+Returns `None` if the user hasn't responded yet or denied OAuth. Guard against infinite retry by checking a counter or timeout.
+
 ### save_credential
 
 ```python
@@ -283,6 +253,19 @@ async def load_credential(self, auth_config: AuthConfig) -> AuthCredential | Non
 ```
 
 Loads a previously saved credential from the credential service.
+
+Use `save_credential`/`load_credential` for custom credential backends or when you need to persist credentials outside the standard OAuth flow. For most cases, `parse_and_store_auth_response` handles this automatically.
+
+---
+
+## Credential Key
+
+`credential_key` determines storage location (`"temp:{key}"`). If unset:
+
+1. ADK checks `model_extra` on the raw credential and auth scheme for a `credential_key` or `credentialKey` field.
+2. If still not found, it auto-generates a key by hashing the auth scheme and raw credential: `"adk_{scheme_type}_{scheme_hash}_{cred_type}_{cred_hash}"`.
+
+Set `credential_key` explicitly for stability across code changes.
 
 ---
 
@@ -389,21 +372,39 @@ async def list_calendar_events(
 ### Tool with HTTP Bearer Token
 
 ```python
+from fastapi.openapi.models import SecurityScheme, SecuritySchemeType, HTTPBase
 from google.adk.auth import (
     AuthCredential,
     AuthCredentialTypes,
+    AuthConfig,
     HttpAuth,
     HttpCredentials,
 )
+from google.adk.tools import ToolContext
 
-# Create a bearer token credential directly (no OAuth flow needed)
-bearer_credential = AuthCredential(
-    auth_type=AuthCredentialTypes.HTTP,
-    http=HttpAuth(
-        scheme="bearer",
-        credentials=HttpCredentials(token="eyJhbGciOiJSUzI1..."),
-    ),
+bearer_scheme = SecurityScheme(
+    type=SecuritySchemeType.http,
+    scheme="bearer",
 )
+
+bearer_auth_config = AuthConfig(
+    auth_scheme=bearer_scheme,
+    credential_key="my_bearer_token",
+)
+
+async def call_bearer_api(
+    query: str,
+    tool_context: ToolContext,
+) -> dict[str, Any]:
+    """Calls an API that requires a Bearer token."""
+    auth = tool_context.get_auth_response(bearer_auth_config)
+    if auth is None:
+        tool_context.request_credential(bearer_auth_config)
+        return {"status": "awaiting_authorization"}
+    # auth is available — proceed
+    token = auth.http.credentials.token
+    # ... make the API call with the bearer token ...
+    return {"result": f"Called API for query: {query}"}
 ```
 
 ### Tool with Service Account
@@ -433,16 +434,17 @@ sa_credential = AuthCredential(
 )
 ```
 
----
+### Guard Clause for get_auth_response Returning None
 
-## Credential Key
+Always guard against `None` before using a credential. If `get_auth_response` returns `None`, request the credential and return early:
 
-`credential_key` determines storage location (`"temp:{key}"`). If unset:
-
-1. ADK checks `model_extra` on the raw credential and auth scheme for a `credential_key` or `credentialKey` field.
-2. If still not found, it auto-generates a key by hashing the auth scheme and raw credential: `"adk_{scheme_type}_{scheme_hash}_{cred_type}_{cred_hash}"`.
-
-Set `credential_key` explicitly for stability across code changes.
+```python
+auth = tool_context.get_auth_response(auth_config)
+if auth is None:
+    tool_context.request_credential(auth_config)
+    return {"status": "awaiting_authorization"}
+# auth is available — proceed
+```
 
 ---
 
