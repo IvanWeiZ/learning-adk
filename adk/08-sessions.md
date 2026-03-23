@@ -79,7 +79,8 @@ class BaseSessionService(ABC):
         self, session: Session, event: Event
     ) -> Event
         # Applies event.actions.state_delta to session.state.
-        # Assigns event.id if not set.
+        # Note: event.id is assigned in Event.model_post_init (at construction time),
+        # not by append_event.
         # Returns the persisted event.
 ```
 

@@ -83,7 +83,9 @@ EventsCompactionConfig:
 │
 ├── compaction_interval: int
 ├── overlap_size: int
-└── summarizer: Optional
+├── summarizer: Optional
+├── token_threshold: Optional[int]       # post-invocation compaction trigger (must pair with event_retention_size)
+└── event_retention_size: Optional[int]  # raw events to keep un-compacted (must pair with token_threshold)
 
 ContextCacheConfig:
 │

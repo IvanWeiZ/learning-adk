@@ -30,7 +30,7 @@ BaseLlmFlow (base_llm_flow.py) — abstract, implements the loop
 - `SingleFlow` when `disallow_transfer_to_parent=True`, `disallow_transfer_to_peers=True`, and no `sub_agents`
 - `AutoFlow` in all other cases (the default)
 
-`AutoFlow` extends `SingleFlow` — it adds the `agent_transfer.py` response processor on top of the basic loop. See [04-agents.md](04-agents.md) for the full flow selection logic and [23-advanced-internals.md](23-advanced-internals.md) for the complete processor pipeline.
+`AutoFlow` extends `SingleFlow` — it adds the `agent_transfer.py` request processor on top of the basic loop. See [04-agents.md](04-agents.md) for the full flow selection logic and [23-advanced-internals.md](23-advanced-internals.md) for the complete processor pipeline.
 
 ---
 
@@ -63,26 +63,36 @@ BaseLlmFlow.run_async(ctx)
  ├─ PREPROCESS (build LlmRequest)
  │ ├── _preprocess_async(ctx, llm_request)
  │ │ Each registered BaseLlmRequestProcessor runs in order:
+ │ │ - basic.py → base request setup
+ │ │ - auth_preprocessor.py → resolve auth credentials
+ │ │ - request_confirmation.py → handle pending confirmations
  │ │ - instructions.py → inject system prompt + variable substitution
+ │ │ - identity.py → inject agent identity
+ │ │ - compaction.py → compact history if needed
  │ │ - contents.py → inject conversation history (filtered by branch)
- │ │ - functions.py → inject tool definitions from agent.tools
- │ │ - context_cache.py → apply explicit context cache config
- │ │ - output_schema.py → inject response schema (if output_schema set)
- │ └── before_model_callback → can mutate request or short-circuit
+ │ │ - context_cache_processor.py → apply explicit context cache config
+ │ │ - interactions_processor.py → extract previous_interaction_id
+ │ │ - _nl_planning.py → natural language planning setup
+ │ │ - _code_execution.py → optimize data files in contents
+ │ │ - _output_schema_processor.py → inject response schema (if output_schema set)
+ │ │ (AutoFlow adds agent_transfer.py → inject transfer tool definitions)
+ │ │ Then: resolve toolset auth + collect tool definitions from agent.tools
+ │ └── (no callbacks in this phase)
  │
  ├─ CALL LLM
  │ ├── _call_llm_async(ctx, llm_request)
- │ │ → model.generate_content_async(llm_request, stream=...)
- │ │ → yields LlmResponse chunks (partial=True ... partial=False)
+ │ │ ├── before_model_callback → can mutate request or short-circuit
+ │ │ ├── model.generate_content_async(llm_request, stream=...)
+ │ │ │ → yields LlmResponse chunks (partial=True ... partial=False)
+ │ │ └── after_model_callback → can replace LlmResponse (runs per chunk)
  │ └── Streaming events yielded as they arrive
  │
  ├─ POSTPROCESS (handle response)
- │ ├── after_model_callback → can replace LlmResponse
  │ ├── _postprocess_async(ctx, llm_response)
  │ │ Each registered BaseLlmResponseProcessor runs:
- │ │ - code_execution.py → run code blocks if code_executor set
- │ │ - functions.py → execute tool calls, append tool response events
- │ │ - agent_transfer.py → handle transfer_to_agent responses (AutoFlow)
+ │ │ - _nl_planning.py → mark planning contents as thoughts
+ │ │ - _code_execution.py → run code blocks if code_executor set
+ │ │ Then: handle function calls (tool execution via functions.py utility)
  │ └── Yield model response event
  │
  └─ DECIDE: loop again?
@@ -95,7 +105,7 @@ BaseLlmFlow.run_async(ctx)
 
 ## Processors
 
-The flow runs **request processors** (build `LlmRequest`) before each LLM call, and **response processors** (dispatch tools, handle transfers) after. Key processors: `instructions.py` (system prompt), `contents.py` (history), `functions.py` (tool definitions + tool dispatch), `agent_transfer.py` (routing in AutoFlow).
+The flow runs **request processors** (build `LlmRequest`) before each LLM call, and **response processors** after. SingleFlow has 12 request processors (basic, auth, request_confirmation, instructions, identity, compaction, contents, context_cache, interactions, nl_planning, code_execution, output_schema) and 2 response processors (`_nl_planning`, `_code_execution`). AutoFlow adds `agent_transfer` as a 13th request processor. `functions.py` is a utility module (not a processor) that handles tool execution during postprocessing.
 
 For the complete processor pipeline with all 12 processors, see [23-advanced-internals.md](23-advanced-internals.md).
 
@@ -145,4 +155,4 @@ async for event in runner.run_async(
 - [`flows/llm_flows/auto_flow.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/auto_flow.py) — agent-transfer variant
 - [`flows/llm_flows/instructions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/instructions.py) — system prompt building
 - [`flows/llm_flows/contents.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/contents.py) — history building
-- [`flows/llm_flows/functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) — tool dispatch
+- [`flows/llm_flows/functions.py`](https://github.com/google/adk-python/blob/main/src/google/adk/flows/llm_flows/functions.py) — tool execution utility (not a processor)

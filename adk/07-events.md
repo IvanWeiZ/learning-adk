@@ -40,7 +40,7 @@ pydantic.BaseModel
 
 ```python
 class Event(LlmResponse):
-    invocation_id: str # which Runner.run_async() call produced this
+    invocation_id: str = '' # which Runner.run_async() call produced this (default empty, set before appending)
     author: str # 'user' or the agent's name
     actions: EventActions # side-effects: state changes, transfers, auth, etc.
     branch: Optional[str] # 'agent_1.agent_2.agent_3' — routing for multi-agent trees
@@ -57,6 +57,9 @@ class Event(LlmResponse):
     # so the runner pauses and yields control to the caller
 
     # Inherited from LlmResponse (often populated on the final event):
+    error_code: Optional[str] # error code if the response is an error (code varies by model)
+    error_message: Optional[str] # error message if the response is an error
+    turn_complete: Optional[bool] # whether the model response is complete (streaming mode only)
     finish_reason: Optional[types.FinishReason] # why generation stopped (STOP, MAX_TOKENS, SAFETY, etc.)
     usage_metadata: Optional[types.GenerateContentResponseUsageMetadata] # token counts (prompt, candidates, total)
     grounding_metadata: Optional[types.GroundingMetadata] # search grounding metadata from Google Search
@@ -77,7 +80,7 @@ class EventActions(BaseModel):
     requested_auth_configs: dict[str, AuthConfig] # tool is asking for OAuth credentials
     compaction: Optional[EventCompaction] # summary of compacted old events
     end_of_agent: Optional[bool] # agent finished its current run
-    agent_state: Optional[dict] # checkpoint for resumable invocations
+    agent_state: Optional[dict[str, Any]] # checkpoint for resumable invocations
     requested_tool_confirmations: dict[str, ToolConfirmation] # human-in-the-loop confirmation
     # requests, keyed by function call ID
     rewind_before_invocation_id: Optional[str] # signals session rewind to before this invocation ID

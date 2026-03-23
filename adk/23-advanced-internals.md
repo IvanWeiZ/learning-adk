@@ -129,7 +129,7 @@ The core loop in `BaseLlmFlow.run_async()`:
 │ │ └─────────────────┬───────────────────┘                        │
 │ │                   │                                            │
 │ │ ┌─────────────────▼───────────────────┐                        │
-│ │ │ 2. Call model.generate_content()    │                        │
+│ │ │ 2. Call model.generate_content_async()│                        │
 │ │ │    or model.connect() for live      │                        │
 │ │ │    → yields LlmResponse            │                        │
 │ │ └─────────────────┬───────────────────┘                        │
@@ -224,19 +224,19 @@ Plugins wrap the entire agent lifecycle. They execute **before** agent-level cal
 │ │   │   │                                                            │
 │ │   │   │   ══════ LLM CALL ══════                                  │
 │ │   │   │                                                            │
-│ │   │   ├── Agent.after_model_callback()  ← agent FIRST for after_* │
-│ │   │   └── Plugin.after_model_callback() ← plugins LAST            │
+│ │   │   ├── Plugin.after_model_callback() ← plugins FIRST            │
+│ │   │   └── Agent.after_model_callback()  ← then agent callback     │
 │ │   │                                                                │
 │ │   │   ┌── Plugin.before_tool_callback()  ← plugins FIRST          │
 │ │   │   ├── Agent.before_tool_callback()                            │
 │ │   │   │                                                            │
 │ │   │   │   ══════ TOOL CALL ══════                                 │
 │ │   │   │                                                            │
-│ │   │   ├── Agent.after_tool_callback()  ← agent FIRST for after_*  │
-│ │   │   └── Plugin.after_tool_callback() ← plugins LAST             │
+│ │   │   ├── Plugin.after_tool_callback() ← plugins FIRST             │
+│ │   │   └── Agent.after_tool_callback()  ← then agent callback      │
 │ │   │                                                                │
-│ │   ├── Agent.after_agent_callback()  ← agent FIRST for after_*     │
-│ │   └── Plugin.after_agent_callback() ← plugins LAST                │
+│ │   ├── Plugin.after_agent_callback() ← plugins FIRST                │
+│ │   └── Agent.after_agent_callback()  ← then agent callback         │
 │ │                                                                    │
 │ ├── Plugin.on_event_callback()         ← after each event yielded   │
 │ │                                                                    │
@@ -254,7 +254,7 @@ Plugins wrap the entire agent lifecycle. They execute **before** agent-level cal
 
 ### Building a custom plugin
 
-Plugin callbacks receive `callback_context` (a `CallbackContext` — same type as in `before_agent_callback` on `LlmAgent`). Plugin callbacks do **not** receive `tool_context` (`ToolContext`). Use `callback_context.state` to read and write session state.
+Runner-level plugin callbacks (`before_run_callback`, `on_event_callback`, `after_run_callback`) receive `invocation_context` (an `InvocationContext`). Agent/model-level plugin callbacks (`before_agent_callback`, `before_model_callback`, etc.) receive `callback_context` (a `CallbackContext`). Tool-level plugin callbacks (`before_tool_callback`, `after_tool_callback`) receive `tool_context` (a `ToolContext`). All plugin callback parameters are keyword-only.
 
 For plugin API basics — available hooks, return types, and registration — see [10-apps.md](10-apps.md).
 
@@ -268,20 +268,21 @@ logger = logging.getLogger(__name__)
 class MetricsPlugin(BasePlugin):
     """Tracks latency and token usage across all agents."""
 
-    name = "metrics_plugin"
+    def __init__(self):
+        super().__init__(name="metrics_plugin")
 
-    async def before_run_callback(self, callback_context, **kwargs):
-        # callback_context is CallbackContext — same as agent callbacks
-        callback_context.state["temp:run_start"] = time.time()
+    async def before_run_callback(self, *, invocation_context, **kwargs):
+        # invocation_context is InvocationContext — runner-level callbacks use this
+        invocation_context.session.state["temp:run_start"] = time.time()
         return None # Continue normally
 
-    async def before_model_callback(self, callback_context, llm_request, **kwargs):
+    async def before_model_callback(self, *, callback_context, llm_request, **kwargs):
         callback_context.state["temp:model_start"] = time.time()
         msg_count = len(llm_request.contents) if llm_request.contents else 0
         logger.info(f"LLM call with {msg_count} messages")
         return None
 
-    async def after_model_callback(self, callback_context, llm_response, **kwargs):
+    async def after_model_callback(self, *, callback_context, llm_response, **kwargs):
         start = callback_context.state.get("temp:model_start", 0)
         latency = time.time() - start
         logger.info(f"LLM responded in {latency:.2f}s")
@@ -293,13 +294,13 @@ class MetricsPlugin(BasePlugin):
             callback_context.state["user:total_tokens"] = total
         return None
 
-    async def on_event_callback(self, callback_context, event, **kwargs):
+    async def on_event_callback(self, *, invocation_context, event, **kwargs):
         # Log every event for observability
         logger.debug(f"Event from {event.author}: {event.id}")
         return None
 
-    async def after_run_callback(self, callback_context, **kwargs):
-        start = callback_context.state.get("temp:run_start", 0)
+    async def after_run_callback(self, *, invocation_context, **kwargs):
+        start = invocation_context.session.state.get("temp:run_start", 0)
         total = time.time() - start
         logger.info(f"Total run time: {total:.2f}s")
         return None
@@ -325,7 +326,7 @@ app = App(
 ## Gotchas
 
 - **Processor order matters** — request processors run in a fixed sequence. If you override or extend a flow, inserting a processor in the wrong position can break downstream processors.
-- **Plugin callbacks run before agent callbacks** — for `before_*` hooks, plugins execute first. For `after_*` hooks, agent callbacks run first, then plugins. This asymmetry is intentional but easy to forget.
+- **Plugin callbacks always run before agent callbacks** — for both `before_*` and `after_*` hooks, plugins execute first. If a plugin returns a non-`None` value, it short-circuits all remaining plugins and agent callbacks.
 - **`AutoFlow` silently adds `transfer_to_agent`** — if your agent has `sub_agents`, `AutoFlow` injects a transfer tool. This can conflict if you define your own tool with a similar name.
 
 *Continued in [23b-custom-tools-and-toolsets.md](23b-custom-tools-and-toolsets.md) — custom tools, toolsets, authentication, artifacts, code executors, A2A protocol, streaming, event compaction, content filtering, and advanced agent patterns.*
