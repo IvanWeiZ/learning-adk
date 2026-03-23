@@ -19,7 +19,7 @@
 │  actual events                          │
 │    │                                    │
 │    ▼                                    │
-│  Evaluator                          │
+│  Evaluator                              │
 │    │  TrajectoryEvaluator               │
 │    │  ResponseEvaluator                 │
 │    ▼                                    │
@@ -342,7 +342,7 @@ Testing Pyramid for Agents:
 | Agent's answer is factually correct | Eval with `response_match_score` |
 | Multi-turn conversation flow | Eval with multi-turn `conversation` |
 | Callback fires correctly | `pytest` unit test with `AsyncMock` |
-| Agent handles ambiguous input gracefully | Eval with `reference_answer` |
+| Agent handles ambiguous input gracefully | Eval with `response_match_score` |
 
 ### Java Comparison
 

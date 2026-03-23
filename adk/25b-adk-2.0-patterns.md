@@ -4,8 +4,7 @@
 
 *This file continues from [25-adk-2.0-preview.md](25-adk-2.0-preview.md), which covers overview and graph workflows.*
 
-> [!warning] Pre-release Software
-> ADK 2.0 is an **alpha release**. APIs, import paths, and behavior may change without notice between pre-release versions. Do not use in production. Install with `pip install google-adk --pre`.
+> **Warning:** ADK 2.0 is an **alpha release**. APIs, import paths, and behavior may change without notice between pre-release versions. Do not use in production. Install with `pip install google-adk --pre`.
 
 ---
 

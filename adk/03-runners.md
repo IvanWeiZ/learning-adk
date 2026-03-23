@@ -182,7 +182,7 @@ Provide via `App` (preferred). See [10-apps.md](10-apps.md) for `BasePlugin` int
 
 ```python
 app = App(root_agent=agent, plugins=[MyPlugin()])
-runner = app.create_runner(session_service=InMemorySessionService())
+runner = Runner(app=app, session_service=InMemorySessionService())
 ```
 
 ### Event Compaction

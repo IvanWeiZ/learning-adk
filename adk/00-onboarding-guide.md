@@ -164,7 +164,7 @@ What you write:                    What ADK handles:
 │  LlmAgent (primary)      │    │  Session (data model)           │
 │  LoopAgent               │◄──►│  InMemorySessionService         │
 │  ParallelAgent           │    │  DatabaseSessionService         │
-│  SequentialAgent         │    │  VertexAI SessionService        │
+│  SequentialAgent         │    │  VertexAiSessionService          │
 │  base_agent.py           │    │                                 │
 └──────────────┬───────────┘    └─────────────────────────────────┘
                │ run_async()

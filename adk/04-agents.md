@@ -124,13 +124,14 @@ ADK auto-selects the flow based on three conditions. `AutoFlow` extends `SingleF
 ```
 Which flow does LlmAgent use?
 │
-├─ disallow_transfer_to_parent = True?
-│   └─ AND disallow_transfer_to_peers = True?
+├─ disallow_transfer_to_parent = True?  (default: False)
+│   └─ AND disallow_transfer_to_peers = True?  (default: False)
 │       └─ AND sub_agents is empty?
 │           ├── Yes to ALL three ──► SingleFlow (pure tool-use loop, no routing)
 │           └── No to ANY ─────────► AutoFlow  (adds transfer_to_agent support)
 │
-└─ Default (no flags set, no sub_agents) ──► AutoFlow
+└─ Default (both flags False, no sub_agents) ──► AutoFlow
+   (because the flags default to False, the "ALL three True" condition is not met)
 ```
 
 ### LlmAgent Key Fields

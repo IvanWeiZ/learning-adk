@@ -158,7 +158,7 @@ runner = Runner(agent=my_agent, app_name="myapp",
                 session_service=DatabaseSessionService(db_url))
 
 # These can run concurrently without issues:
-asyncio.gather(
+await asyncio.gather(
     process_request(runner, user_id="u1", session_id="s1"),
     process_request(runner, user_id="u2", session_id="s2"),
 )

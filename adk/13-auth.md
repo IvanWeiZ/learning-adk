@@ -218,7 +218,7 @@ The detailed sequence for OAuth2 authorization code flow:
 
 ## Context Methods for Auth
 
-The `CallbackContext` (and its subclass used in tools) provides these auth methods. Tools receive this as `ToolContext` — the two are aliases (see [09-tools.md](09-tools.md)).
+The `CallbackContext` (and its alias used in tools, `ToolContext`) provides these auth methods. Both resolve to the same `Context` class (see [09-tools.md](09-tools.md)).
 
 ### request_credential
 
@@ -290,7 +290,7 @@ api_key_auth_config = AuthConfig(
 
 async def call_external_api(
     query: str,
-    ctx: CallbackContext,
+    ctx: ToolContext,
 ) -> dict[str, str]:
     """Calls an external API that requires an API key."""
     # Check if we already have a credential
@@ -352,7 +352,7 @@ calendar_auth_config = AuthConfig(
 )
 
 async def list_calendar_events(
-    ctx: CallbackContext,
+    ctx: ToolContext,
 ) -> dict[str, Any]:
     """Lists upcoming calendar events using OAuth2."""
     # Check if auth flow is complete

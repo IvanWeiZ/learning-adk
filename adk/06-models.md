@@ -152,13 +152,13 @@ The request object assembled by the flow before calling the model:
 
 ```python
 class LlmRequest:
-    model: str # model name to use
+    model: Optional[str] = None # model name to use
     contents: list[types.Content] # conversation history
     config: types.GenerateContentConfig # system_instruction, tools, temperature, safety, etc.
     tools_dict: dict[str, BaseTool] # name → BaseTool (internal routing map)
     cache_config: Optional[...] # context cache configuration (only when caching enabled)
     cache_metadata: Optional[...] # context cache metadata (only when caching enabled)
-    cacheable_contents_token_count: int # token count for cacheable contents
+    cacheable_contents_token_count: Optional[int] = None # token count for cacheable contents
     live_connect_config: Optional[...] # Live API connection config (Gemini Live only)
     previous_interaction_id: Optional[str] # for resumable invocations
 

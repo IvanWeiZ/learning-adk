@@ -148,11 +148,10 @@ async def version_migration_callback(tool, args, tool_context):
 
     if tool.name in migrations:
         new_name, transform_args = migrations[tool.name]
-        # find_tool: look up the tool by name from the agent's resolved tool list.
-        # Implement it by searching tool_context or maintaining a dict at setup time:
-        #   all_tools = {t.name: t for t in agent.tools}
-        #   new_tool = all_tools[new_name]
-        new_tool = find_tool(new_name)
+        # Look up the new tool by name from the agent's resolved tool list.
+        # Build this dict at setup time or inside the callback:
+        all_tools = {t.name: t for t in tool_context.agent.tools}
+        new_tool = all_tools[new_name]
         new_args = transform_args(args)
         # Execute new version, return its result (skips old tool)
         result = await new_tool.run_async(args=new_args, tool_context=tool_context)
@@ -426,6 +425,7 @@ root_agent = SequentialAgent(
 Four mechanisms are available: session state (via `output_key`), tool-based state writing, agent transfer, and `AgentTool`. Each differs in isolation, history sharing, and whether an extra LLM call is required.
 
 See [message-passing-patterns.md](message-passing-patterns.md) for full code examples and comparison table.
+
 ---
 
 ### Q5: Explain All State Scopes — temp, user, app — and Their Visibility
