@@ -9,7 +9,7 @@
 >
 > **Action:** Remove section; fold Maven/Gradle → pip/uv row into ADK-Specific section.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -18,7 +18,7 @@
 >
 > **Action:** Fix: `List` → `list`; `List.of()` → `tuple()` (immutable).
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -27,7 +27,7 @@
 >
 > **Action:** Replace with: "asyncio event loop (managed by runtime)." Add: "Never call `get_event_loop()` — just `await` or `asyncio.create_task()`."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -36,7 +36,7 @@
 >
 > **Action:** Reframe: "Spring Profiles (startup config)" → "No equivalent; closest is `app:` keys for shared state."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
@@ -45,7 +45,7 @@
 >
 > **Action:** Add: "In ADK subclasses (BaseAgent, BaseTool), override by matching signature—no annotation needed."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 
