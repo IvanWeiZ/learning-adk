@@ -28,21 +28,7 @@
 └──────────────────────────────────────────┘
 ```
 
-Agents define AI behavior — model, tools, system prompt, sub-agents — but hold no conversation state (that lives in `Session`). `BaseAgent` provides the abstract contract; `LlmAgent` (aliased as `Agent`) is the primary implementation that calls an LLM in a reason-act loop. Composition agents (`LoopAgent`, `ParallelAgent`, `SequentialAgent`) orchestrate sub-agents without calling an LLM themselves.
-
----
-
-## Class Hierarchy
-
-```
-BaseAgent (base_agent.py) — abstract, common contract
- ├── LlmAgent (llm_agent.py) — primary: calls an LLM in a loop
- ├── LoopAgent — runs sub-agents in a loop until done
- ├── ParallelAgent — runs sub-agents concurrently, merges results
- └── SequentialAgent — runs sub-agents one after another
-```
-
-`Agent` is a type alias for `LlmAgent`.
+Agents define AI behavior — model, tools, system prompt, sub-agents — but hold no conversation state (that lives in `Session`). `BaseAgent` provides the abstract contract; `LlmAgent` (aliased as `Agent`) is the primary implementation that calls an LLM in a reason-act loop. Composition agents (`LoopAgent`, `ParallelAgent`, `SequentialAgent`) orchestrate sub-agents without calling an LLM themselves. `Agent` is a type alias for `LlmAgent`.
 
 ---
 
@@ -133,7 +119,7 @@ async def _run_async_impl(ctx):
 
 ### Which Flow Does It Use?
 
-ADK auto-selects the flow based on three conditions:
+ADK auto-selects the flow based on three conditions. `AutoFlow` extends `SingleFlow` — it adds agent transfer/delegation on top of the basic reason-act loop.
 
 ```
 Which flow does LlmAgent use?
@@ -146,8 +132,6 @@ Which flow does LlmAgent use?
 │
 └─ Default (no flags set, no sub_agents) ──► AutoFlow
 ```
-
-`AutoFlow` extends `SingleFlow` — it adds agent transfer/delegation on top of the basic reason-act loop.
 
 ### LlmAgent Key Fields
 
@@ -173,8 +157,6 @@ generate_content_config: Optional[types.GenerateContentConfig] = None
 output_schema: Optional[SchemaType]
 # Forces structured JSON output. When set, agent CANNOT use tools (mutual exclusion).
 # SchemaType accepts: type[BaseModel], list[type[BaseModel]], list[primitive], dict, or Schema.
-# Want structured output AND tools? Use output_key to capture text, then parse it.
-# Or use a 2-agent pipeline: agent 1 uses tools, agent 2 formats with output_schema.
 
 output_key: Optional[str]
 # On final response, writes text to session.state[output_key].
@@ -267,7 +249,7 @@ class InvocationContext:
 
 Sub-agent calls create a child context via `model_copy()`. Branch and session are shared.
 
-### Agent Trees and Transfer
+### Agent Trees
 
 ```
 root_agent (LlmAgent)
@@ -275,11 +257,11 @@ root_agent (LlmAgent)
 └── write_agent (LlmAgent, no tools)
 ```
 
-Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_to_agent`.
+Agents compose via `sub_agents`. The LLM transfers control by calling `transfer_to_agent`, which triggers `EventActions.transfer_to_agent = 'search_agent'`.
 
-The LLM in `root_agent` can say "transfer to search_agent", which triggers `EventActions.transfer_to_agent = 'search_agent'`.
+---
 
-### How Agent Transfer Works
+## How Agent Transfer Works
 
 ```
 User: "Book me a flight to Tokyo"
@@ -374,43 +356,66 @@ ACROSS invocations (next user message):
     └── tool_context.actions.escalate = True → consumed by LoopAgent only
 ```
 
-### Branch in Events
-
-`branch` tracks which agent produced each event. This lets each agent see only its own lineage:
-
-```
-Event stream with branches:
-
- evt-001  author="user"          branch=None
- evt-002  author="router_agent"  branch=None           ← transfer_to_agent call
- evt-003  author="travel_agent"  branch=None           ← same branch (transfer doesn't change it)
- evt-004  author="travel_agent"  branch=None           ← tool call
- evt-005  author="travel_agent"  branch=None           ← final answer
-
-Note: branch stays None because transfer_to_agent does NOT set a new branch.
-ParallelAgent is the only agent type that creates new branches for isolation.
-```
-
 ---
 
 ## Examples
 
-### Minimal Multi-Agent Example
+### LlmAgent with Routing (Multi-Agent)
 
 ```python
 travel_agent = LlmAgent(name="travel_agent", model="gemini-2.5-flash",
-    instruction="You book flights.", tools=[search_flights])
+    instruction="You book flights. Search for options and present the best one.",
+    tools=[search_flights])
 
 weather_agent = LlmAgent(name="weather_agent", model="gemini-2.5-flash",
-    instruction="You report weather.", tools=[get_weather])
+    instruction="You report weather for any city.",
+    tools=[get_weather])
 
 router = LlmAgent(name="router", model="gemini-2.5-flash",
-    instruction="Route to the right specialist.",
+    instruction="Route travel questions to travel_agent, weather questions to weather_agent.",
     sub_agents=[travel_agent, weather_agent])
-# AutoFlow is selected automatically because sub_agents is non-empty
+# AutoFlow is selected automatically because sub_agents is non-empty.
+# The router LLM sees sub-agents as transfer targets and calls transfer_to_agent() to route.
 ```
 
-The router LLM sees sub-agents as transfer targets (injected by AutoFlow) and calls `transfer_to_agent()` to route.
+### SequentialAgent — Ordered Pipeline
+
+```python
+researcher = LlmAgent(name="researcher", model="gemini-2.5-flash",
+    instruction="Research the topic. Write findings to state['research'].",
+    output_key="research", tools=[search_web])
+
+writer = LlmAgent(name="writer", model="gemini-2.5-flash",
+    instruction="Write an article using the research in state['research'].",
+    output_key="article")
+
+pipeline = SequentialAgent(name="research_pipeline", sub_agents=[researcher, writer])
+# Runs researcher first, then writer. Writer reads researcher's output via state.
+```
+
+### ParallelAgent — Concurrent Tasks
+
+```python
+summarizer_a = LlmAgent(name="summarizer_a", model="gemini-2.5-flash",
+    instruction="Summarize document A.", output_key="summary_a")
+
+summarizer_b = LlmAgent(name="summarizer_b", model="gemini-2.5-flash",
+    instruction="Summarize document B.", output_key="summary_b")
+
+parallel = ParallelAgent(name="parallel_summarizers", sub_agents=[summarizer_a, summarizer_b])
+# Runs both summarizers concurrently. Each gets its own branch for event isolation.
+```
+
+### LoopAgent — Repeat Until Done
+
+```python
+coder = LlmAgent(name="coder", model="gemini-2.5-flash",
+    instruction="Write code for the task. Run tests. If tests pass, call escalate().",
+    tools=[write_file, run_tests])
+
+loop = LoopAgent(name="code_loop", sub_agents=[coder], max_iterations=5)
+# Repeats coder until it calls escalate() or max_iterations is reached.
+```
 
 ### 3-Layer Agent Tree with Transfer Back
 
@@ -510,7 +515,7 @@ one_way_agent = LlmAgent(name="one_way",
 ## Gotchas
 
 - Agent names must be valid Python identifiers and unique within the tree; `"user"` is reserved.
-- `output_schema` and `tools` are mutually exclusive — when `output_schema` is set, the agent cannot use tools. Workaround: use `output_key` to capture text then parse, or use a 2-agent pipeline.
+- `output_schema` and `tools` are mutually exclusive — when `output_schema` is set, the agent cannot use tools. Workaround: use `output_key` to capture text then parse, or use a 2-agent pipeline (agent 1 uses tools, agent 2 formats with `output_schema`).
 - `@final` on `run_async` means you must override `_run_async_impl`, never `run_async` itself.
 - `model` defaults to `''` (empty string); resolution walks up the parent chain and falls back to `DEFAULT_MODEL` (`'gemini-2.5-flash'`) only if no ancestor sets a model.
 - `include_contents='none'` makes the agent stateless — it receives no conversation history.
