@@ -12,13 +12,13 @@ LlmAgent(planner=...)
 ▼
 BaseLlmFlow.run_async(ctx)
 │
-├─ PREPROCESS ─► _NlPlanningRequestProcessor
+├─ PREPROCESS ─► _NlPlanningRequestProcessor (internal processor)
 │ ├─ BuiltInPlanner → flow processor calls apply_thinking_config() directly
 │ └─ PlanReActPlanner → calls build_planning_instruction(), appends to system prompt
 │
 ├─ CALL MODEL
 │
-└─ POSTPROCESS ─► _NlPlanningResponse
+└─ POSTPROCESS ─► _NlPlanningResponse (internal processor)
   ├─ BuiltInPlanner → no-op (model handles thinking natively)
   └─ PlanReActPlanner → splits response into thought / action / final_answer
 ```
@@ -93,17 +93,13 @@ class BuiltInPlanner(BasePlanner):
         self.thinking_config = thinking_config
 ```
 
-Key `ThinkingConfig` fields:
-
-| Field | Type | Description |
-|---|---|---|
-| `thinking_budget` | `int` | Maximum number of thinking tokens the model can use |
+`ThinkingConfig` has one key field: `thinking_budget: int` — the maximum number of thinking tokens the model can use.
 
 Behavior:
 
 - **Request phase:**
   - The flow processor (`_NlPlanningRequestProcessor`) calls `planner.apply_thinking_config(llm_request)` directly.
-  - It does **not** call `build_planning_instruction()` — that method returns `None` for `BuiltInPlanner`.
+  - It does **not** call `build_planning_instruction()` — that method returns `None` for `BuiltInPlanner`. (BuiltInPlanner skips instruction injection — it configures the model directly via `apply_thinking_config` instead.)
   - `apply_thinking_config` sets `llm_request.config.thinking_config`. If a `thinking_config` was already set in `generate_content_config`, the planner's config overwrites it (with a `debug`-level log).
 - **Response phase:** Returns `None` (no post-processing). The model's thinking output is handled natively by the Gemini API.
 - **Model requirement:** Only works with models that support thinking mode. An error is returned if used with unsupported models.
@@ -146,25 +142,7 @@ Behavior:
 
 ### Planner Integration with Flows
 
-```
-BaseLlmFlow.run_async(ctx)
-│
-├─ PREPROCESS
-│ ├─ ... (instructions, contents, functions)
-│ └─ _NlPlanningRequestProcessor
-│     ├─ BuiltInPlanner? → calls apply_thinking_config() directly (NOT build_planning_instruction)
-│     └─ PlanReActPlanner? → calls build_planning_instruction(), appends planning system instruction
-│
-├─ CALL MODEL
-│
-└─ POSTPROCESS
-  ├─ _NlPlanningResponse
-  │ ├─ BuiltInPlanner? → no-op (model handles thinking internally)
-  │ └─ PlanReActPlanner? → split response into thought/action/final_answer parts
-  └─ ... (function calls, agent transfer)
-```
-
-Planners are invoked by the `_NlPlanningRequestProcessor` and `_NlPlanningResponse` processors inside the LLM flow pipeline (see [05-flows.md](05-flows.md)). The planner is read from `agent.planner` on the current `InvocationContext`. If the field exists but is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()`.
+Planners are invoked by internal processors (`_NlPlanningRequestProcessor` and `_NlPlanningResponse`) inside the LLM flow pipeline (see [05-flows.md](05-flows.md) and [23-advanced-internals.md](23-advanced-internals.md)). The planner is read from `agent.planner` on the current `InvocationContext`. If the field exists but is not a `BasePlanner` instance, ADK falls back to a default `PlanReActPlanner()`.
 
 ### What the Model Output Looks Like (PlanReActPlanner)
 
@@ -189,28 +167,7 @@ Here are the Q1 2026 sales results: ...
 
 Everything before `/*FINAL_ANSWER*/` is thought (hidden). Only the final answer reaches the user.
 
-```
-What the model outputs vs what the user sees:
-
-RAW MODEL OUTPUT:
-┌──────────────────────────────────────────────────────┐
-│ /*PLANNING*/                                         │ ← thought=True
-│ I need to check the weather first, then book a hotel │ (hidden from user)
-│ /*PLANNING*/                                         │
-│                                                      │
-│ /*ACTION*/                                           │ ← function call
-│ get_weather(city="Tokyo")                            │ (executed by ADK)
-│ /*ACTION*/                                           │
-│                                                      │
-│ /*FINAL_ANSWER*/                                     │ ← thought=False
-│ The weather in Tokyo is 18°C and sunny!              │ (shown to user)
-│ /*FINAL_ANSWER*/                                     │
-└──────────────────────────────────────────────────────┘
-
-WHAT THE USER SEES:
- "The weather in Tokyo is 18°C and sunny!"
- (everything before FINAL_ANSWER is internal reasoning)
-```
+Everything before `/*FINAL_ANSWER*/` is internal reasoning (marked as `thought=True`). Only the final answer (marked `thought=False`) reaches the user.
 
 ### When to Use Which
 
@@ -258,7 +215,7 @@ agent = Agent(
     instruction="You are a research assistant that thoroughly analyzes questions.",
     tools=[search_tool, summarize_tool],
     planner=BuiltInPlanner(
-    thinking_config=types.ThinkingConfig(thinking_budget=2048)
+        thinking_config=types.ThinkingConfig(thinking_budget=2048)
     ),
 )
 ```
