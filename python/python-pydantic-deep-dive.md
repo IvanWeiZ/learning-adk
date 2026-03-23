@@ -356,7 +356,7 @@ except Exception as e:
     print(f"Validation failed: {e}")
 ```
 
-##### Validation Pipeline — Flowchart
+#### Validation Pipeline — Flowchart
 
 ```
 Raw Input Value
@@ -387,7 +387,7 @@ handler(v) to invoke core coercion + after validators, with
 full control over pre- and post-processing.
 ```
 
-##### Validation Modes: before, after, wrap
+#### Validation Modes: before, after, wrap
 
 ```python
 from pydantic import field_validator

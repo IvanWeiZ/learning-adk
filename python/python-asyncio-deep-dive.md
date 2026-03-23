@@ -365,6 +365,7 @@ async def handle_request(query: str):
 # ❌ WRONG: task is created but the reference is immediately dropped
 async def handle_request_bad(query: str):
     asyncio.create_task(log_event({"query": query}))
+    # Without keeping a reference, the task may be garbage-collected before completion.
     # If the task raises, the exception is silently lost.
     # Python 3.12+ warns about this at runtime.
 ```
