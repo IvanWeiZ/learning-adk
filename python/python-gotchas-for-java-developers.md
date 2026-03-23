@@ -24,6 +24,9 @@ Java Developer Instinct              Python Reality
 
 ---
 
+---
+### Group A — Language Semantics (Gotchas 1–6)
+
 ## 1. The Mutable Default Argument Trap
 
 The single most common Python bug for Java developers.
@@ -77,15 +80,16 @@ c["tools"].append("execute")
 print(a["tools"])             # unchanged
 ```
 
-**Java equivalent:** Like everything is a reference type and `clone()` is shallow by default.
+**Java equivalent:** In Java, primitive types (`int`, `boolean`) have value semantics — copying a primitive creates an independent copy. Python has no primitive types; everything is a reference, even small integers. There is no Python equivalent of Java's `int[]` with element-level value semantics. `clone()` being shallow is the closest analogy, but Python goes further: *all* types behave this way, with no escape hatch.
 
 **ADK context:** Session `state` is a dict. If you store a list in state and pass it around, mutations propagate. Always copy before modifying:
 
 ```python
-# In a tool function
-tools_list = list(ctx.state["available_tools"])  # copy!
+# In a tool function — simplified example; real ADK uses session.state
+session_state = tool_context.invocation_context.session.state
+tools_list = list(session_state["available_tools"])  # copy!
 tools_list.append("new_tool")
-ctx.state["available_tools"] = tools_list
+session_state["available_tools"] = tools_list
 ```
 
 ---
@@ -152,7 +156,7 @@ for i in range(3):
 [cb() for cb in callbacks]  # [0, 1, 2]
 ```
 
-**ADK context:** When building tool lists or callbacks in loops, use the default argument trick or `functools.partial`.
+**ADK context:** When building tool lists or callbacks in loops, use the default argument trick or `functools.partial`. The `partial()` approach is the production-preferred alternative: `functools.partial(some_func, captured_value)` is more explicit and readable than a `lambda i=i: ...` default-arg trick.
 
 ---
 
@@ -242,6 +246,9 @@ def handle(self, text: str | None = None, count: int | None = None):
 ```
 
 ---
+
+---
+### Group B — Runtime Surprises (Gotchas 7–9)
 
 ## 7. String Gotchas
 
@@ -354,7 +361,21 @@ async def fetch_all():
 
 **ADK context:** ADK is async-first. All concurrency is `asyncio`, not threads. `ParallelAgent` runs sub-agents concurrently via `asyncio.gather`, not threads. Never use `time.sleep()` — use `await asyncio.sleep()`.
 
+If you must call a blocking (synchronous) function from inside an async ADK tool, use `asyncio.to_thread()` to avoid blocking the event loop:
+
+```python
+import asyncio
+
+async def my_tool(query: str) -> str:
+    # blocking_db_call() would block the entire event loop — use to_thread instead
+    result = await asyncio.to_thread(blocking_db_call, query)
+    return result
+```
+
 ---
+
+---
+### Group C — Object System & Modules (Gotchas 10–13)
 
 ## 10. Class System Surprises
 
@@ -489,6 +510,15 @@ from tools import MyTool      # WRONG if running as script — ModuleNotFoundErr
 print("Config loaded!")       # prints every time config is imported
 API_KEY = os.getenv("KEY")    # evaluated at import time, not call time
 ```
+
+> **ADK test environment note:** Importing ADK modules at the top of a file (e.g., `from google.adk.agents import LlmAgent`) will fail in any environment where ADK is not installed — including many CI runners and lightweight test containers. Use deferred imports inside functions, or guard with `TYPE_CHECKING` for type hints only:
+>
+> ```python
+> from __future__ import annotations
+> from typing import TYPE_CHECKING
+> if TYPE_CHECKING:
+>     from google.adk.agents import LlmAgent  # only for type checking, not runtime
+> ```
 
 ---
 

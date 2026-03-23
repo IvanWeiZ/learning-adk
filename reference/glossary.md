@@ -1,6 +1,6 @@
 # ADK Glossary
 
-Quick-reference for ADK terminology. Terms link to the relevant deep-dive documentation.
+Quick-reference for ADK terminology. Terms link to the relevant deep-dive documentation. Terms added as documentation grows; letters without entries are omitted.
 
 ---
 
@@ -38,9 +38,13 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 ## C
 
-- **Callback** — Hook functions on `LlmAgent` that intercept processing at defined points. Six slots: `before_agent_callback` / `after_agent_callback`, `before_model_callback` / `after_model_callback`, `before_tool_callback` / `after_tool_callback`. Error variants: `on_model_error_callback`, `on_tool_error_callback`. → [04-agents.md](../adk/04-agents.md), [21-advanced-patterns.md](../adk/21-advanced-patterns.md)
+- **Callback** — Hook functions on `LlmAgent` that intercept processing at defined points. Six slots: `before_agent_callback` / `after_agent_callback`, `before_model_callback` / `after_model_callback`, `before_tool_callback` / `after_tool_callback`. Error variants: `on_model_error_callback`, `on_tool_error_callback`. Use to intercept execution without stopping (log, validate, modify state). → [04-agents.md](../adk/04-agents.md), [21-advanced-patterns.md](../adk/21-advanced-patterns.md)
+
+- **CallbackContext** — See `ToolContext`. Both names refer to the same context alias. → [09-tools.md](../adk/09-tools.md)
 
 - **Compaction** — Automatic summarization of long conversation histories to stay within model context limits. Configured on `App` or at the agent level. → [10-apps.md](../adk/10-apps.md)
+
+- **Context** — See `InvocationContext`. Shorthand alias used in some ADK examples. → [01-request-lifecycle.md](../adk/01-request-lifecycle.md)
 
 - **Content** — A message unit containing one or more `Part` objects (text, function calls, function responses). The building block of conversation history stored in sessions. → [07-events.md](../adk/07-events.md)
 
@@ -52,15 +56,13 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 ## E
 
-- **Escalate** — A special `EventActions` flag that causes the current agent to yield control back to its parent agent, signaling it cannot handle the request. → [07-events.md](../adk/07-events.md), [04-agents.md](../adk/04-agents.md)
+- **Escalate** — A special `EventActions` flag that causes the current agent to yield control back to its parent agent, signaling it cannot handle the request. → contrast: Transfer → [07-events.md](../adk/07-events.md), [04-agents.md](../adk/04-agents.md)
 
-- **Event** — The universal data unit flowing through every ADK layer. Contains `content`, `actions`, author info, and metadata. Every agent call yields a stream of events. → [07-events.md](../adk/07-events.md)
+- **Event** — The universal data unit flowing through every ADK layer. Fields: `author`, `branch`, `content`, `actions`, `id`. Every agent call yields a stream of events. → [07-events.md](../adk/07-events.md)
 
 - **EventActions** — A structured object carried by an `Event` that declares side effects: state mutations (`state_delta`), agent transfers (`transfer_to_agent`), escalations, and artifact operations. → [07-events.md](../adk/07-events.md)
 
 ## F
-
-- **Flow** — See `BaseLlmFlow`. The two built-in flows are `SingleFlow` (one model call, no tool loop) and `AutoFlow` (iterative reason-act loop). → [05-flows.md](../adk/05-flows.md)
 
 - **FunctionDeclaration** — The schema object sent to the LLM describing a tool's name, description, and parameter types. ADK auto-generates these from Python function signatures. → [09-tools.md](../adk/09-tools.md), [06-models.md](../adk/06-models.md)
 
@@ -82,7 +84,7 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **LlmRequest** — The structured request object built by request processors and sent to the model adapter. Contains contents, system instructions, tool declarations, and config. → [05-flows.md](../adk/05-flows.md), [06-models.md](../adk/06-models.md)
 
-- **LlmResponse** — The structured response from the model adapter, containing the model's content (text, function calls) and usage metadata. → [05-flows.md](../adk/05-flows.md), [06-models.md](../adk/06-models.md)
+- **LlmResponse** — The structured response from the model adapter, containing the model's content (text, function calls) and token usage metadata (input/output counts). → [05-flows.md](../adk/05-flows.md), [06-models.md](../adk/06-models.md)
 
 - **LLMRegistry** — A global registry that maps model name strings (e.g., `"gemini-2.0-flash"`) to the appropriate `BaseLlm` adapter class. → [06-models.md](../adk/06-models.md)
 
@@ -102,7 +104,7 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **Output key** — A state key (e.g., `state["output"]`) where an agent's final response is stored. Useful in `SequentialAgent` pipelines for passing results between sub-agents. → [04-agents.md](../adk/04-agents.md), [08-sessions.md](../adk/08-sessions.md)
 
-- **Output schema** — A Pydantic model or JSON schema that constrains the LLM's final response to a structured format. Set via `LlmAgent.output_schema`. → [04-agents.md](../adk/04-agents.md), [python-pydantic-deep-dive.md](../python/python-pydantic-deep-dive.md)
+- **Output schema** — A Pydantic model or JSON schema that constrains the LLM's final response to a structured format. Set via `LlmAgent.output_schema`. Example: `output_schema=MyModel.model_json_schema()` or a JSON schema dict. → different from Output key (processor-specific). → [04-agents.md](../adk/04-agents.md), [python-pydantic-deep-dive.md](../python/python-pydantic-deep-dive.md)
 
 ## P
 
@@ -110,13 +112,11 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **Planner** — An optional component that generates a step-by-step plan before the agent begins acting. Supports "thinking" mode and plan-then-act workflows. → [14-planners.md](../adk/14-planners.md)
 
-- **Plugin** — See `BasePlugin`. Plugins attach to `App` and receive lifecycle hooks for every invocation. → [10-apps.md](../adk/10-apps.md), [23-advanced-internals.md](../adk/23-advanced-internals.md)
-
 - **Processor** — A pipeline stage inside `BaseLlmFlow`. Request processors build the `LlmRequest`; response processors handle the `LlmResponse`. Examples: `InstructionsProcessor`, `FunctionsProcessor`, `AgentTransferProcessor`. → [05-flows.md](../adk/05-flows.md), [23-advanced-internals.md](../adk/23-advanced-internals.md)
 
 ## R
 
-- **ReadonlyContext** — A restricted view of `InvocationContext` passed to callbacks. Provides read access to session state and agent info but prevents direct mutations. → [04-agents.md](../adk/04-agents.md), [09-tools.md](../adk/09-tools.md)
+- **ReadonlyContext** — A restricted view of `InvocationContext` passed to callbacks. Provides read access to session state and agent info but prevents direct mutations. State writes go via `EventActions.state_delta`, not direct assignment. → [04-agents.md](../adk/04-agents.md), [09-tools.md](../adk/09-tools.md)
 
 - **Runner** — The stateless orchestrator that drives an invocation: fetches/creates a session, delegates to the root agent, collects events, and persists the updated session. Entry point for all ADK interactions. → [03-runners.md](../adk/03-runners.md), [01-request-lifecycle.md](../adk/01-request-lifecycle.md)
 
@@ -126,21 +126,17 @@ Quick-reference for ADK terminology. Terms link to the relevant deep-dive docume
 
 - **Session** — The conversation container holding message history (`events`), state dictionary, and metadata (user ID, session ID). Managed by a `SessionService`. → [08-sessions.md](../adk/08-sessions.md), [18-session-lifecycle.md](../adk/18-session-lifecycle.md)
 
-- **SessionService** — See `BaseSessionService`. The persistence layer for sessions. → [08-sessions.md](../adk/08-sessions.md)
-
 - **SingleFlow** — A flow that makes exactly one model call with no tool execution loop. Useful for classification, summarization, or structured extraction tasks. → [05-flows.md](../adk/05-flows.md)
 
-- **State (scoped)** — Key-value data attached to a session. Three scopes: **session state** (`state["key"]`) — current session only; **user state** (`state["user:key"]`) — shared across sessions for a user; **app state** (`state["app:key"]`) — shared across all sessions. → [08-sessions.md](../adk/08-sessions.md), [24-faq.md](../adk/24-faq.md)
+- **State (scoped)** — Key-value data attached to a session. Three scopes: **session state** (`state["key"]`) — current session only; **user state** (`state["user:key"]`) — shared across sessions for a user; **app state** (`state["app:key"]`) — shared across all sessions. Example: `ctx.session.state["user:preferences"]`. → [08-sessions.md](../adk/08-sessions.md), [24-faq.md](../adk/24-faq.md)
 
-- **StateDelta** — A dictionary of state changes carried in `EventActions`. Applied to the session when the event is committed. Enables event-sourced state management. → [07-events.md](../adk/07-events.md), [08-sessions.md](../adk/08-sessions.md)
+- **StateDelta** — A dictionary of state changes carried in `EventActions`. Applied to the session when the event is committed. Enables event-sourced state management. → see: State (scoped) for scope prefix rules. → [07-events.md](../adk/07-events.md), [08-sessions.md](../adk/08-sessions.md)
 
 ## T
 
 - **Tool** — Any callable capability exposed to an LLM agent. ADK's tool hierarchy: `BaseTool` > `FunctionTool`, `AgentTool`, `LongRunningFunctionTool`. Tools are declared on `LlmAgent` or provided by a `BaseToolset`. → [09-tools.md](../adk/09-tools.md), [02-when-to-build-what.md](../adk/02-when-to-build-what.md)
 
 - **ToolContext** — The context object passed to tool functions at execution time. Extends `ReadonlyContext` with methods for state mutation, artifact access, and requesting auth credentials. → [09-tools.md](../adk/09-tools.md)
-
-- **Toolset** — See `BaseToolset`. A dynamic collection of tools resolved at invocation time. → [09-tools.md](../adk/09-tools.md)
 
 - **Transfer (agent transfer)** — When one agent hands off the conversation to a sibling agent by setting `EventActions.transfer_to_agent`. The runner re-routes subsequent processing to the target agent. → [07-events.md](../adk/07-events.md), [04-agents.md](../adk/04-agents.md), [21-advanced-patterns.md](../adk/21-advanced-patterns.md)
 

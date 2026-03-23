@@ -609,6 +609,7 @@ def mock_llm():
 def test_agent_uses_session(mock_session):
     assert mock_session.id == "test-session-123"
 
+@pytest.mark.asyncio  # required unless asyncio_mode = "auto" in pytest.ini
 async def test_llm_call(mock_llm):
     result = await mock_llm.generate_content_async("hello")
     assert result == "LLM response"

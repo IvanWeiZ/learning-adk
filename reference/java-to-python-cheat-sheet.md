@@ -33,7 +33,7 @@ See also: [python-for-adk-learning-plan.md](../python/python-for-adk-learning-pl
 | `class Bar implements IFoo` | `class Bar(IFoo):` | No `implements`; just inherit from the ABC. |
 | `this.field` | `self.field` | `self` is explicit in all instance methods. |
 | `public Foo(int x) { }` | `def __init__(self, x: int):` | Constructor is always `__init__`. |
-| `@Override` | `@override` (3.12+) | Optional; from `typing`. ADK uses duck typing heavily. |
+| `@Override` | `@override` (3.12+) | Optional; from `typing`. ADK uses duck typing heavily. In ADK subclasses (`BaseAgent`, `BaseTool`), override by matching the method signature — no annotation needed. |
 | `final class Foo` | `@final` decorator | From `typing`; advisory, not enforced at runtime. |
 | `static void bar()` | `@staticmethod` | Or `@classmethod` if you need access to the class. |
 | `Foo.class` | `Foo` or `type(instance)` | Classes are first-class objects in Python. |
@@ -67,7 +67,7 @@ See also: [python-for-adk-learning-plan.md](../python/python-for-adk-learning-pl
 | `new ArrayList<>()` | `[]` or `list()` | Lists are the default mutable sequence. |
 | `new HashMap<>()` | `{}` or `dict()` | Dict literals use `{k: v}`. |
 | `new HashSet<>()` | `set()` or `{a, b}` | `{}` alone creates a dict, not a set. |
-| `List.of(1, 2, 3)` | `(1, 2, 3)` (tuple) | Tuples are immutable. For immutable list: `tuple(my_list)`. |
+| `List.of(1, 2, 3)` | `(1, 2, 3)` (tuple) | `List.of()` is an immutable list; closest Python equivalent is a tuple. For a mutable list: `[1, 2, 3]`. |
 | `list.add(x)` | `list.append(x)` | |
 | `list.get(i)` | `list[i]` | Supports negative indexing: `list[-1]` is last element. |
 | `map.get(key)` | `d[key]` or `d.get(key)` | `.get()` returns `None` instead of raising `KeyError`. |
@@ -99,7 +99,7 @@ See also: [python-for-adk-learning-plan.md](../python/python-for-adk-learning-pl
 | Java                        | Python                        | Notes                                                                            |
 | --------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
 | `CompletableFuture<T>`      | `asyncio.Task` / `await`      | ADK is async-first. → [asyncio deep dive](../python/python-asyncio-deep-dive.md) |
-| `ExecutorService`           | `asyncio.get_event_loop()`    | Single-threaded event loop; no thread pool needed for I/O.                       |
+| `ExecutorService`           | asyncio event loop (managed by runtime) | No thread pool needed for I/O. Never call `get_event_loop()` — just `await` or `asyncio.create_task()`. |
 | `Future.get()`              | `await coroutine`             | Never block on a coroutine; always `await`.                                      |
 | `CompletableFuture.allOf()` | `asyncio.gather()`            | Run multiple coroutines concurrently.                                            |
 | `synchronized`              | `asyncio.Lock()`              | For async code. `threading.Lock` for threaded code (rare in ADK).                |
@@ -130,22 +130,6 @@ See [17-concurrency.md](../adk/17-concurrency.md) for ADK-specific concurrency p
 
 See [22-testing.md](../adk/22-testing.md) for ADK-specific testing with `MockModel`.
 
-## Package / Module System
-
-| Java | Python | Notes |
-|---|---|---|
-| `package com.foo.bar` | Directory + `__init__.py` | Each directory with `__init__.py` is a package. |
-| `import com.foo.Bar` | `from foo import Bar` | Or `import foo.bar`. |
-| `import static` | `from module import func` | Same syntax as regular import. |
-| `*` wildcard import | `from module import *` | Discouraged; use explicit imports. |
-| Maven / Gradle | `pip` / `uv` / `poetry` | `uv` is the modern fast alternative. |
-| `pom.xml` / `build.gradle` | `pyproject.toml` | Single config file for dependencies, build, and tool settings. |
-| JAR | wheel (`.whl`) / sdist | `pip install .` builds and installs. |
-| `public` class per file | No restriction | Multiple classes per file is normal and encouraged. |
-| `module-info.java` (JPMS) | `__init__.py` exports | Control public API via `__all__` list. |
-| `mvn test` | `pytest` | Or `python -m pytest` for module invocation. |
-| `src/main/java` / `src/test/java` | `src/` + `tests/` | Flat structure is more common in Python. |
-
 ## ADK-Specific Mappings
 
 | Java Concept | ADK Python Equivalent | Notes |
@@ -158,7 +142,7 @@ See [22-testing.md](../adk/22-testing.md) for ADK-specific testing with `MockMod
 | `ApplicationEvent` | `Event` + `EventActions` | Side effects are data, not method calls. → [07-events.md](../adk/07-events.md) |
 | `HttpSession` | `Session` + `SessionService` | Session state is a plain dict with scoped keys. → [08-sessions.md](../adk/08-sessions.md) |
 | Interceptor / Filter | Callbacks (`before_*` / `after_*`) | Six hook points on `LlmAgent`. → [04-agents.md](../adk/04-agents.md) |
-| Spring Profiles | State scoping (`session:` / `user:` / `app:`) | Different state scopes replace environment-based config. → [08-sessions.md](../adk/08-sessions.md) |
+| Spring Profiles (startup config) | No equivalent; closest is `app:` keys for shared state | Spring Profiles are startup-time config; ADK state scoping is runtime visibility — they solve different problems. → [08-sessions.md](../adk/08-sessions.md) |
 | `@Async` + `CompletableFuture` | `async def` + `await` | Everything in ADK is async. → [asyncio deep dive](../python/python-asyncio-deep-dive.md) |
 | `@Scheduled` | `LoopAgent` | Iterative execution until a stopping condition. → [04-agents.md](../adk/04-agents.md) |
 | `@Transactional` | `EventActions.state_delta` | State changes are committed atomically with the event. → [07-events.md](../adk/07-events.md) |

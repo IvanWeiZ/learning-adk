@@ -6,7 +6,7 @@
 
 ## Discriminated Unions
 
-This is critical for ADK, which uses unions for different event types, tool types, etc. Discriminated unions tell Pydantic which model to use based on a specific field.
+This is critical for ADK, which uses unions for different event types, etc. Discriminated unions tell Pydantic which model to use based on a specific field.
 
 #### Basic Discriminated Union
 
@@ -72,9 +72,11 @@ processor2 = ShapeProcessor(
 print(type(processor2.event))  # <class '__main__.TriangleEvent'>
 ```
 
-#### ADK Pattern: Tool Union
+#### Hypothetical Pattern: Discriminated Tool Union
 
-How ADK likely defines different tool types:
+> **Note:** The following is a hypothetical example showing how you *could* define a discriminated tool union in your own ADK project. ADK does not internally use this exact pattern — the actual `BaseTool` class hierarchy differs. Do not treat this as documentation of ADK internals.
+
+How you might define different tool types in an ADK-style project:
 
 ```python
 from typing import Annotated, Union, Literal
@@ -660,7 +662,9 @@ Create custom types that Pydantic validates correctly.
 
 #### Using __get_pydantic_core_schema__
 
-For custom validation of non-standard types:
+> **Prefer `PlainValidator` (shown below)** for most custom type validation. `__get_pydantic_core_schema__` is a low-level hook rarely needed in ADK projects — it exposes Pydantic's internal validation core directly. The `Annotated + PlainValidator` pattern is the public API and covers the practical use case.
+
+For custom validation of non-standard types (advanced use only):
 
 ```python
 from pydantic import BaseModel
@@ -721,7 +725,9 @@ print(contact.phone)  # "(555) 012-3456"
 
 #### model_construct() - Skip Validation
 
-For performance-critical code where you know data is valid:
+> **Do not use on data from LLMs, APIs, or user input — bypasses all validation.** `model_construct()` is only safe when you control the data source and have already verified correctness. Using it on unverified external data creates security and correctness bugs that are hard to detect.
+
+For performance-critical code where you **know** the data is already valid (e.g., data loaded from your own trusted database):
 
 ```python
 from pydantic import BaseModel
@@ -1414,5 +1420,15 @@ immutable.age = 31  # Error: frozen model
 - Tool definitions generate JSON schemas automatically
 - Sessions are immutable copies of each other
 - Validation is declarative, not imperative
+
+| Pydantic Pattern | ADK Usage |
+|---|---|
+| `BaseModel` subclass | `Event`, `Session`, `EventActions`, `GenerateContentConfig` |
+| `Field(default_factory=...)` | Mutable defaults in ADK data models |
+| Discriminated union | Event type routing by `event_type` discriminator |
+| `model_copy(update={...})` | `InvocationContext.create_child_context()` |
+| `model_json_schema()` | Auto-generated tool parameter schemas from type hints |
+| `ConfigDict(frozen=True)` | Immutable config objects passed to agents |
+| `model_construct()` | Trusted internal data only — never LLM/API input |
 
 ---

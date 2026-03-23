@@ -4,28 +4,25 @@
 
 ## At a Glance
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              Python for ADK — 2-Week Learning Path              │
-│                                                                 │
-│  Week 1: Foundations                                            │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐    │
-│  │ D1  │ │ D2  │ │ D3  │ │ D4  │ │ D5  │ │ D6  │ │ D7  │    │
-│  │Type │ │Pyd. │ │Pyd. │ │Gen. │ │Async│ │Async│ │ABC/ │    │
-│  │Hints│ │Base │ │Adv. │ │yield│ │io   │ │Gen. │ │Proto│    │
-│  └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘    │
-│     │       │       │       │       │       │       │          │
-│  Week 2: Advanced Patterns & ADK-Specific                      │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐    │
-│  │ D8  │ │ D9  │ │ D10 │ │ D11 │ │ D12 │ │ D13 │ │ D14 │    │
-│  │Deco.│ │Ctx  │ │Dict/│ │Mod. │ │Error│ │Test │ │Cap- │    │
-│  │     │ │Mgr  │ │Kwarg│ │Sys  │ │Hand.│ │Async│ │stone│    │
-│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘    │
-│                                                                 │
-│  For: Experienced Java developer with basic Python knowledge    │
-│  Goal: Master Python features needed for production ADK agents  │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Week 1 — Foundations:**
+
+1. Type hints and the `typing` module
+2. Pydantic BaseModel (basics)
+3. Pydantic BaseModel (advanced)
+4. Generators and `yield`
+5. asyncio fundamentals
+6. Async generators
+7. ABCs and Protocols
+
+**Week 2 — Advanced Patterns & ADK-Specific:**
+
+8. Decorators and first-class functions
+9. Context managers and resource management
+10. Dict/kwargs patterns and data manipulation
+11. Module system
+12. Error handling
+13. Testing async code
+14. Capstone project (multi-session)
 
 A focused 2-week curriculum that bridges your Java expertise with the Python patterns ADK relies on. Each day covers one or two tightly scoped topics with ADK connections, Java comparisons, and hands-on practice.
 
@@ -88,12 +85,14 @@ Think of Pydantic as Lombok `@Data` + Jackson + Bean Validation all in one. You 
 **Practice:**
 Model an ADK-like `Event` class:
 ```python
+from pydantic import BaseModel, Field
+
 class Event(BaseModel):
     id: str
     author: str
     content: str | None = None
     timestamp: datetime
-    actions: EventActions = EventActions()
+    actions: EventActions = Field(default_factory=EventActions)
     branch: str | None = None
 ```
 Then practice `model_copy(update={"author": "new_agent"})`.
@@ -248,7 +247,7 @@ class FunctionTool(BaseTool):
 #### Day 8: Decorators & First-Class Functions
 
 **Why ADK needs this:**
-ADK's callback system and tool registration rely on passing functions as arguments and using decorators. `@tool`, callback registration, and plugin hooks all use these patterns.
+ADK's callback system and tool registration rely on passing functions as arguments and using decorators. Tool registration patterns (ADK uses the `FunctionTool()` constructor, not a `@tool` decorator), callback registration, and plugin hooks all use these patterns.
 
 **Java to Python:**
 Java's `@FunctionalInterface` and lambdas are limited compared to Python. In Python, functions are truly first-class objects — you can assign them to variables, pass them as arguments, return them from functions, and modify them with decorators.
@@ -476,7 +475,7 @@ Integrate everything into one working project that mirrors ADK's architecture.
 8. **Error handling & logging** throughout
 9. **Tests** for every component
 
-This should be ~300-500 lines of Python and exercises every concept from the previous 13 days.
+This is a **multi-session project** (~300-500 lines total), not a single-day task. Work through it over multiple sessions, completing one or two components per sitting.
 
 ## ADK in Practice
 
@@ -508,27 +507,9 @@ The learning plan maps directly to ADK usage:
 | Forgetting to `await` a coroutine | Python warns but won't raise — the coroutine never runs |
 | Using `asyncio.run()` inside async code | Just `await` directly — nested `run()` raises RuntimeError |
 
-## Quick Reference Card
+## Quick Reference
 
-```
-Java → Python Mental Model
-
-CompletableFuture<T>     →  async def + await        (single-threaded, cooperative)
-Stream<T>                →  Generator + comprehensions (lazy, maintains state)
-abstract class           →  ABC                       (multiple inheritance supported)
-interface                →  Protocol                  (structural / duck typing)
-@FunctionalInterface     →  Just pass the function    (functions are first-class)
-try-with-resources       →  async with                (__aenter__/__aexit__)
-Map<K,V>                 →  dict[K,V]                 (used everywhere)
-Optional<T>              →  T | None                  (no .get(), just check is None)
-Lombok @Data             →  Pydantic BaseModel        (validation + serialization built in)
-Jackson                  →  Pydantic model_dump_json() (built into the model)
-Bean Validation          →  Pydantic validators        (@field_validator)
-Spring DI                →  Constructor args / context objects (no framework magic)
-JUnit + Mockito          →  pytest + unittest.mock     (AsyncMock for async)
-setup.py / Maven         →  pyproject.toml             (modern standard)
-Checked exceptions       →  (don't exist)              (everything is unchecked)
-```
+For a full side-by-side Java → Python mapping, see **[reference/java-to-python-cheat-sheet.md](../reference/java-to-python-cheat-sheet.md)**.
 
 ---
 
