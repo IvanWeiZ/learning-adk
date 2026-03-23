@@ -35,6 +35,10 @@ runner = Runner(app=App(name='my_app', root_agent=agent), session_service=...)
 
 # Without App (scripts/demos — no plugins, compaction, or caching):
 runner = Runner(agent=agent, app_name='my_app', session_service=...)
+
+# Deprecated: Runner also accepts a `plugins` parameter directly,
+# but this is deprecated — use App(plugins=[...]) instead:
+# runner = Runner(agent=agent, app_name='my_app', plugins=[...], session_service=...)
 ```
 
 | Feature | `app=App(...)` | `agent=..., app_name=...` |

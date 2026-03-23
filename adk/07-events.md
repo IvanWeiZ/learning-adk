@@ -57,13 +57,21 @@ class Event(LlmResponse):
     # so the runner pauses and yields control to the caller
 
     # Inherited from LlmResponse (often populated on the final event):
+    model_version: Optional[str] # the model version used to generate the response
     error_code: Optional[str] # error code if the response is an error (code varies by model)
     error_message: Optional[str] # error message if the response is an error
     turn_complete: Optional[bool] # whether the model response is complete (streaming mode only)
+    interrupted: Optional[bool] # LLM was interrupted (e.g., user interruption during bidi streaming)
     finish_reason: Optional[types.FinishReason] # why generation stopped (STOP, MAX_TOKENS, SAFETY, etc.)
     usage_metadata: Optional[types.GenerateContentResponseUsageMetadata] # token counts (prompt, candidates, total)
     grounding_metadata: Optional[types.GroundingMetadata] # search grounding metadata from Google Search
     custom_metadata: Optional[dict[str, Any]] # arbitrary metadata; Runner merges RunConfig.custom_metadata here
+    input_transcription: Optional[types.Transcription] # audio transcription of user input
+    output_transcription: Optional[types.Transcription] # audio transcription of model output
+    avg_logprobs: Optional[float] # average log probability of the generated tokens
+    logprobs_result: Optional[types.LogprobsResult] # detailed log probabilities for chosen and top tokens
+    cache_metadata: Optional[CacheMetadata] # context cache metadata if caching was used
+    citation_metadata: Optional[types.CitationMetadata] # citation metadata for the response
 ```
 
 ### EventActions — The Side-Effect Envelope

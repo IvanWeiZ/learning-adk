@@ -50,6 +50,7 @@ All methods are `async` with keyword-only arguments, scoped by `app_name`, `user
 | `load_artifact(filename, version=None)` | `Part \| None` | Load specific version; `None` = latest |
 | `list_artifact_keys()` | `list[str]` | All filenames (session + user-scoped) |
 | `delete_artifact(filename)` | `None` | Delete all versions |
+| `get_artifact_version(filename, version=None)` | `ArtifactVersion \| None` | Get metadata for a specific version; `None` = latest |
 | `list_versions(filename)` | `list[int]` | Version numbers only (lightweight) |
 | `list_artifact_versions(filename)` | `list[ArtifactVersion]` | Full metadata per version (heavier) |
 
@@ -99,10 +100,10 @@ Version Timeline:
 | Init | `InMemoryArtifactService()` | `FileArtifactService(root_dir="./artifacts")` | `GcsArtifactService(bucket_name="my-bucket")` |
 | Thread-safe | No (dev/test only) | Yes (via `asyncio.to_thread`) | Yes (via `asyncio.to_thread`) |
 | Persistence | Process lifetime only | Survives restarts | Durable cloud storage |
-| `file_data` support | Stores as-is (URI reference kept in memory) | Not supported (`NotImplementedError`) | Not supported (`NotImplementedError`) |
+| `file_data` support | Stores as-is (URI reference kept in memory) | Not supported (`InputValidationError`) | Not supported (`InputValidationError`) |
 | Custom metadata | Stored in `ArtifactVersion` | Written to `metadata.json` per version | Stored as GCS blob metadata |
 
-> `InMemoryArtifactService` extends `BaseModel` (Pydantic), making its state serializable — useful for snapshotting or persisting in-memory artifacts between sessions. `FileArtifactService` rejects path traversal (`"../../secret.txt"`) with `InputValidationError`.
+> `InMemoryArtifactService` extends `BaseModel` (Pydantic), making its state serializable — useful for snapshotting or persisting in-memory artifacts between sessions. `FileArtifactService` rejects path traversal (`"../../secret.txt"`) and unsupported content types (no `inline_data` or `text`) with `InputValidationError`.
 
 ---
 
@@ -127,12 +128,12 @@ class ArtifactVersion(BaseModel):
 
 ---
 
-## Using Artifacts from Tools via CallbackContext
+## Using Artifacts from Tools via Context
 
-`ToolContext` provides convenience methods that auto-fill `app_name`, `user_id`, and `session_id`:
+`Context` (aliased as `CallbackContext` and `ToolContext`) provides convenience methods that auto-fill `app_name`, `user_id`, and `session_id`:
 
 ```python
-# CallbackContext methods (available in both ToolContext and callbacks)
+# Context methods (available via ToolContext and CallbackContext aliases)
 
 async def save_artifact(
     self,
@@ -198,7 +199,7 @@ runner = Runner(
 
 ```python
 from google.adk.agents import Agent
-from google.adk.tools.tool_context import ToolContext
+from google.adk.tools import ToolContext  # ToolContext is an alias for Context
 from google.genai import types
 
 async def generate_report(

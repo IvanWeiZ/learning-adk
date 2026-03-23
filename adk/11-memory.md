@@ -1,6 +1,6 @@
 # Memory — Long-Term Recall Across Sessions
 
-> **Official docs:** [Memory](https://google.github.io/adk-docs/runtime/memory/) | **Source:** [`base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) · [`in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) · [`vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md)
+> **Official docs:** [Memory](https://google.github.io/adk-docs/runtime/memory/) | **Source:** [`base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) · [`in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) · [`vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) · [`vertex_ai_rag_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_rag_memory_service.py) | **Prereqs:** [08-sessions.md](08-sessions.md)
 
 ---
 
@@ -42,7 +42,8 @@ Need to remember something?
 ```
 BaseMemoryService (memory/base_memory_service.py — abstract interface)
  ├── InMemoryMemoryService (dev/test — stores in Python dicts)
- └── VertexAiMemoryBankService (production — Vertex AI Memory Bank, vector search)
+ ├── VertexAiMemoryBankService (production — Vertex AI Memory Bank, vector search)
+ └── VertexAiRagMemoryService (production — Vertex AI RAG corpus, vector search)
 ```
 
 ---
@@ -86,6 +87,33 @@ class BaseMemoryService(ABC):
         The implementation decides what to extract and how to store it.
         """
 
+    async def add_events_to_memory(
+        self,
+        *,
+        app_name: str,
+        user_id: str,
+        events: Sequence[Event],
+        session_id: str | None = None,
+        custom_metadata: Mapping[str, object] | None = None,
+    ) -> None:
+        """
+        Adds an explicit list of events (incremental delta, not full session).
+        Default implementation raises NotImplementedError.
+        """
+
+    async def add_memory(
+        self,
+        *,
+        app_name: str,
+        user_id: str,
+        memories: Sequence[MemoryEntry],
+        custom_metadata: Mapping[str, object] | None = None,
+    ) -> None:
+        """
+        Adds explicit memory items directly (for services that support direct writes).
+        Default implementation raises NotImplementedError.
+        """
+
     async def search_memory(
         self,
         *,
@@ -99,7 +127,7 @@ class BaseMemoryService(ABC):
         """
 ```
 
-Two methods. Complexity lives in implementations.
+Four methods. `add_session_to_memory` and `search_memory` are abstract; `add_events_to_memory` and `add_memory` have default implementations that raise `NotImplementedError` (opt-in for services that support them). Complexity lives in implementations.
 
 ---
 
@@ -107,7 +135,7 @@ Two methods. Complexity lives in implementations.
 
 ### InMemoryMemoryService
 
-Stores event text in a list; search is case-insensitive exact substring matching (not fuzzy/semantic).
+Stores event text in a list; search is case-insensitive word-level keyword matching (extracts alphabetic words via regex, not substring or semantic matching).
 
 ```python
 from google.adk.memory import InMemoryMemoryService
@@ -131,12 +159,32 @@ from google.adk.memory import VertexAiMemoryBankService
 memory_service = VertexAiMemoryBankService(
     project="my-gcp-project",
     location="us-central1",
-    agent_engine_id="projects/.../agentEngines/...",
+    agent_engine_id="456",  # numeric ID only, NOT the full resource path
+    # Extract from full path: agent_engine.api_resource.name.split('/')[-1]
+    express_mode_api_key=None,  # optional; falls back to GOOGLE_API_KEY env var
 )
 ```
 
 - **Use for:** production systems with Vertex AI
 - **Provides:** LLM-extracted facts, semantic vector search, managed scaling
+- **Note:** `agent_engine_id` expects only the numeric ID (e.g., `'456'`), not a full resource path like `'projects/.../reasoningEngines/456'`. A warning is logged if a `/` is detected.
+
+### VertexAiRagMemoryService
+
+Uses Vertex AI RAG corpus for storage and retrieval:
+
+```python
+from google.adk.memory import VertexAiRagMemoryService
+
+memory_service = VertexAiRagMemoryService(
+    rag_corpus="projects/{project}/locations/{location}/ragCorpora/{id}",
+    similarity_top_k=10,
+    vector_distance_threshold=10,
+)
+```
+
+- **Use for:** production systems with Vertex AI RAG
+- **Provides:** RAG-based retrieval, vector search over uploaded session transcripts
 
 ---
 
@@ -297,7 +345,8 @@ agent = LlmAgent(
 
 - [`memory/base_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/base_memory_service.py) — abstract interface
 - [`memory/in_memory_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/in_memory_memory_service.py) — dev implementation
-- [`memory/vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) — production implementation
+- [`memory/vertex_ai_memory_bank_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_memory_bank_service.py) — production implementation (Memory Bank)
+- [`memory/vertex_ai_rag_memory_service.py`](https://github.com/google/adk-python/blob/main/src/google/adk/memory/vertex_ai_rag_memory_service.py) — production implementation (RAG corpus)
 - [08-sessions.md](08-sessions.md) — session state (within-session persistence)
 - [09-tools.md](09-tools.md) — `ToolContext` provides `search_memory()` for tool-based memory access
 - [10-apps.md](10-apps.md) — App container that holds the memory service
