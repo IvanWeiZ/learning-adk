@@ -209,7 +209,7 @@ write_agent (branch="write_agent"):
 
 ### How Events Become LLM Context
 
-The `contents.py` preprocessor (step ⑦ in the flow pipeline) filters events before each LLM call:
+The `contents.py` preprocessor filters events before each LLM call (see [23-advanced-internals.md](23-advanced-internals.md) for the full pipeline):
 
 ```
 For each event in session.events:

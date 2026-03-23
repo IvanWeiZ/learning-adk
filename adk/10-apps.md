@@ -10,7 +10,7 @@
 │  name, root_agent, plugins, configs                     │
 │         │                                                │
 │         ├── plugins: [BasePlugin, ...]                   │
-│         │       └── 11 callbacks (see BasePlugin below)  │
+│         │       └── 12 callbacks (see BasePlugin below)  │
 │         │                                                │
 │         ├── events_compaction_config                     │
 │         │       └── summarize old events → 1 compact evt │
@@ -112,7 +112,7 @@ class App(BaseModel):
 
 ### BasePlugin Interface
 
-11 event-driven callbacks plus `close()` (a lifecycle hook, not a callback — called when the app shuts down). Plugins execute in registration order.
+12 event-driven callbacks plus `close()` (a lifecycle hook, not a callback — called when the app shuts down). Plugins execute in registration order.
 
 > **Short-circuit rule:** A non-`None` return from any plugin callback short-circuits remaining plugins AND the agent's own callbacks for that stage.
 

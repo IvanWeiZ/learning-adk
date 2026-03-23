@@ -1,4 +1,4 @@
-# Session & Agent Latency Optimization
+# 18b — Session & Agent Latency Optimization
 
 > **Official docs:** [Sessions](https://google.github.io/adk-docs/sessions/) | **Source:** [`runners.py`](https://github.com/google/adk-python/blob/main/src/google/adk/runners.py) | **Prereqs:** [18-session-lifecycle.md](18-session-lifecycle.md), [08-sessions.md](08-sessions.md)
 
@@ -120,7 +120,9 @@ If you truly don't care about persistence and want the absolute lowest latency:
 
 ```python
 import asyncio
-from google.adk.sessions import BaseSessionService, Session
+import time
+import uuid
+from google.adk.sessions import BaseSessionService, ListSessionsResponse, Session
 from google.adk.events import Event
 
 class FireAndForgetSessionService(BaseSessionService):

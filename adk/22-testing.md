@@ -29,6 +29,7 @@ Production stack:            Test stack:
 **Simplest possible test — no API key needed:**
 
 ```python
+# Requires cloned adk-python repo on PYTHONPATH — see warning above
 from google.adk.agents.llm_agent import Agent
 from tests.unittests.testing_utils import InMemoryRunner, MockModel, simplify_events
 
@@ -66,7 +67,7 @@ These are part of the `google.adk` package and available to all users:
 The production `InMemoryRunner` (in `google.adk.runners`) wires all three in-memory services automatically:
 
 ```python
-# From google.adk.runners (production code, line 1596)
+# From google.adk.runners (production code)
 class InMemoryRunner(Runner):
     """An in-memory Runner for testing and development."""
 

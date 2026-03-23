@@ -203,7 +203,7 @@ Need an agent to reason before acting?
 ### BuiltInPlanner
 
 ```python
-from google.adk import Agent
+from google.adk.agents import LlmAgent as Agent
 from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
@@ -221,7 +221,7 @@ agent = Agent(
 ### PlanReActPlanner
 
 ```python
-from google.adk import Agent
+from google.adk.agents import LlmAgent as Agent
 from google.adk.planners import PlanReActPlanner
 
 agent = Agent(

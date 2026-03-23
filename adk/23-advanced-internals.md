@@ -315,7 +315,7 @@ app = App(
     root_agent=root_agent,
     plugins=[
         MetricsPlugin(),
-        DebugLoggingPlugin(), # Built-in
+        # Add your own plugins here
     ],
 )
 ```

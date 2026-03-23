@@ -1,4 +1,4 @@
-# 02b — Custom Use Cases: Parse, Enrich, and Respond Patterns
+# 24b — Custom Use Cases: Parse, Enrich, and Respond Patterns
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** [`agents/`](https://github.com/google/adk-python/blob/main/src/google/adk/agents/) · [`tools/`](https://github.com/google/adk-python/blob/main/src/google/adk/tools/) | **Prereqs:** [02-when-to-build-what.md](02-when-to-build-what.md)
 
@@ -298,6 +298,8 @@ Single LlmAgent
 ```
 
 ```python
+from google.adk.models.llm_request import LlmRequest
+
 async def enrich_before_model(callback_context: CallbackContext, llm_request: LlmRequest):
     # Find the last plain-text user message in the request
     for i in range(len(llm_request.contents) - 1, -1, -1):

@@ -59,7 +59,7 @@ class MemoryEntry(BaseModel):
     author: Optional[str] = None # who produced this (agent name or 'user')
     timestamp: Optional[str] = None # when this was stored (ISO 8601)
     id: Optional[str] = None # unique identifier
-    custom_metadata: Optional[dict] = None # arbitrary key-value metadata
+    custom_metadata: dict[str, Any] = Field(default_factory=dict) # arbitrary key-value metadata
     # (Vertex AI backend adds an embedding vector internally)
 ```
 
@@ -238,6 +238,7 @@ from google.adk.agents import LlmAgent
 # Note: add_session_to_memory() lives on BaseMemoryService, not on CallbackContext.
 # The callback accesses the memory service via the invocation context.
 async def after_agent(callback_context) -> None:
+    # WARNING: _invocation_context is a private attribute — may change between ADK versions.
     session = callback_context._invocation_context.session
     memory_service = callback_context._invocation_context.memory_service
     if memory_service:

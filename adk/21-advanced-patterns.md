@@ -157,8 +157,8 @@ from google.adk.agents import LlmAgent
 
 agent = LlmAgent(name="root_agent", model="gemini-2.5-flash", tools=[my_tool])
 
-# Pass as a plugin to the runner or TestInMemoryRunner
-runner = Runner(agent=agent, plugins=[ReflectAndRetryToolPlugin(max_retries=3)])
+# Pass as a plugin via App (plugins belong to App, not Runner directly)
+app = App(name="my_app", root_agent=agent, plugins=[ReflectAndRetryToolPlugin(max_retries=3)])
 ```
 
 **Source:** `src/google/adk/plugins/reflect_retry_tool_plugin.py`, `tests/unittests/plugins/test_reflect_retry_tool_plugin.py`

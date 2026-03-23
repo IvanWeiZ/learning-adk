@@ -242,7 +242,7 @@ agent = Agent(name="support", instruction=build_instruction)
 │ Which Session Backend to Use?                                        │
 │                                                                       │
 │ ├── Local dev / tests → InMemorySessionService                       │
-│ ├── Single-server → SqliteSessionService                              │
+│ ├── Single-server → DatabaseSessionService (SQLite URL)               │
 │ ├── Production / multi-server → DatabaseSessionService (PostgreSQL)   │
 │ └── Google Cloud → VertexAiSessionService                             │
 └───────────────────────────────────────────────────────────────────────┘

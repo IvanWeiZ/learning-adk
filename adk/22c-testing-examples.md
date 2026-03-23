@@ -41,9 +41,13 @@ def test_callable_instruction():
 
     mock = MockModel.create(responses=['Hello Alice!'])
     agent = Agent(name='test', model=mock, instruction=_provider)
-    # Note: InMemoryRunner does not accept initial_state directly.
     runner = InMemoryRunner(agent)
-    runner.run('hi')
+    # Pre-seed state so ctx.state["user_name"] doesn't raise KeyError
+    session = runner.session_service.create_session(
+        app_name=runner.app_name, user_id='test_user',
+        state={'user_name': 'Alice'},
+    )
+    runner.run('hi', session_id=session.id, user_id='test_user')
     # Callable instruction was resolved with state
     assert 'Alice' in mock.requests[0].config.system_instruction.parts[0].text
 ```
@@ -265,6 +269,7 @@ with pytest.raises(ValueError):
 
 The following helper class is used in tests throughout this file. It simulates a minimal `BaseAgent` that yields a single event — useful for testing callbacks without needing a full `LlmAgent`.
 
+```python
 class _TestingAgent(BaseAgent):
     @override
     async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
@@ -274,6 +279,7 @@ class _TestingAgent(BaseAgent):
             invocation_id=ctx.invocation_id,
             content=types.Content(parts=[types.Part(text='Hello, world!')]),
         )
+```
 
 
 ## Testing Agent Callbacks
@@ -359,6 +365,7 @@ assert simplify_events(runner.run('test')) == [('root', 'intercepted')]
 def my_after_model(callback_context: CallbackContext, llm_response: LlmResponse) -> LlmResponse:
     return LlmResponse(content=ModelContent([types.Part.from_text(text='replaced')]))
 
+mock = MockModel.create(responses=['original response'])
 agent = Agent(name='root', model=mock, after_model_callback=my_after_model)
 ```
 
