@@ -45,7 +45,7 @@ echo ""
 # Only flag references to OLD b-suffix names that were renamed away (e.g., 07b-events.md).
 echo "§3 Stale b-suffix references"
 if grep -rn '[0-9]\+b-[a-z].*\.md' adk/*.md python/*.md reference/*.md 2>/dev/null \
-   | grep -v '19b-security-checklist\|20b-debugging-guide\|22b-testing-context-setup\|22c-testing-examples'; then
+   | grep -v '18b-session-latency\|19b-security-checklist\|20b-debugging-guide\|22b-testing-context-setup\|22c-testing-examples\|23b-plugins-and-a2a\|24b-custom-use-cases\|25b-adk-2.0-patterns'; then
   fail "Found stale b-suffix file references"
 else
   pass "No stale b-suffix references"

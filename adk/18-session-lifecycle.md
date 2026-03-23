@@ -155,13 +155,13 @@ Two layers:
 
 **Cross-process:** Only the database locking protects across processes. The asyncio locks are per-process only.
 
-For latency optimization strategies (session service, model selection, streaming, tools), see [session-latency-optimization.md](session-latency-optimization.md).
+For latency optimization strategies (session service, model selection, streaming, tools), see [18b-session-latency-optimization.md](18b-session-latency-optimization.md).
 
 ---
 
 ## Related
 
-- [session-latency-optimization.md](session-latency-optimization.md) — Full latency optimization guide (session service, model selection, streaming, tools)
+- [18b-session-latency-optimization.md](18b-session-latency-optimization.md) — Full latency optimization guide (session service, model selection, streaming, tools)
 - [08-sessions.md](08-sessions.md) — Session data model, state scoping, service interface
 - [03-runners.md](03-runners.md) — Runner lifecycle and how it orchestrates session calls
 - [07-events.md](07-events.md) — Event structure and EventActions (state_delta)

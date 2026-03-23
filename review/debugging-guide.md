@@ -9,7 +9,7 @@
 >
 > **Action:** Delete section; replace with one-line cross-reference.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -19,7 +19,7 @@
 >
 > **Action:** Collapse into one "Performance" section or keep Checklist as reference only.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -29,7 +29,7 @@
 >
 > **Action:** Delete testing section; compress model advice to one sentence + reference.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -39,7 +39,7 @@
 >
 > **Action:** Add imports or replace with reference to `22-testing.md` runnable version.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -49,7 +49,7 @@
 >
 > **Action:** Convert to bullet list or tree diagram.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -59,7 +59,7 @@
 >
 > **Action:** Reorganize: move Debugging Checklist + Common Scenarios before performance sections.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -69,7 +69,7 @@
 >
 > **Action:** Change title to `# Debugging Guide`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 

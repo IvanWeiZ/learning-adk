@@ -47,13 +47,13 @@ learning-adk/
 │   ├── 23-advanced-internals.md                   # Processor pipeline, reason-act loop
 │   ├── 24-faq.md                                  # Tool versioning, state scoping
 │   ├── 25-adk-2.0-preview.md                      # ADK 2.0: graph workflows, collaborative agents
-│   ├── custom-use-cases.md                        # Component code examples (split from 02)
+│   ├── 24b-custom-use-cases.md                        # Component code examples (split from 02)
 │   ├── 19b-security-checklist.md                  # Audit checklist, threat model (split from 19)
 │   ├── 20b-debugging-guide.md                     # Debugging checklist, performance (split from 20)
 │   ├── 22b-testing-context-setup.md               # Context setup, fixtures (split from 22)
 │   ├── 22c-testing-examples.md                    # Test examples for callbacks, plugins (split from 22)
-│   ├── plugins-and-a2a.md                         # Custom tools, A2A, code executors (split from 23)
-│   └── adk-2.0-patterns.md                         # Collaborative agents, dynamic workflows (split from 25)
+│   ├── 23b-plugins-and-a2a.md                         # Custom tools, A2A, code executors (split from 23)
+│   └── 25b-adk-2.0-patterns.md                         # Collaborative agents, dynamic workflows (split from 25)
 ├── python/
 │   ├── python-for-adk-learning-plan.md            # 2-week Python curriculum
 │   ├── python-gotchas-for-java-developers.md      # 13 runtime traps Java devs hit

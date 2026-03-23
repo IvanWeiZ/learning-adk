@@ -9,7 +9,7 @@
 >
 > **Action:** Delete; replace with note: "Test instruction indirectly via `InMemoryRunner` and assert output."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -19,7 +19,7 @@
 >
 > **Action:** Delete; reference integration-level tests at lines 192–234 which cover same behavior properly.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -30,7 +30,7 @@
 > **Action:** After deletions, split at "Testing LlmAgent" vs "Testing Callbacks/Plugins" if still over; otherwise compress.
 >
 > - [ ] Approved
-> - [ ] Denied
+> - [x] Denied
 > - [ ] Comment: 
 > 
 
@@ -39,7 +39,7 @@
 >
 > **Action:** Reduce Best Practices to three bullets + reference; remove In-Memory Service Summary table.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -49,7 +49,7 @@
 >
 > **Action:** Replace with real ID like `'gemini-2.5-flash'`.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -59,7 +59,7 @@
 >
 > **Action:** Add inline note: "TestInMemoryRunner creates fresh session per call (vs InMemoryRunner's single-call)."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -69,7 +69,7 @@
 >
 > **Action:** Move `_TestingAgent` definition and `create_invocation_context` to top, before use.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -79,7 +79,7 @@
 >
 > **Action:** Move Quick Reference to top as navigation guide; readers jump to specific patterns.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 

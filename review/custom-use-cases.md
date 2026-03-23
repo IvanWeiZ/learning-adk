@@ -9,7 +9,7 @@
 >
 > **Action:** Delete entirely.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -19,7 +19,7 @@
 >
 > **Action:** Fix line 116 with proper `await asyncio.gather()` or `asyncio.create_task()` wrapping; verify parallelism in Option C.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -29,7 +29,7 @@
 >
 > **Action:** Replace with one-sentence summary + cross-reference (e.g., "See 08-sessions.md for details").
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -39,7 +39,7 @@
 >
 > **Action:** Add inline warning: "Private field; subject to change without notice."
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -49,7 +49,7 @@
 >
 > **Action:** Move table before "Option A", then reference it per option.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
@@ -59,7 +59,7 @@
 >
 > **Action:** Standardize on module-level imports.
 >
-> - [ ] Approved
+> - [x] Approved
 > - [ ] Denied
 > - [ ] Comment: 
 > 
