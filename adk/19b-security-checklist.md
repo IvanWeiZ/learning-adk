@@ -29,9 +29,13 @@ runner = Runner(
 ```python
 from google.adk.sessions import DatabaseSessionService
 
+import os
 session_service = DatabaseSessionService(
-    db_url="postgresql+asyncpg://user:pass@db-host/adk_sessions",
-    # Connection string should come from secrets manager, not code!
+    # Load credentials from environment variables — never hardcode in source!
+    db_url=(
+        f"postgresql+asyncpg://{os.environ['DB_USER']}:{os.environ['DB_PASSWORD']}"
+        f"@{os.environ['DB_HOST']}/{os.environ['DB_NAME']}"
+    ),
 )
 ```
 
@@ -81,6 +85,10 @@ async def cleanup_expired_sessions(
     cutoff = datetime.now() - timedelta(days=max_age_days)
     cutoff_timestamp = cutoff.timestamp()
 
+    # get_all_user_ids() is application-specific — query your own user table.
+    # Example stub: return a list of user IDs from your auth database.
+    # async def get_all_user_ids() -> list[str]:
+    #     return await your_auth_db.query("SELECT user_id FROM users")
     for user_id in await get_all_user_ids():
         sessions = await session_service.list_sessions(
             app_name=app_name,
@@ -114,7 +122,10 @@ async def delete_all_user_data(
             user_id=user_id,
             session_id=session_info.id,
         )
-    # Also clean up: artifacts, memory service entries, credential store
+    # Full GDPR cleanup — session deletion alone is NOT sufficient:
+    # 1. Delete artifacts: await artifact_service.delete_artifacts(app_name, user_id)
+    # 2. Delete memory: await memory_service.delete_user_memories(app_name, user_id)
+    # 3. Delete credentials: await credential_service.delete_credentials(user_id)
 ```
 
 ---
@@ -132,6 +143,8 @@ Cons: More infrastructure, harder to manage
 ```
 
 **Pattern 2: Shared App, User-Level Isolation (Common)**
+
+> **DANGER:** In the shared-app pattern, `app:` scoped state is shared across ALL tenants. Never store tenant-specific data in `app:` state. Use `user:` scoped state (namespaced by tenant) for tenant-specific data.
 
 ```
 All tenants: app_name="my_app"
@@ -311,6 +324,8 @@ Detection: Scan log output for conversation patterns.
 ```
 
 ### State Prefix Quick Reference
+
+*See [19-session-security.md](19-session-security.md) for the full state prefix reference with examples.*
 
 ```
 State Prefix Quick Reference:

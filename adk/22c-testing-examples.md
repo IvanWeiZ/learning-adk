@@ -20,45 +20,31 @@ def test_basic_response():
     assert simplify_events(runner.run('Hi')) == [('greeter', 'Hello!')]
 ```
 
-### Instruction (Static String)
+### Instruction (Static String / Callable / Async)
+
+Test instruction behavior indirectly through `InMemoryRunner` — verify that the agent's output reflects the instruction, not internal method calls:
 
 ```python
-async def test_static_instruction():
-    agent = LlmAgent(name='test', instruction='You are helpful.')
-    ctx = await _create_readonly_context(agent)
+def test_static_instruction():
+    """Static instruction is passed to the LLM as system prompt."""
+    mock = MockModel.create(responses=['I am helpful.'])
+    agent = Agent(name='test', model=mock, instruction='You are helpful.')
+    runner = InMemoryRunner(agent)
+    events = runner.run('hello')
+    # Verify the system instruction appeared in the model request
+    assert mock.requests[0].config.system_instruction.parts[0].text == 'You are helpful.'
 
-    instruction, bypass = await agent.canonical_instruction(ctx)
-    assert instruction == 'You are helpful.'
-    assert not bypass  # state injection not bypassed
-```
-
-### Instruction (Callable with State)
-
-```python
-async def test_callable_instruction():
-    def _provider(ctx: ReadonlyContext) -> str:
+def test_callable_instruction():
+    """Callable instruction is evaluated with state at runtime."""
+    def _provider(ctx) -> str:
         return f'Greet {ctx.state["user_name"]}'
 
-    agent = LlmAgent(name='test', instruction=_provider)
-    ctx = await _create_readonly_context(agent, state={'user_name': 'Alice'})
-
-    instruction, bypass = await agent.canonical_instruction(ctx)
-    assert instruction == 'Greet Alice'
-    assert bypass  # callable bypasses state injection (already handled)
-```
-
-### Instruction (Async Callable)
-
-```python
-async def test_async_instruction():
-    async def _provider(ctx: ReadonlyContext) -> str:
-        return f'instruction: {ctx.state["key"]}'
-
-    agent = LlmAgent(name='test', instruction=_provider)
-    ctx = await _create_readonly_context(agent, state={'key': 'value'})
-
-    instruction, bypass = await agent.canonical_instruction(ctx)
-    assert instruction == 'instruction: value'
+    mock = MockModel.create(responses=['Hello Alice!'])
+    agent = Agent(name='test', model=mock, instruction=_provider)
+    runner = InMemoryRunner(agent, initial_state={'user_name': 'Alice'})
+    runner.run('hi')
+    # Callable instruction was resolved with state
+    assert 'Alice' in mock.requests[0].config.system_instruction.parts[0].text
 ```
 
 ### Tools — Single Tool Call
@@ -133,33 +119,32 @@ def test_tool_args_in_model_request():
 ```python
 def test_model_inheritance():
     sub = LlmAgent(name='sub')
-    parent = LlmAgent(name='parent', model='gemini-pro', sub_agents=[sub])
+    parent = LlmAgent(name='parent', model='gemini-2.5-flash', sub_agents=[sub])
 
     assert sub.canonical_model == parent.canonical_model
 ```
 
 ### output_key — Save Output to State
 
+Test `output_key` through the runner — the private implementation method `_LlmAgent__maybe_save_output_to_state` is an anti-pattern (name-mangled, breaks on refactor). Use integration-level testing instead:
+
 ```python
 def test_output_key():
-    agent = LlmAgent(name='test_agent', output_key='result')
-    event = Event(
-        invocation_id='inv',
-        author='test_agent',
-        content=types.Content(role='model', parts=[types.Part.from_text(text='Hello')]),
-        actions=EventActions(),
-    )
+    """output_key saves text output to session state."""
+    mock = MockModel.create(responses=['Hello'])
+    agent = Agent(name='test_agent', model=mock, output_key='result')
+    runner = InMemoryRunner(agent)
+    runner.run('go')
+    assert runner.session.state.get('result') == 'Hello'
 
-    agent._LlmAgent__maybe_save_output_to_state(event)
-
-    assert event.actions.state_delta['result'] == 'Hello'
+def test_output_key_not_saved_when_empty():
+    """output_key is not set when model returns empty response."""
+    mock = MockModel.create(responses=[''])
+    agent = Agent(name='test_agent', model=mock, output_key='result')
+    runner = InMemoryRunner(agent)
+    runner.run('go')
+    assert 'result' not in runner.session.state
 ```
-
-Output is NOT saved when:
-- Event author differs from agent name (case-sensitive)
-- `output_key` is not set
-- Response is partial (streaming chunk, not final)
-- Content is empty or whitespace-only
 
 ### output_schema — Structured Output via Pydantic
 
@@ -171,20 +156,12 @@ class PersonSchema(BaseModel):
     age: int
 
 def test_output_schema():
-    agent = LlmAgent(name='test', output_key='result', output_schema=PersonSchema)
-    event = Event(
-        invocation_id='inv',
-        author='test',
-        content=types.Content(
-            role='model',
-            parts=[types.Part.from_text(text='{"name": "Alice", "age": 30}')]
-        ),
-        actions=EventActions(),
-    )
-
-    agent._LlmAgent__maybe_save_output_to_state(event)
-
-    assert event.actions.state_delta['result'] == {'name': 'Alice', 'age': 30}
+    """output_schema parses JSON response into Pydantic model and stores in state."""
+    mock = MockModel.create(responses=['{"name": "Alice", "age": 30}'])
+    agent = Agent(name='test', model=mock, output_key='result', output_schema=PersonSchema)
+    runner = InMemoryRunner(agent)
+    runner.run('describe a person')
+    assert runner.session.state.get('result') == {'name': 'Alice', 'age': 30}
 ```
 
 ### include_contents — Conversation History Control
@@ -282,6 +259,22 @@ with pytest.raises(ValueError):
 
 ---
 
+
+## Helper Classes for Agent Tests
+
+The following helper class is used in tests throughout this file. It simulates a minimal `BaseAgent` that yields a single event — useful for testing callbacks without needing a full `LlmAgent`.
+
+class _TestingAgent(BaseAgent):
+    @override
+    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
+        yield Event(
+            author=self.name,
+            branch=ctx.branch,
+            invocation_id=ctx.invocation_id,
+            content=types.Content(parts=[types.Part(text='Hello, world!')]),
+        )
+
+
 ## Testing Agent Callbacks
 
 ### before_agent_callback — Bypass the Agent
@@ -378,6 +371,8 @@ def handle_error(callback_context, llm_request, error) -> LlmResponse:
 
 agent = Agent(name='root', model=mock, on_model_error_callback=handle_error)
 
+# TestInMemoryRunner creates a fresh session per call (unlike InMemoryRunner which
+# reuses the same session). Use when you need isolation between test invocations.
 runner = TestInMemoryRunner(agent)
 events = await runner.run_async_with_new_session('test')
 assert simplify_events(events) == [('root', 'fallback')]
@@ -492,15 +487,6 @@ from typing import AsyncGenerator
 from google.adk.agents.base_agent import BaseAgent
 from typing_extensions import override
 
-class _TestingAgent(BaseAgent):
-    @override
-    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-        yield Event(
-            author=self.name,
-            branch=ctx.branch,
-            invocation_id=ctx.invocation_id,
-            content=types.Content(parts=[types.Part(text='Hello, world!')]),
-        )
 
 @pytest.mark.asyncio
 async def test_custom_agent():

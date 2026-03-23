@@ -39,10 +39,10 @@ Additional context for the media:
 
 ### How it works: `include_contents="none"` is the key
 
-`LlmAgent` has a field `include_contents: Literal["default", "none"]`.
+`LlmAgent` has a field `include_contents: Literal["default", "none"]`. See [05-flows.md](05-flows.md) for full details on content filtering.
 
-- `"default"` — the flow includes all session events (filtered by branch) in the LlmRequest. The LLM sees the full conversation history.
-- `"none"` — the flow sends **zero** contents to the LLM. The LLM only sees the system prompt (instruction). No history, no raw user message, nothing.
+- `"default"` — the flow includes all session events (filtered by branch) in the LlmRequest.
+- `"none"` — the flow sends **zero** contents to the LLM. Only the system prompt (instruction) is sent.
 
 So the pattern is:
 1. **Stage 1** (extractor): parse the raw message, call APIs, write results to `session.state`
@@ -55,6 +55,22 @@ Stage 2 is completely isolated. It reads only what stage 1 wrote to state.
 ### Three Options for Stage 1 (the extraction step)
 
 The responder agent is always the same. What varies is how you do the extraction.
+
+---
+
+### Comparison
+
+| | Option A: `before_agent_callback` | Option B: `SequentialAgent` | Option C: `before_model_callback` |
+|--|-----------------------------------|------------------------------|------------------------------------|
+| Extra LLM calls | 0 | 1 (extractor) | 0 |
+| Extraction type | Regex / pure Python | LLM + tools | Regex / pure Python |
+| Agent structure | 1 agent + 1 callback | 2 agents | 1 agent + 1 callback |
+| Responder isolation | `include_contents="none"` | `include_contents="none"` | Rewrites contents in-place |
+| Best when | Fast deterministic parsing | Ambiguous/complex extraction | Same as A, slightly more direct |
+
+**Rule of thumb:**
+- Parsing is regex/rules → **Option A** (cleanest) or **Option C**
+- Parsing needs LLM reasoning → **Option B**
 
 ---
 
@@ -269,7 +285,7 @@ pipeline = SequentialAgent(
 
 #### Option C — `before_model_callback` on the responder (no SequentialAgent needed)
 
-If you don't want a two-agent structure at all, use a single agent with `before_model_callback`. It rewrites `llm_request.contents` just before the LLM call — the LLM receives the enriched version, never the raw string.
+If you don't want a two-agent structure at all, use a single agent with `before_model_callback`. It rewrites `llm_request.contents` just before the LLM call — the LLM receives the enriched version, never the raw string. See [04-agents.md](04-agents.md) for the full `before_model_callback` API.
 
 ```
 Single LlmAgent
@@ -322,59 +338,9 @@ agent = LlmAgent(
 
 ---
 
-### Comparison
-
-| | Option A: `before_agent_callback` | Option B: `SequentialAgent` | Option C: `before_model_callback` |
-|--|-----------------------------------|------------------------------|------------------------------------|
-| Extra LLM calls | 0 | 1 (extractor) | 0 |
-| Extraction type | Regex / pure Python | LLM + tools | Regex / pure Python |
-| Agent structure | 1 agent + 1 callback | 2 agents | 1 agent + 1 callback |
-| Responder isolation | `include_contents="none"` | `include_contents="none"` | Rewrites contents in-place |
-| Best when | Fast deterministic parsing | Ambiguous/complex extraction | Same as A, slightly more direct |
-
-**Rule of thumb:**
-- Parsing is regex/rules → **Option A** (cleanest) or **Option C**
-- Parsing needs LLM reasoning → **Option B**
 
 ---
 
-### Data Flow
-
-```
-User sends: "abc media_id:1"
- │
- ▼
-Runner stores Event(author="user", content="abc media_id:1") in session
- │                          ← raw message stays here, that's fine
- │
- ├── Option A / B ──────────────────────────────────────────────────────┐
- │                                                                      │
- │  before_agent_callback (A)         extractor_agent (B)              │
- │  parse ► IDs ► API calls           parse ► API tools                │
- │  state["clean_query"] = "abc"      state["clean_query"] = "abc"     │
- │  state["media_context"]= "{...}"   state["media_context"]= "{...}"  │
- │  state["user_context"] = "{...}"   state["user_context"] = "{...}"  │
- │                                                                      │
- │  responder_agent (include_contents="none")                          │
- │  LlmRequest.contents = []         ← empty, no history sent         │
- │  system_instruction resolves {clean_query}, {media_context}, ...    │
- │  LLM sees only the enriched system prompt                           │
- │                                                                      │
- └── Option C ────────────────────────────────────────────────────────┐ │
-                                                                      │ │
-   before_model_callback                                              │ │
-   parse ► API calls                                                  │ │
-   rewrite llm_request.contents[-1] ► enriched text                   │ │
-   LLM receives enriched message instead of "abc media_id:1"          │ │
-                                                                      │ │
- ◄────────────────────────────────────────────────────────────────────┘ │
- ◄──────────────────────────────────────────────────────────────────────┘
- │
- ▼
-LLM responds: "What I found about 'abc'..."
-```
-
----
 
 ## Related
 

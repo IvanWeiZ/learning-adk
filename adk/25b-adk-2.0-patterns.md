@@ -4,6 +4,9 @@
 
 *This file continues from [25-adk-2.0-preview.md](25-adk-2.0-preview.md), which covers overview and graph workflows.*
 
+> [!warning] Pre-release Software
+> ADK 2.0 is an **alpha release**. APIs, import paths, and behavior may change without notice between pre-release versions. Do not use in production. Install with `pip install google-adk --pre`.
+
 ---
 
 ## Collaborative Agents
@@ -34,9 +37,28 @@ Subagent Modes:
     └── CAN run in parallel with other single_turn agents
 ```
 
+### Key difference from 1.x transfer
+
+```
+1.x transfer_to_agent:
+├── LLM decides which agent to call
+├── No structured return
+├── No parallel execution within a transfer
+└── All agents share the same branch
+
+2.0 collaborative modes:
+├── Coordinator orchestrates delegation
+├── task/single_turn agents return automatically
+├── single_turn agents run in parallel with branch isolation
+└── Structured input/output schemas for data flow
+```
+
+
 ### Chat mode — full conversation handoff
 
 ```python
+# NOTE: Import paths are beta and subject to change in future pre-release versions.
+# If you hit ModuleNotFoundError, check the latest: pip show google-adk
 from google.adk.workflow.agents.llm_agent import Agent
 
 support_agent = Agent(
@@ -103,26 +125,16 @@ stock_agent = Agent(name="stock_checker", mode="single_turn",
 coordinator = Agent(
     name="morning_briefing",
     model="gemini-2.5-flash",
-    instruction="Create a morning briefing from all agents, then combine results.",
+    # Coordinator receives results from each single_turn agent via their output schemas.
+    # Each sub-agent result is available in session state (keyed by agent name) after
+    # all parallel calls complete. The coordinator's instruction can reference them.
+    instruction="""Create a morning briefing.
+    Combine: weather from weather_checker, news from news_checker, stocks from stock_checker.
+    Format as a concise briefing.""",
     sub_agents=[weather_agent, news_agent, stock_agent],
 )
 ```
 
-### Key difference from 1.x transfer
-
-```
-1.x transfer_to_agent:
-├── LLM decides which agent to call
-├── No structured return
-├── No parallel execution within a transfer
-└── All agents share the same branch
-
-2.0 collaborative modes:
-├── Coordinator orchestrates delegation
-├── task/single_turn agents return automatically
-├── single_turn agents run in parallel with branch isolation
-└── Structured input/output schemas for data flow
-```
 
 ---
 
@@ -131,6 +143,8 @@ coordinator = Agent(
 > **Official docs:** [Dynamic Workflows](https://google.github.io/adk-docs/workflows/dynamic/)
 
 For complex logic that doesn't fit a static graph — use Python control flow directly.
+
+Dynamic Workflows are an ADK 2.0 concept separate from, but complementary to, the graph `Workflow` API in [25-adk-2.0-preview.md](25-adk-2.0-preview.md). Where `Workflow` uses a static `edges=` definition, Dynamic Workflows use Python code and the `@node` decorator to express flow. The two primitives — `@node` functions and `ctx.run_node()` — form a checkpointed execution model: each sub-node records its result, and on resume, already-completed nodes are skipped automatically.
 
 ### The @node decorator
 
@@ -245,63 +259,45 @@ Dynamic Workflows:
 
 ---
 
-## Migration Checklist: 1.x to 2.0
+## Migration Notes: 1.x to 2.0
 
-### Pre-migration
+**Known breaking changes and compatibility notes:**
 
 ```
-1. Environment check
+Environment
 │
-├── Verify Python version >= 3.11
-├── Create a NEW virtual environment
-├── Install ADK 2.0 alpha: pip install google-adk --pre
-└── NEVER install 2.0 in the same venv as 1.x
-```
+├── Python 3.11+ required (1.x supports 3.10+)
+├── Install separately: pip install google-adk --pre
+└── NEVER mix 1.x and 2.0 in the same venv
 
-### Storage isolation
-
-```
-2. Isolate storage (CRITICAL)
+Storage
 │
-├── Create new session storage (NOT existing 1.x databases)
-├── Create new memory storage (formats incompatible)
-├── Create new eval datasets if needed
-└── If using SQLite: use separate .db files
-```
+├── Session databases are NOT compatible between 1.x and 2.0
+├── Memory service formats changed — use separate storage
+└── Eval datasets: format may differ — recreate for 2.0
 
-### Code compatibility
-
-```
-3. Test existing agents (no changes needed)
+Import paths changed
 │
-├── Run existing 1.x agents as-is
-├── Watch for warnings/deprecations
-├── Test all tool functions (API unchanged)
-└── Test all callbacks (signatures unchanged)
-```
+├── 1.x: from google.adk import Agent, Runner
+├── 2.0: from google.adk.workflow.agents.llm_agent import Agent
+│         (paths are beta — subject to change)
+└── New types: Workflow, Event(message=), Event(route=), @node, Context
 
-### Incremental adoption
-
-```
-4. Adopt 2.0 features incrementally
+API additions (2.0-only)
 │
-├── Start with one workflow — don't convert everything at once
-├── SequentialAgent → Workflow with sequential edges
-├── Manual if/else routing → Workflow with conditional routing
-├── ParallelAgent → still works, single_turn adds isolation
-├── LoopAgent → Dynamic workflow with while loop
-└── Keep LlmAgent + AutoFlow for open-ended routing
-```
+├── Agent(mode="chat"|"task"|"single_turn") — new field
+├── output_schema=str — bare Python types now accepted
+├── input_schema= — structured graph node input
+├── Workflow(edges=[...]) — new class
+├── @node decorator and ctx.run_node()
+└── Event(message=...) / Event(route=...) — graph event fields
 
-### Testing
-
-```
-5. Validate before deploying
+Existing 1.x code
 │
-├── Run existing test suite — should pass unchanged
-├── Add tests for new Workflow/dynamic nodes
-├── Test error paths (node throws, LLM fails mid-workflow)
-└── Compare outputs between 1.x and 2.0 for same inputs
+├── LlmAgent / Agent — unchanged
+├── SequentialAgent, ParallelAgent, LoopAgent — unchanged
+├── Tool functions and callbacks — unchanged
+└── Sessions and state access — unchanged
 ```
 
 ---

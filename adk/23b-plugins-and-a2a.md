@@ -29,6 +29,9 @@ class HttpApiTool(BaseTool):
 
     def _get_declaration(self) -> types.FunctionDeclaration:
         """Define what the LLM sees."""
+        # types.Schema accepts string type values ("OBJECT", "STRING") or enum values
+        # (types.Type.OBJECT, types.Type.STRING). If the string form raises an error,
+        # use the enum: types.Schema(type=types.Type.OBJECT, ...).
         return types.FunctionDeclaration(
             name=self.name,
             description=self.description,
@@ -193,273 +196,22 @@ class DatabaseToolset(BaseToolset):
 
 ---
 
-## 6. Authentication Flow — How Tools Get Credentials
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│ Authentication Flow                                                  │
-│                                                                      │
-│ ① Tool needs credentials                                            │
-│ │  tool_context.request_credential(auth_config)                     │
-│ │                                                                    │
-│ ② CredentialManager checks:                                         │
-│ │  1. Load from credential_service → Found? Use it.                │
-│ │  2. Load from session state (temp:) → Found? Exchange/refresh.   │
-│ │  3. Neither found? → Request from user.                          │
-│ │                                                                    │
-│ ③ If user auth needed:                                              │
-│ │  EventActions.requested_auth_configs = [auth_config]              │
-│ │                                                                    │
-│ ④ Client shows OAuth dialog / API key prompt                        │
-│ │                                                                    │
-│ ⑤ Client sends credentials back as function response                │
-│ │                                                                    │
-│ ⑥ AuthPreprocessor stores credential in session state               │
-│ │                                                                    │
-│ ⑦ Original tool re-executed with credential available               │
-└──────────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
-## 7. Artifacts — File Management Across Sessions
+## Topics Covered in Dedicated Files
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ Artifact System                                                  │
-│                                                                  │
-│ save_artifact(filename, part) → version_id                       │
-│ load_artifact(filename, version?) → Part                         │
-│ list_artifact_keys() → [filenames]                               │
-│ delete_artifact(filename)                                        │
-│                                                                  │
-│ Storage backends:                                                │
-│ ├── InMemory        (dev/test)                                   │
-│ ├── FileArtifact    (local disk)                                 │
-│ └── GcsArtifact     (Google Cloud)                               │
-│                                                                  │
-│ Versioning:                                                      │
-│ save("report.pdf", v1) → version 0                              │
-│ save("report.pdf", v2) → version 1                              │
-│ load("report.pdf")     → latest (version 1)                     │
-│ load("report.pdf", 0)  → version 0 (original)                   │
-└──────────────────────────────────────────────────────────────────┘
-```
+The following topics are covered in depth in their own files. Brief summaries and links:
 
----
+- **Authentication** (credential management, OAuth, `request_credential`) → [13-auth.md](13-auth.md)
+- **Artifacts** (binary file storage, versioning, `save_artifact`/`load_artifact`) → [12-artifacts.md](12-artifacts.md)
+- **Planners** (`BuiltInPlanner`, thinking mode, plan-then-act) → [14-planners.md](14-planners.md)
+- **Event Compaction** (`EventsCompactionConfig`, summarizing long conversations) → [10-apps.md](10-apps.md)
+- **Content Filtering** (branch isolation, `include_contents`, filtering rules) → [05-flows.md](05-flows.md)
+- **Function Call ID Management** (ADK wraps server IDs with `adk-` prefix) → [07-events.md](07-events.md)
+- **Streaming and Live Mode** (bidirectional audio/video via `model.connect()`) → [06-models.md](06-models.md)
+- **Advanced Agent Patterns** (guardrails, dynamic instructions, phase-aware agents) → [21-advanced-patterns.md](21-advanced-patterns.md)
 
-## 8. Code Executors — Running Code in Agents
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ Code Execution Pipeline                                          │
-│                                                                  │
-│ LLM generates code block in response                             │
-│ │                                                                │
-│ ▼                                                                │
-│ BaseCodeExecutor.execute_code()                                  │
-│ │                                                                │
-│ │ Implementations:                                               │
-│ │ ├── BuiltInCodeExecutor       ← Jupyter-like, in-process       │
-│ │ ├── ContainerCodeExecutor     ← Docker sandbox                 │
-│ │ ├── VertexAICodeExecutor      ← Google Cloud                   │
-│ │ ├── UnsafeLocalCodeExecutor   ← Direct execution (dev)         │
-│ │ └── GKECodeExecutor           ← Kubernetes pods                │
-│ │                                                                │
-│ ▼                                                                │
-│ CodeExecutionResult:                                             │
-│ ├── stdout, stderr                                               │
-│ └── output_files → saved as artifacts                            │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-Configuration:
-
-```python
-from google.adk.code_executors import BuiltInCodeExecutor
-
-agent = Agent(
-    name="data_analyst",
-    model="gemini-2.5-pro",
-    instruction="You are a data analyst. Write Python code to analyze data.",
-    code_executor=BuiltInCodeExecutor(),
-)
-```
-
----
-
-## 9. Planners — Structured Reasoning
-
-**BuiltInPlanner (model-native thinking):**
-
-```python
-from google.adk.planners import BuiltInPlanner
-from google.genai import types
-
-agent = Agent(
-    name="thinker",
-    model="gemini-2.5-pro",
-    planner=BuiltInPlanner(
-        thinking_config=types.ThinkingConfig(thinking_budget=2048),
-    ),
-)
-```
-
----
-
-## 10. A2A (Agent-to-Agent Protocol) — Cross-Service Communication
-
-A2A enables agents running in different services to communicate:
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│ A2A Communication                                                    │
-│                                                                      │
-│ Service A (your app)            Service B (remote agent)             │
-│ ┌──────────────────┐            ┌──────────────────┐                │
-│ │ Your Agent       │   A2A      │ Remote Agent     │                │
-│ │ "I need weather  │──Protocol──▶│ Weather service  │                │
-│ │  data"           │◀────────────│ returns data     │                │
-│ └──────────────────┘            └──────────────────┘                │
-│                                                                      │
-│ Event Conversion:                                                    │
-│ ADK Event ──convert──▶ A2A Message ──convert──▶ ADK Event           │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 11. Event Compaction — Managing Long Conversations
-
-As conversations grow, the context window fills up. Compaction summarizes old events:
-
-```
-Before compaction (20 events, ~8000 tokens):
-┌──────────────────────────────────────────┐
-│ Event 1: User asks about weather         │
-│ ...                                      │
-│ Event 20: Agent responds with hotels     │
-└──────────────────────────────────────────┘
-
-After compaction (summary + recent events):
-┌──────────────────────────────────────────┐
-│ [Compaction Summary]:                    │
-│ "User asked about weather, restaurants..."│
-│                                          │
-│ Event 18-20: Recent events kept          │
-└──────────────────────────────────────────┘
-```
-
-Configuration:
-
-```python
-from google.adk.apps import App
-from google.adk.apps.app import EventsCompactionConfig
-
-app = App(
-    name="my_app",
-    root_agent=root_agent,
-    events_compaction_config=EventsCompactionConfig(
-        compaction_interval=5,
-        overlap_size=1,
-    ),
-)
-```
-
----
-
-## 12. Content Filtering — How Events Become Context
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ Content Filtering Rules                                          │
-│                                                                  │
-│ For each event:                                                  │
-│ ├── Empty content?        → SKIP                                 │
-│ ├── Wrong branch?         → SKIP                                 │
-│ ├── Framework event?      → SKIP                                 │
-│ ├── Thought-only parts?   → SKIP (unless planning)              │
-│ ├── Compaction event?     → INCLUDE as summary                   │
-│ ├── Rewind event?         → Undo previous events                 │
-│ └── Normal content?       → INCLUDE                              │
-│                                                                  │
-│ Special modes:                                                   │
-│ ├── include_contents='default' → full filtered history           │
-│ └── include_contents='none'    → current turn only               │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 13. Function Call ID Management
-
-ADK tracks function calls with client-side IDs:
-
-```
-LLM response: FunctionCall(id="server-123", name="get_weather")
-    ▼
-ADK wraps: FunctionCall(id="adk-abc123", name="get_weather")
-    ▼
-Tool executes → FunctionResponse(id="adk-abc123", response={...})
-    ▼
-Before sending back: FunctionResponse(id="server-123", response={...})
-```
-
----
-
-## 14. Streaming and Live Mode
-
-```
-Standard mode:              Live mode:
-User ──msg──▶ Agent         User ◀══════▶ Agent
-              │                  ║
-              ▼                  ║ Bidirectional
-         Response                ║ streaming
-              │                  ║
-              ▼               Audio/Video
-             User            in real-time
-```
-
----
-
-## 15. Advanced Agent Patterns
-
-**Pattern: Guardrail Agent**
-
-```python
-async def safety_check(callback_context, llm_response):
-    """Block unsafe responses before they reach the user."""
-    if llm_response and llm_response.content:
-        text = str(llm_response.content)
-        if contains_pii(text):
-            from google.adk.models import LlmResponse
-            return LlmResponse(
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part(text="I can't share personal information.")],
-                ),
-            )
-    return None
-
-agent = Agent(name="safe_agent", after_model_callback=safety_check)
-```
-
-**Pattern: Dynamic Instruction Based on Conversation Phase**
-
-```python
-async def phase_aware_instruction(ctx) -> str:
-    turn_count = ctx.state.get("temp:turn_count", 0)
-    ctx.state["temp:turn_count"] = turn_count + 1
-
-    if turn_count == 0:
-        return "You are a sales assistant. Start by greeting the customer."
-    elif turn_count < 5:
-        return "You are a sales assistant in the discovery phase."
-    else:
-        return "You are a sales assistant in the closing phase."
-
-agent = Agent(name="adaptive_sales", instruction=phase_aware_instruction)
-```
 
 ---
 

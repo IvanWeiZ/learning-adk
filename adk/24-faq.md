@@ -148,6 +148,10 @@ async def version_migration_callback(tool, args, tool_context):
 
     if tool.name in migrations:
         new_name, transform_args = migrations[tool.name]
+        # find_tool: look up the tool by name from the agent's resolved tool list.
+        # Implement it by searching tool_context or maintaining a dict at setup time:
+        #   all_tools = {t.name: t for t in agent.tools}
+        #   new_tool = all_tools[new_name]
         new_tool = find_tool(new_name)
         new_args = transform_args(args)
         # Execute new version, return its result (skips old tool)
@@ -181,7 +185,34 @@ When to use each pattern:
 
 ### Q2: What Is the Best Way to Test Each ADK Component and E2E?
 
-For MockModel, InMemoryRunner, deterministic test patterns, and complete test examples, see [22-testing.md](22-testing.md) and [22c-testing-examples.md](22c-testing-examples.md).
+Follow this test pyramid:
+
+```
+Testing pyramid for ADK agents:
+│
+├── Unit tests (tool functions)
+│      Use: FunctionTool(fn).run_async(args, tool_context=MagicMock())
+│      Fast, no LLM, no state
+│
+├── Component tests (single agent)
+│      Use: InMemoryRunner(agent) + MockModel.create(responses=[...])
+│      Deterministic LLM responses, real ADK pipeline
+│
+├── Integration tests (multi-agent / pipeline)
+│      Use: InMemoryRunner(root_agent) + MockModel per sub-agent
+│      Tests routing, state passing, callbacks end-to-end
+│
+└── E2E tests (real LLM, real storage)
+       Use: Runner + DatabaseSessionService + real model
+       Run only in CI — slow and costly
+```
+
+Key rules:
+- Never mock ADK internals (`BaseLlmFlow`, `Runner`) — mock only the LLM and external services
+- `InMemoryRunner` reuses the same session across `.run()` calls — tests multi-turn correctly
+- `TestInMemoryRunner` creates a new session per call — tests isolation
+
+For `MockModel`, `InMemoryRunner`, `simplify_events`, and complete test patterns, see [22-testing.md](22-testing.md) and [22c-testing-examples.md](22c-testing-examples.md).
 
 ---
 
@@ -201,6 +232,8 @@ from google.adk import Agent
 async def enrich_request(callback_context):
     """Extract IDs from user message and fetch additional data before the agent runs."""
     # Get the latest user message from session events
+    # WARNING: _session is a private attribute — no public API exists for this.
+    # It may change without notice in future ADK versions.
     session = callback_context.state._session # Access session
     last_user_msg = ""
     for event in reversed(session.events):
@@ -295,6 +328,8 @@ class IdEnrichmentPlugin(BasePlugin):
         self.fetchers = fetchers
 
     async def before_agent_callback(self, callback_context, **kwargs):
+        # WARNING: _session is a private attribute — no public API exists for this.
+        # It may change without notice in future ADK versions.
         session = callback_context.state._session
         last_msg = self._get_last_user_message(session)
 
@@ -388,230 +423,46 @@ root_agent = SequentialAgent(
 
 ### Q4: What Is the Best Way to Pass Messages Between Agents?
 
-Four mechanisms:
+Four mechanisms are available: session state (via `output_key`), tool-based state writing, agent transfer, and `AgentTool`. Each differs in isolation, history sharing, and whether an extra LLM call is required.
 
-#### Method 1: Session State (Most Common)
-
-Agents in the same session share state via `output_key` or direct writes:
-
-**Pros:** simple, works immediately, persists across turns
-**Cons:** global namespace (key collisions), no type safety
-
-```python
-# Agent A writes to state
-agent_a = Agent(
-    name="researcher",
-    instruction="Research the topic and save findings.",
-    output_key="research_findings", # Auto-saves text output to state
-)
-
-# Agent B reads from state
-agent_b = Agent(
-    name="writer",
-    instruction="""Write an article based on state key 'research_findings'.
-    Use the pre-researched material.""",
-)
-
-# Sequential pipeline: A → B
-root = SequentialAgent(
-    name="pipeline",
-    sub_agents=[agent_a, agent_b],
-)
-```
-
-```
-State-based message passing:
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│ Agent A runs                                             │
-│   │                                                      │
-│   │ output_key="research_findings"                       │
-│   │ Agent produces text → auto-saved to state            │
-│   │                                                      │
-│   │ state["research_findings"] = "Quantum computing..."  │
-│   │                                                      │
-│   ▼                                                      │
-│ Agent B runs                                             │
-│   │                                                      │
-│   │ Instruction references {research_findings}           │
-│   │ ADK replaces placeholder with state value            │
-│   │                                                      │
-│   │ Agent sees: "Write article based on:                 │
-│   │   Quantum computing..."                              │
-│   │                                                      │
-│   ▼                                                      │
-│ Final output                                             │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-#### Method 2: Tool-Based State Writing
-
-For more control over what gets passed:
-
-**Pros:** LLM controls what gets written, natural language interface
-**Cons:** unreliable (LLM may forget to call), extra tool call overhead
-
-```python
-def save_analysis(
-    sentiment: str,
-    confidence: float,
-    key_themes: list[str],
-    tool_context: ToolContext,
-) -> str:
-    """Save structured analysis results for downstream agents."""
-    tool_context.state["analysis"] = {
-        "sentiment": sentiment,
-        "confidence": confidence,
-        "themes": key_themes,
-    }
-    return "Analysis saved."
-
-# Agent A uses the tool to write structured data
-agent_a = Agent(
-    name="analyzer",
-    instruction="Analyze the text, then call save_analysis with your findings.",
-    tools=[save_analysis],
-)
-
-# Agent B reads the structured data
-agent_b = Agent(
-    name="reporter",
-    instruction="Read state['analysis'] and generate a report.",
-)
-```
-
-#### Method 3: Agent Transfer (LLM-Driven Routing)
-
-Transfer carries full session history:
-
-**Pros:** LLM-driven routing, natural conversation flow
-**Cons:** no structured data handoff, target sees full history (privacy)
-
-```python
-root = Agent(
-    name="router",
-    instruction="Route to the right specialist.",
-    sub_agents=[
-        Agent(
-            name="billing",
-            description="Handles billing and payment questions",
-            instruction="Handle billing issues. Transfer back when done.",
-        ),
-        Agent(
-            name="technical",
-            description="Handles technical problems and bugs",
-            instruction="Handle technical issues. Transfer back when done.",
-        ),
-    ],
-)
-```
-
-```
-Agent transfer message passing:
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│ User: "I have a billing question"                        │
-│   │                                                      │
-│   ▼                                                      │
-│ router agent                                             │
-│   │ LLM: transfer_to_agent("billing")                    │
-│   │                                                      │
-│   │ ┌─────────────────────────────────────┐              │
-│   │ │ billing agent                       │              │
-│   │ │ Sees FULL conversation history      │ ← shared     │
-│   │ │ Sees ALL state                      │ ← session    │
-│   │ │ Responds in same session            │              │
-│   │ └─────────────────────────────────────┘              │
-│   │                                                      │
-│   │ When billing is done:                                │
-│   │   transfer_to_agent("router") ← returns to parent    │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-#### Method 4: AgentTool (Isolated Execution)
-
-Isolated execution without shared history:
-
-**Pros:** isolated execution (own branch), structured input_schema
-**Cons:** no shared history, heavier setup
-
-```python
-from google.adk.tools.agent_tool import AgentTool
-
-helper = Agent(
-    name="summarizer",
-    instruction="Summarize the given text in 2-3 sentences.",
-)
-
-helper_tool = AgentTool(agent=helper)
-
-main_agent = Agent(
-    name="main",
-    instruction="Use summarizer tool when you need to condense text.",
-    tools=[helper_tool],
-)
-```
-
-```
-AgentTool message passing:
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│ main_agent                                               │
-│   │                                                      │
-│   │ LLM calls: summarizer(request="long text here...")   │
-│   │   │                                                  │
-│   │   ▼                                                  │
-│   │   ┌───────────────────────────────────┐              │
-│   │   │ summarizer agent (ISOLATED)       │              │
-│   │   │ - New session (empty history)     │              │
-│   │   │ - Only sees the request text      │              │
-│   │   │ - Returns result as tool output   │              │
-│   │   └──────────────────┬────────────────┘              │
-│   │                      │                               │
-│   │                      ▼                               │
-│   │   Tool result: "Summary: ..."                        │
-│   │   main_agent continues with summary                  │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-#### Comparison Table
-
-```
-Message passing methods compared:
-│
-├── Session State (output_key)
-│      Shares history: Yes
-│      Shares state: Yes
-│      Extra LLM call: No
-│      Best for: Pipeline stages
-│
-├── Tool State Write (ToolContext.state)
-│      Shares history: Yes
-│      Shares state: Yes
-│      Extra LLM call: No
-│      Best for: Complex data
-│
-├── Agent Transfer (sub_agents)
-│      Shares history: Yes
-│      Shares state: Yes
-│      Extra LLM call: Yes (route)
-│      Best for: Dynamic routing
-│
-└── AgentTool (tool wrapper)
-       Shares history: No (new session)
-       Shares state: No (new session)
-       Extra LLM call: Yes (child)
-       Best for: Isolated helpers
-```
-
+See [message-passing-patterns.md](message-passing-patterns.md) for full code examples and comparison table.
 ---
 
 ### Q5: Explain All State Scopes — temp, user, app — and Their Visibility
 
-State has four scopes controlled by key prefixes: session (no prefix), `user:`, `app:`, and `temp:` (invocation-only, never persisted). See [08-sessions.md](08-sessions.md) for the full scoping rules and nested diagram.
+State keys are prefixed to determine scope. ADK routes writes to separate storage tables and strips `temp:` before persisting.
+
+```
+State scopes at a glance:
+│
+├── (no prefix) — session scope
+│      Visible to: all agents within this session
+│      Persisted: yes, until session deleted
+│      Use for: conversation context, cart, step tracking
+│      NEVER store: passwords, credit cards, PII
+│
+├── user: — user scope
+│      Visible to: all sessions for this user_id + app_name
+│      Persisted: yes, until user data deleted
+│      Use for: preferences, persona, history summaries
+│      NEVER store: secrets, medical data, SSNs
+│
+├── app: — app scope
+│      Visible to: ALL users in this app_name
+│      Persisted: yes, global to the app
+│      Use for: feature flags, shared config
+│      NEVER store: any user data, any tenant-specific data
+│
+└── temp: — invocation scope
+       Visible to: current invocation only
+       Persisted: NO — stripped before session save
+       Use for: OAuth tokens, scratch values, cache for this request
+       NEVER store: data needed after this single invocation
+```
+
+The prefix determines the storage table. `temp:` is special — it lives only in memory during a single `runner.run_async()` call and is never written to the database.
+
+See [08-sessions.md](08-sessions.md) for the full scoping rules and [19-session-security.md](19-session-security.md) for security considerations per scope.
 
 ---
 

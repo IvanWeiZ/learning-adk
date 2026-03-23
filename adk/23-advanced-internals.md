@@ -45,7 +45,8 @@ This file covers the processor pipeline that builds prompts and handles response
 │ ⑥ compaction           Compact long conversation history             │
 │ │                                                                    │
 │ ⑦ contents             Build conversation messages array             │
-│ │                       Filter events, handle branches               │
+│ │                       Only events on the current agent's branch    │
+│ │                       are included in the message array            │
 │ │                                                                    │
 │ ⑧ context_cache        Set up context caching for long prompts       │
 │ │                                                                    │
@@ -88,8 +89,8 @@ AutoFlow processors:
 ```
 
 ```python
-# AutoFlow injects transfer_to_agent as a tool when sub_agents exist
-# The LLM sees this in its function declarations:
+# Conceptual illustration — AutoFlow injects transfer_to_agent as a tool when sub_agents exist.
+# The LLM sees a function declaration equivalent to:
 {
     "name": "transfer_to_agent",
     "description": "Transfer to another agent for specialized handling",
@@ -160,7 +161,7 @@ The core loop in `BaseLlmFlow.run_async()`:
 Parallel tool execution — when the LLM returns multiple function calls, ADK runs them concurrently:
 
 ```python
-# Inside handle_function_calls_async():
+# Pseudocode — simplified from handle_function_calls_async()
 async def _execute_tools_parallel(function_calls, tool_context):
     tasks = []
     for fc in function_calls:
@@ -207,27 +208,27 @@ Plugins wrap the entire agent lifecycle. They execute **before** agent-level cal
 │ │                                                                    │
 │ ├── Plugin.before_run_callback()       ← before runner starts       │
 │ │                                                                    │
-│ │   ┌── Plugin.before_agent_callback() ← plugins first              │
+│ │   ┌── Plugin.before_agent_callback() ← plugins FIRST for before_* │
 │ │   ├── Agent.before_agent_callback()  ← then agent callback        │
 │ │   │                                                                │
-│ │   │   ┌── Plugin.before_model_callback()                          │
+│ │   │   ┌── Plugin.before_model_callback()  ← plugins FIRST         │
 │ │   │   ├── Agent.before_model_callback()                           │
 │ │   │   │                                                            │
 │ │   │   │   ══════ LLM CALL ══════                                  │
 │ │   │   │                                                            │
-│ │   │   ├── Agent.after_model_callback()                            │
-│ │   │   └── Plugin.after_model_callback()                           │
+│ │   │   ├── Agent.after_model_callback()  ← agent FIRST for after_* │
+│ │   │   └── Plugin.after_model_callback() ← plugins LAST            │
 │ │   │                                                                │
-│ │   │   ┌── Plugin.before_tool_callback()                           │
+│ │   │   ┌── Plugin.before_tool_callback()  ← plugins FIRST          │
 │ │   │   ├── Agent.before_tool_callback()                            │
 │ │   │   │                                                            │
 │ │   │   │   ══════ TOOL CALL ══════                                 │
 │ │   │   │                                                            │
-│ │   │   ├── Agent.after_tool_callback()                             │
-│ │   │   └── Plugin.after_tool_callback()                            │
+│ │   │   ├── Agent.after_tool_callback()  ← agent FIRST for after_*  │
+│ │   │   └── Plugin.after_tool_callback() ← plugins LAST             │
 │ │   │                                                                │
-│ │   ├── Agent.after_agent_callback()                                │
-│ │   └── Plugin.after_agent_callback()                               │
+│ │   ├── Agent.after_agent_callback()  ← agent FIRST for after_*     │
+│ │   └── Plugin.after_agent_callback() ← plugins LAST                │
 │ │                                                                    │
 │ ├── Plugin.on_event_callback()         ← after each event yielded   │
 │ │                                                                    │
@@ -239,7 +240,15 @@ Plugins wrap the entire agent lifecycle. They execute **before** agent-level cal
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Building a custom plugin:
+---
+
+## Examples
+
+### Building a custom plugin
+
+Plugin callbacks receive `callback_context` (a `CallbackContext` — same type as in `before_agent_callback` on `LlmAgent`). Plugin callbacks do **not** receive `tool_context` (`ToolContext`). Use `callback_context.state` to read and write session state.
+
+For plugin API basics — available hooks, return types, and registration — see [10-apps.md](10-apps.md).
 
 ```python
 from google.adk.plugins import BasePlugin
@@ -254,6 +263,7 @@ class MetricsPlugin(BasePlugin):
     name = "metrics_plugin"
 
     async def before_run_callback(self, callback_context, **kwargs):
+        # callback_context is CallbackContext — same as agent callbacks
         callback_context.state["temp:run_start"] = time.time()
         return None # Continue normally
 

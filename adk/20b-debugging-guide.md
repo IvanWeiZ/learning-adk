@@ -1,4 +1,4 @@
-# 20b — Debugging Guide: Checklist & Performance Optimization
+# Debugging Guide: Checklist & Performance Optimization
 
 > **Official docs:** [Agents](https://google.github.io/adk-docs/agents/) | **Source:** ADK source code | **Prereqs:** [20-best-practices.md](20-best-practices.md)
 
@@ -38,101 +38,6 @@ Agent not responding correctly?
 └── 9. Check model availability:
        - Is the model string correct?
        - Are API credentials configured?
-```
-
----
-
-## Performance Checklist
-
-```
-┌───────────────────────────────────────────────────────────────────┐
-│ Performance Optimization                                         │
-│                                                                   │
-│ Use model inheritance — don't repeat model on every agent         │
-│                                                                   │
-│ Use gemini-2.5-flash for routing agents (fast, cheap)             │
-│ Use gemini-2.5-pro only for agents that need deep reasoning       │
-│                                                                   │
-│ Set max_llm_calls in RunConfig to prevent infinite loops          │
-│ runner.run_async(..., run_config=RunConfig(max_llm_calls=20))     │
-│                                                                   │
-│ Use include_contents='none' for agents that don't need history    │
-│                                                                   │
-│ Enable event compaction for long conversations                    │
-│ App(events_compaction_config=EventsCompactionConfig(              │
-│     compaction_interval=5, overlap_size=1                         │
-│ ))                                                                │
-│                                                                   │
-│ Use ParallelAgent when sub-tasks are independent                  │
-│                                                                   │
-│ Use output_key to pass data between agents via state              │
-│ (cheaper than re-processing in context)                           │
-│                                                                   │
-│ Keep instructions concise — every token costs money and time      │
-└───────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Latency Optimization
-
-### Reduce LLM Calls
-
-```
-Common causes of unnecessary LLM calls:
-│
-├── Deep agent hierarchy (each level = 1+ LLM calls for routing)
-│   Fix: Flatten to 2-3 levels max
-│
-├── God agent with too many tools (LLM confused, retries)
-│   Fix: Split into focused agents with 3-5 tools each
-│
-├── Missing max_llm_calls limit (infinite tool-call loops)
-│   Fix: RunConfig(max_llm_calls=20)
-│
-├── Full conversation history on every turn (large context)
-│   Fix: include_contents='none' where possible
-│
-└── No event compaction (context grows unbounded)
-    Fix: EventsCompactionConfig(compaction_interval=5)
-```
-
-### Model Selection Strategy
-
-```
-Model selection for latency:
-│
-├── Routing agents
-│   Use: gemini-2.5-flash (fastest, cheapest)
-│   These agents just pick which sub-agent to use
-│
-├── Data extraction / parsing
-│   Use: gemini-2.5-flash
-│   Structured extraction doesn't need deep reasoning
-│
-├── Complex reasoning / analysis
-│   Use: gemini-2.5-pro
-│   Only where quality justifies the latency cost
-│
-└── Simple classification / confirmation
-    Use: gemini-2.5-flash
-    Binary decisions don't need a large model
-```
-
-### Parallel Execution
-
-```
-Opportunities for parallelism:
-│
-├── Independent sub-tasks → ParallelAgent
-│   Example: search web + query DB + check cache simultaneously
-│
-├── Multiple tool calls in one turn → Automatic
-│   ADK runs concurrent function calls via asyncio.gather
-│   No configuration needed
-│
-└── Async I/O in tools → aiohttp / httpx
-    Never use blocking requests.get() in tools
 ```
 
 ---
@@ -216,32 +121,87 @@ Possible causes:
 
 ---
 
-## Testing Agents Effectively
+## Performance Checklist
 
-```python
-# CORRECT: Test with real ADK components, mock only external services
-@pytest.mark.asyncio
-async def test_weather_agent():
-    def mock_weather(city: str) -> str:
-        """Get weather for a city."""
-        return f"Sunny, 25 degrees C in {city}"
+- Use model inheritance — don't repeat model on every agent
+- Use `gemini-2.5-flash` for routing agents (fast, cheap); `gemini-2.5-pro` only where deep reasoning is needed
+- Set `max_llm_calls` in `RunConfig` to prevent infinite loops: `RunConfig(max_llm_calls=20)`
+- Use `include_contents='none'` for agents that don't need conversation history
+- Enable event compaction for long conversations: `App(events_compaction_config=EventsCompactionConfig(compaction_interval=5, overlap_size=1))`
+- Use `ParallelAgent` when sub-tasks are independent
+- Use `output_key` to pass data between agents via state (cheaper than re-processing in context)
+- Keep instructions concise — every token costs money and time
 
-    agent = Agent(
-        model="gemini-2.5-flash",
-        name="weather_bot",
-        instruction="Help users check weather.",
-        tools=[mock_weather],
-    )
+For detailed latency analysis and model selection guidance, see below.
 
-    runner = InMemoryRunner(agent=agent)
-    # ... test with real ADK pipeline
+---
 
-# WRONG: Mocking ADK internals — brittle and misses real bugs
-with mock.patch("google.adk.flows.BaseLlmFlow.run_async"):
-    pass # Don't do this
+## Latency Optimization
+
+### Reduce LLM Calls
+
+```
+Common causes of unnecessary LLM calls:
+│
+├── Deep agent hierarchy (each level = 1+ LLM calls for routing)
+│   Fix: Flatten to 2-3 levels max
+│
+├── God agent with too many tools (LLM confused, retries)
+│   Fix: Split into focused agents with 3-5 tools each
+│
+├── Missing max_llm_calls limit (infinite tool-call loops)
+│   Fix: RunConfig(max_llm_calls=20)
+│
+├── Full conversation history on every turn (large context)
+│   Fix: include_contents='none' where possible
+│
+└── No event compaction (context grows unbounded)
+    Fix: EventsCompactionConfig(compaction_interval=5)
 ```
 
-For deterministic testing with MockModel (no real LLM calls), see [22-testing.md](22-testing.md).
+### Model Selection Strategy
+
+```
+Model selection for latency:
+│
+├── Routing agents
+│   Use: gemini-2.5-flash (fastest, cheapest)
+│   These agents just pick which sub-agent to use
+│
+├── Data extraction / parsing
+│   Use: gemini-2.5-flash
+│   Structured extraction doesn't need deep reasoning
+│
+├── Complex reasoning / analysis
+│   Use: gemini-2.5-pro
+│   Only where quality justifies the latency cost
+│
+└── Simple classification / confirmation
+    Use: gemini-2.5-flash
+    Binary decisions don't need a large model
+```
+
+### Parallel Execution
+
+```
+Opportunities for parallelism:
+│
+├── Independent sub-tasks → ParallelAgent
+│   Example: search web + query DB + check cache simultaneously
+│
+├── Multiple tool calls in one turn → Automatic
+│   ADK runs concurrent function calls via asyncio.gather
+│   No configuration needed
+│
+└── Async I/O in tools → aiohttp / httpx
+    Never use blocking requests.get() in tools
+```
+
+---
+
+## Testing Agents
+
+For `MockModel`, `InMemoryRunner`, deterministic testing patterns, and complete examples, see [22-testing.md](22-testing.md) and [22c-testing-examples.md](22c-testing-examples.md).
 
 ---
 
