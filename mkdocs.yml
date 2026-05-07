@@ -70,66 +70,67 @@ nav:
   - Home: index.md
 
   - Getting Started:
-    - Onboarding Guide: adk/00-onboarding-guide.md
-    - Request Lifecycle: adk/01-request-lifecycle.md
-    - When to Build What: adk/02-when-to-build-what.md
+      - Onboarding Guide: adk/00-onboarding-guide.md
+      - Request Lifecycle: adk/01-request-lifecycle.md
+      - When to Build What: adk/02-when-to-build-what.md
 
   - Core Layers:
-    - Runners: adk/03-runners.md
-    - Agents: adk/04-agents.md
-    - Flows: adk/05-flows.md
-    - Models: adk/06-models.md
-    - Events: adk/07-events.md
-    - Sessions: adk/08-sessions.md
-    - Tools: adk/09-tools.md
+      - Runners: adk/03-runners.md
+      - Agents: adk/04-agents.md
+      - Flows: adk/05-flows.md
+      - Models: adk/06-models.md
+      - Events: adk/07-events.md
+      - Sessions: adk/08-sessions.md
+      - Tools: adk/09-tools.md
 
   - Extended Capabilities:
-    - Apps & Plugins: adk/10-apps.md
-    - Memory: adk/11-memory.md
-    - Artifacts: adk/12-artifacts.md
-    - Auth: adk/13-auth.md
-    - Planners: adk/14-planners.md
-    - Evaluation: adk/15-evaluation.md
+      - Apps & Plugins: adk/10-apps.md
+      - Memory: adk/11-memory.md
+      - Artifacts: adk/12-artifacts.md
+      - Auth: adk/13-auth.md
+      - Planners: adk/14-planners.md
+      - Evaluation: adk/15-evaluation.md
 
   - Operations & Safety:
-    - Error Reference: adk/16-error-reference.md
-    - Concurrency: adk/17-concurrency.md
-    - Session Lifecycle: adk/18-session-lifecycle.md
-    - Latency Optimization: adk/18b-session-latency-optimization.md
-    - Session Security: adk/19-session-security.md
-    - Security Checklist: adk/19b-security-checklist.md
+      - Error Reference: adk/16-error-reference.md
+      - Concurrency: adk/17-concurrency.md
+      - Session Lifecycle: adk/18-session-lifecycle.md
+      - Latency Optimization: adk/18b-session-latency-optimization.md
+      - Session Security: adk/19-session-security.md
+      - Security Checklist: adk/19b-security-checklist.md
 
   - Patterns & Practices:
-    - Best Practices: adk/20-best-practices.md
-    - Debugging Guide: adk/20b-debugging-guide.md
-    - Advanced Patterns: adk/21-advanced-patterns.md
-    - Testing: adk/22-testing.md
-    - Testing Context Setup: adk/22b-testing-context-setup.md
-    - Testing Examples: adk/22c-testing-examples.md
-    - Advanced Internals: adk/23-advanced-internals.md
-    - Custom Tools & Toolsets: adk/23b-custom-tools-and-toolsets.md
+      - Best Practices: adk/20-best-practices.md
+      - Debugging Guide: adk/20b-debugging-guide.md
+      - Advanced Patterns: adk/21-advanced-patterns.md
+      - Testing: adk/22-testing.md
+      - Testing Context Setup: adk/22b-testing-context-setup.md
+      - Testing Examples: adk/22c-testing-examples.md
+      - Testing Plugin Examples: adk/22d-testing-plugin-examples.md
+      - Advanced Internals: adk/23-advanced-internals.md
+      - Custom Tools & Toolsets: adk/23b-custom-tools-and-toolsets.md
 
   - ADK 2.0:
-    - Preview: adk/25-adk-2.0-preview.md
-    - Patterns: adk/25b-adk-2.0-patterns.md
+      - Preview: adk/25-adk-2.0-preview.md
+      - Patterns: adk/25b-adk-2.0-patterns.md
 
   - FAQ:
-    - FAQ: adk/24-faq.md
-    - Custom Use Cases: adk/24b-custom-use-cases.md
-    - Message Passing: adk/24c-message-passing-patterns.md
+      - FAQ: adk/24-faq.md
+      - Custom Use Cases: adk/24b-custom-use-cases.md
+      - Message Passing: adk/24c-message-passing-patterns.md
 
   - Python for ADK:
-    - Learning Plan: python/python-for-adk-learning-plan.md
-    - Gotchas for Java Devs: python/python-gotchas-for-java-developers.md
-    - Asyncio Deep Dive: python/python-asyncio-deep-dive.md
-    - Asyncio Advanced: python/python-asyncio-advanced.md
-    - Decorators: python/python-decorators-deep-dive.md
-    - Metaprogramming: python/python-metaprogramming-deep-dive.md
-    - Pydantic Core: python/python-pydantic-deep-dive.md
-    - Pydantic Advanced: python/python-pydantic-advanced.md
-    - Testing & Mocking: python/python-testing-and-mocking-guide.md
-    - Testing Advanced: python/python-testing-advanced.md
+      - Learning Plan: python/python-for-adk-learning-plan.md
+      - Gotchas for Java Devs: python/python-gotchas-for-java-developers.md
+      - Asyncio Deep Dive: python/python-asyncio-deep-dive.md
+      - Asyncio Advanced: python/python-asyncio-advanced.md
+      - Decorators: python/python-decorators-deep-dive.md
+      - Metaprogramming: python/python-metaprogramming-deep-dive.md
+      - Pydantic Core: python/python-pydantic-deep-dive.md
+      - Pydantic Advanced: python/python-pydantic-advanced.md
+      - Testing & Mocking: python/python-testing-and-mocking-guide.md
+      - Testing Advanced: python/python-testing-advanced.md
 
   - Reference:
-    - Glossary: reference/glossary.md
-    - Java to Python Cheat Sheet: reference/java-to-python-cheat-sheet.md
+      - Glossary: reference/glossary.md
+      - Java to Python Cheat Sheet: reference/java-to-python-cheat-sheet.md
