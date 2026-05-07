@@ -53,6 +53,7 @@ learning-adk/
 │   ├── 20b-debugging-guide.md                     # Debugging checklist, performance (split from 20)
 │   ├── 22b-testing-context-setup.md               # Context setup, fixtures (split from 22)
 │   ├── 22c-testing-examples.md                    # Test examples for callbacks, plugins (split from 22)
+│   ├── 22d-testing-plugin-examples.md             # Plugins, mocking, best practices (split from 22c)
 │   ├── 23b-custom-tools-and-toolsets.md            # Custom tools, toolsets (split from 23)
 │   ├── 24c-message-passing-patterns.md             # Agent data passing (extracted from 24)
 │   └── 25b-adk-2.0-patterns.md                    # Collaborative agents, dynamic workflows (split from 25)
