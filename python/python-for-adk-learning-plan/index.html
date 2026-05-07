@@ -1,0 +1,2870 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Go beyond the API surface. Understand what actually happens inside Google's Agent Development Kit.">
+      
+      
+      
+        <link rel="canonical" href="https://IvanWeiZ.github.io/learning-adk/python/python-for-adk-learning-plan/">
+      
+      
+        <link rel="prev" href="../../adk/24c-message-passing-patterns/">
+      
+      
+        <link rel="next" href="../python-gotchas-for-java-developers/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
+    
+    
+      
+        <title>Learning Plan - Learning ADK</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#python-for-adk-learning-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Learning ADK" class="md-header__button md-logo" aria-label="Learning ADK" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Learning ADK
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Learning Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/IvanWeiZ/learning-adk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    IvanWeiZ/learning-adk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Learning ADK" class="md-nav__button md-logo" aria-label="Learning ADK" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Learning ADK
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/IvanWeiZ/learning-adk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    IvanWeiZ/learning-adk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/00-onboarding-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Onboarding Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/01-request-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Request Lifecycle
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/02-when-to-build-what/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    When to Build What
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Core Layers
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Core Layers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/03-runners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runners
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/04-agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Agents
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/05-flows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Flows
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/06-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Models
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/07-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/08-sessions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sessions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/09-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tools
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Extended Capabilities
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Extended Capabilities
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/10-apps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Apps & Plugins
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/11-memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Memory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/12-artifacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Artifacts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/13-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Auth
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/14-planners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Planners
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/15-evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Evaluation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Operations & Safety
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations & Safety
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/16-error-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/17-concurrency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Concurrency
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/18-session-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Session Lifecycle
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/18b-session-latency-optimization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Latency Optimization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/19-session-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Session Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/19b-security-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security Checklist
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Patterns & Practices
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Patterns & Practices
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/20-best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Best Practices
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/20b-debugging-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debugging Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/21-advanced-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Advanced Patterns
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/22-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/22b-testing-context-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Context Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/22c-testing-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/22d-testing-plugin-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Plugin Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/23-advanced-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Advanced Internals
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/23b-custom-tools-and-toolsets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom Tools & Toolsets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    ADK 2.0
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            ADK 2.0
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/25-adk-2.0-preview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Preview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/25b-adk-2.0-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Patterns
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            FAQ
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/24-faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/24b-custom-use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom Use Cases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adk/24c-message-passing-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Message Passing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Python for ADK
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Python for ADK
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Learning Plan
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Learning Plan
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      At a Glance
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Concepts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-this-plan-is-organized" class="md-nav__link">
+    <span class="md-ellipsis">
+      How This Plan Is Organized
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#week-1-foundations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Week 1 — Foundations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Week 1 — Foundations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#day-1-python-type-hints-the-typing-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 1: Python Type Hints &amp; the typing Module
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-2-pydantic-basemodel-part-1-basics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 2: Pydantic BaseModel (Part 1 — Basics)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-3-pydantic-basemodel-part-2-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 3: Pydantic BaseModel (Part 2 — Advanced)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-4-generators-yield-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 4: Generators &amp; yield (Sync)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-5-asyncio-fundamentals" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 5: asyncio Fundamentals
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-6-asyncgenerator-async-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 6: AsyncGenerator &amp; async for
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-7-abstract-base-classes-protocols-inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 7: Abstract Base Classes, Protocols &amp; Inheritance
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#week-2-advanced-patterns-adk-specific" class="md-nav__link">
+    <span class="md-ellipsis">
+      Week 2 — Advanced Patterns &amp; ADK-Specific
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Week 2 — Advanced Patterns &amp; ADK-Specific">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#day-8-decorators-first-class-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 8: Decorators &amp; First-Class Functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-9-context-managers-resource-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 9: Context Managers &amp; Resource Management
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-10-dictkwargs-patterns-python-data-manipulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 10: Dict/Kwargs Patterns &amp; Python Data Manipulation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-11-python-module-system-project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 11: Python Module System &amp; Project Structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-12-error-handling-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 12: Error Handling &amp; Logging
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-13-testing-async-python-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 13: Testing Async Python Code
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-14-putting-it-all-together-build-a-mini-adk-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 14: Putting It All Together — Build a Mini ADK Agent
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-mistakes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Mistakes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Reference
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-gotchas-for-java-developers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Gotchas for Java Devs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-asyncio-deep-dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Asyncio Deep Dive
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-asyncio-advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Asyncio Advanced
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-decorators-deep-dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Decorators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-metaprogramming-deep-dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Metaprogramming
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-pydantic-deep-dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Pydantic Core
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-pydantic-advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Pydantic Advanced
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-testing-and-mocking-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing & Mocking
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-testing-advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing Advanced
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Glossary
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/java-to-python-cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Java to Python Cheat Sheet
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      At a Glance
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Concepts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-this-plan-is-organized" class="md-nav__link">
+    <span class="md-ellipsis">
+      How This Plan Is Organized
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#week-1-foundations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Week 1 — Foundations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Week 1 — Foundations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#day-1-python-type-hints-the-typing-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 1: Python Type Hints &amp; the typing Module
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-2-pydantic-basemodel-part-1-basics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 2: Pydantic BaseModel (Part 1 — Basics)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-3-pydantic-basemodel-part-2-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 3: Pydantic BaseModel (Part 2 — Advanced)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-4-generators-yield-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 4: Generators &amp; yield (Sync)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-5-asyncio-fundamentals" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 5: asyncio Fundamentals
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-6-asyncgenerator-async-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 6: AsyncGenerator &amp; async for
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-7-abstract-base-classes-protocols-inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 7: Abstract Base Classes, Protocols &amp; Inheritance
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#week-2-advanced-patterns-adk-specific" class="md-nav__link">
+    <span class="md-ellipsis">
+      Week 2 — Advanced Patterns &amp; ADK-Specific
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Week 2 — Advanced Patterns &amp; ADK-Specific">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#day-8-decorators-first-class-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 8: Decorators &amp; First-Class Functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-9-context-managers-resource-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 9: Context Managers &amp; Resource Management
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-10-dictkwargs-patterns-python-data-manipulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 10: Dict/Kwargs Patterns &amp; Python Data Manipulation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-11-python-module-system-project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 11: Python Module System &amp; Project Structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-12-error-handling-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 12: Error Handling &amp; Logging
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-13-testing-async-python-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 13: Testing Async Python Code
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-14-putting-it-all-together-build-a-mini-adk-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Day 14: Putting It All Together — Build a Mini ADK Agent
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-mistakes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Mistakes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Reference
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/IvanWeiZ/learning-adk/edit/main/python/python-for-adk-learning-plan.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="python-for-adk-learning-plan">Python for ADK — Learning Plan<a class="headerlink" href="#python-for-adk-learning-plan" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>ADK relevance:</strong> Every Python feature here is directly used in ADK agent development | <strong>Estimated time:</strong> ~10 working days, 6-8 hours/day</p>
+<p><strong>Note:</strong> AI-generated content, human-reviewed. May contain errors — verify against official docs.</p>
+</blockquote>
+<h2 id="at-a-glance">At a Glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<p><strong>For:</strong> Experienced Java developer with basic Python knowledge
+<strong>Goal:</strong> Master Python features needed for production ADK agents</p>
+<p><strong>Week 1 — Foundations</strong></p>
+<ol>
+<li>D1 — Type Hints and the <code>typing</code> module</li>
+<li>D2 — Pydantic BaseModel (Part 1 — Basics)</li>
+<li>D3 — Pydantic BaseModel (Part 2 — Advanced)</li>
+<li>D4 — Generators and <code>yield</code></li>
+<li>D5 — asyncio (Part 1 — Coroutines and Tasks)</li>
+<li>D6 — asyncio (Part 2 — Async Generators)</li>
+<li>D7 — ABCs, Protocols, and Structural Subtyping</li>
+</ol>
+<p><strong>Week 2 — Advanced Patterns &amp; ADK-Specific</strong></p>
+<ol>
+<li>D8 — Decorators and Closures</li>
+<li>D9 — Context Managers</li>
+<li>D10 — Dicts, Kwargs, and Data Classes</li>
+<li>D11 — Module System and Imports</li>
+<li>D12 — Error Handling Patterns</li>
+<li>D13 — Testing with Async Code</li>
+<li>D14 — Capstone Project</li>
+</ol>
+<p>A focused 2-week curriculum that bridges your Java expertise with the Python patterns ADK relies on. Each day covers one or two tightly scoped topics with ADK connections, Java comparisons, and hands-on practice.</p>
+<h2 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
+<h3 id="how-this-plan-is-organized">How This Plan Is Organized<a class="headerlink" href="#how-this-plan-is-organized" title="Permanent link">&para;</a></h3>
+<p>Each day includes:
+- <strong>Why it matters for ADK</strong> — concrete connection to the framework
+- <strong>Java to Python</strong> — what transfers and what doesn't
+- <strong>Key concepts</strong> — what to study
+- <strong>Practice</strong> — a small exercise that reinforces the concept in an ADK-like context</p>
+<hr />
+<h3 id="week-1-foundations">Week 1 — Foundations<a class="headerlink" href="#week-1-foundations" title="Permanent link">&para;</a></h3>
+<h4 id="day-1-python-type-hints-the-typing-module">Day 1: Python Type Hints &amp; the <code>typing</code> Module<a class="headerlink" href="#day-1-python-type-hints-the-typing-module" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK auto-generates tool schemas from your function signatures. If your type hints are wrong, your tools break. Every ADK class uses full type annotations.</p>
+<p><strong>Java to Python:</strong>
+Java generics (<code>List&lt;String&gt;</code>) map to Python <code>list[str]</code>. Java's type system is enforced at compile time; Python's is optional and checked by tools like <code>mypy</code>. Think of it as TypeScript vs JavaScript — same language, opt-in safety.</p>
+<p><strong>Key concepts to study:</strong>
+- Built-in generic types: <code>list[str]</code>, <code>dict[str, Any]</code>, <code>tuple[int, ...]</code>
+- <code>Optional[X]</code> (equivalent to <code>X | None</code>)
+- <code>Union[X, Y]</code> and the <code>X | Y</code> syntax (Python 3.10+)
+- <code>Literal["a", "b"]</code> — restricts to exact values
+- <code>Callable[[ArgTypes], ReturnType]</code> — typing function parameters
+- <code>TypeVar</code> and <code>Generic</code> — creating your own generic classes
+- <code>TypeAlias</code> for readability
+- <code>TYPE_CHECKING</code> guard for circular imports
+- <code>typing.get_type_hints()</code> — how ADK reads your annotations at runtime</p>
+<p><strong>Practice:</strong>
+Write a function <code>def search(query: str, max_results: int = 10, filters: dict[str, Any] | None = None) -&gt; list[dict[str, str]]</code> and verify <code>mypy</code> passes. Then write a generic <code>Registry[T]</code> class.</p>
+<hr />
+<h4 id="day-2-pydantic-basemodel-part-1-basics">Day 2: Pydantic BaseModel (Part 1 — Basics)<a class="headerlink" href="#day-2-pydantic-basemodel-part-1-basics" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+Every ADK data structure — <code>Event</code>, <code>EventActions</code>, <code>Session</code>, <code>GenerateContentConfig</code> — is a Pydantic model. You subclass <code>BaseModel</code> constantly.</p>
+<p><strong>Java to Python:</strong>
+Think of Pydantic as Lombok <code>@Data</code> + Jackson + Bean Validation all in one. You define fields with types, and Pydantic handles validation, serialization, and schema generation automatically.</p>
+<p><strong>Key concepts to study:</strong>
+- Defining models: class fields with type annotations and defaults
+- <code>Field()</code> — descriptions, aliases, constraints (<code>ge=</code>, <code>le=</code>, <code>min_length=</code>)
+- Validation: how Pydantic coerces/validates on construction
+- <code>model_dump()</code> and <code>model_dump_json()</code> — serialization
+- <code>model_validate()</code> and <code>model_validate_json()</code> — deserialization
+- Nested models — models containing other models
+- <code>model_copy(update={...})</code> — <strong>ADK uses this pattern heavily</strong> for creating modified copies (like <code>InvocationContext</code>)
+- <code>ConfigDict</code> — model configuration (e.g., <code>frozen=True</code> for immutability)</p>
+<p><strong>Practice:</strong>
+Model an ADK-like <code>Event</code> class:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">Event</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">actions</span><span class="p">:</span> <span class="n">EventActions</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">EventActions</span><span class="p">)</span>  <span class="c1"># mutable default via Field</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">branch</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+Then practice <code>model_copy(update={"author": "new_agent"})</code>.</p>
+<hr />
+<h4 id="day-3-pydantic-basemodel-part-2-advanced">Day 3: Pydantic BaseModel (Part 2 — Advanced)<a class="headerlink" href="#day-3-pydantic-basemodel-part-2-advanced" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK uses validators for configuration, custom serialization for events, and discriminated unions for different tool types.</p>
+<p><strong>Key concepts to study:</strong>
+- <code>@field_validator</code> and <code>@model_validator</code> — custom validation logic
+- <code>@computed_field</code> — derived properties that appear in serialization
+- Discriminated unions: <code>Annotated[ToolA | ToolB, Field(discriminator="type")]</code>
+- Custom serializers: <code>@field_serializer</code>
+- JSON Schema generation: <code>Model.model_json_schema()</code> — this is how ADK creates tool definitions from your types
+- <code>model_config = ConfigDict(arbitrary_types_allowed=True)</code> — when you need non-standard types</p>
+<p><strong>Practice:</strong>
+Create a <code>ToolDefinition</code> model that uses a discriminated union for different tool types (<code>function</code>, <code>search</code>, <code>code_execution</code>), each with different required fields. Generate the JSON schema and inspect it.</p>
+<hr />
+<h4 id="day-4-generators-yield-sync">Day 4: Generators &amp; <code>yield</code> (Sync)<a class="headerlink" href="#day-4-generators-yield-sync" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK streams everything through generators. Understanding sync generators is prerequisite to async generators (which ADK actually uses). The <code>yield</code> keyword has no Java equivalent — this is genuinely new.</p>
+<p><strong>Java to Python:</strong>
+Java's <code>Stream&lt;T&gt;</code> is the closest analogy, but generators are lazily evaluated coroutines that maintain internal state between calls. More like a Java <code>Iterator</code> that's trivially easy to write.</p>
+<p><strong>Key concepts to study:</strong>
+- <code>yield</code> — turns a function into a generator
+- Generator protocol: <code>__iter__</code> and <code>__next__</code>
+- <code>yield from</code> — delegating to sub-generators (like <code>flatMap</code>)
+- Generator expressions: <code>(x for x in items if x &gt; 0)</code>
+- <code>send()</code> — sending values into a generator (less common but important)
+- Memory efficiency — generators don't materialize the full collection
+- Use as pipelines: chaining generators</p>
+<p><strong>Practice:</strong>
+Write a generator that yields events from a simulated agent run:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">simulate_agent_run</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;thinking&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Processing...&quot;</span><span class="p">}</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tool_call&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;search(query)&quot;</span><span class="p">}</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Answer to </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+</code></pre></div>
+Then chain it with a filter generator that only passes through certain event types.</p>
+<hr />
+<h4 id="day-5-asyncio-fundamentals">Day 5: <code>asyncio</code> Fundamentals<a class="headerlink" href="#day-5-asyncio-fundamentals" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK is <strong>async-first</strong>. Every agent method, every LLM call, every tool execution is async. If you don't understand asyncio, you can't use ADK.</p>
+<p><strong>Java to Python:</strong>
+Java uses <code>CompletableFuture</code> and thread pools. Python's asyncio is single-threaded cooperative multitasking — closer to JavaScript's event loop than Java's threading model. This is a fundamental mindset shift.</p>
+<p><strong>Key concepts to study:</strong>
+- Event loop: what it is, how it works (single thread!)
+- <code>async def</code> — defines a coroutine
+- <code>await</code> — suspends until result is ready
+- <code>asyncio.run()</code> — entry point from sync code
+- <code>asyncio.sleep()</code> vs <code>time.sleep()</code> (never use <code>time.sleep</code> in async code!)
+- <code>asyncio.create_task()</code> — run coroutines concurrently
+- <code>asyncio.gather()</code> — await multiple coroutines (used by <code>ParallelAgent</code>)
+- <code>asyncio.TaskGroup</code> (Python 3.11+) — structured concurrency
+- Error handling in async code
+- Why blocking I/O in async code is catastrophic</p>
+<p><strong>Practice:</strong>
+Write an async function that simulates calling 3 different LLM providers concurrently (each with a random <code>asyncio.sleep</code> delay) and returns the first result. Then write one that waits for all 3 and merges results.</p>
+<hr />
+<h4 id="day-6-asyncgenerator-async-for">Day 6: <code>AsyncGenerator</code> &amp; <code>async for</code><a class="headerlink" href="#day-6-asyncgenerator-async-for" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK's core method signature is:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_async</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">InvocationContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">Event</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+</code></pre></div>
+Every agent yields events asynchronously. This combines Day 4 (generators) and Day 5 (asyncio).</p>
+<p><strong>Key concepts to study:</strong>
+- <code>async def</code> + <code>yield</code> = <code>AsyncGenerator</code>
+- <code>async for event in agent.run_async(ctx):</code> — consuming async generators
+- <code>AsyncIterator</code> protocol: <code>__aiter__</code> and <code>__anext__</code>
+- Combining async generators: collecting, filtering, merging
+- <code>async yield from</code> doesn't exist — you must use <code>async for x in sub(): yield x</code>
+- Error handling and cleanup in async generators
+- Typing: <code>AsyncGenerator[YieldType, SendType]</code></p>
+<p><strong>Practice:</strong>
+Build a mini agent framework:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">agent_a</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">Event</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">yield</span> <span class="n">Event</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="n">agent</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># simulate LLM call</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="k">yield</span> <span class="n">Event</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;response&quot;</span><span class="p">,</span> <span class="n">agent</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="s2">&quot;result&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_sequential</span><span class="p">(</span><span class="n">agents</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">Event</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="n">agents</span><span class="p">:</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">agent</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">):</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>            <span class="k">yield</span> <span class="n">event</span>
+</code></pre></div></p>
+<hr />
+<h4 id="day-7-abstract-base-classes-protocols-inheritance">Day 7: Abstract Base Classes, Protocols &amp; Inheritance<a class="headerlink" href="#day-7-abstract-base-classes-protocols-inheritance" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK's extension model is built on ABCs: <code>BaseAgent</code>, <code>BaseLlm</code>, <code>BaseTool</code>, <code>BaseSessionService</code>. To create custom agents or tools, you subclass these and implement abstract methods.</p>
+<p><strong>Java to Python:</strong>
+Java <code>abstract class</code> maps to Python <code>ABC</code>. Java <code>interface</code> maps to Python <code>Protocol</code> (structural) or <code>ABC</code> (nominal). Multiple inheritance is supported and commonly used (no <code>implements</code> keyword needed).</p>
+<p><strong>Key concepts to study:</strong>
+- <code>abc.ABC</code> and <code>@abstractmethod</code>
+- <code>typing.Protocol</code> — structural subtyping (duck typing with type safety)
+- <code>@runtime_checkable</code> — allowing <code>isinstance()</code> checks on Protocols
+- Python's MRO (Method Resolution Order) — how multiple inheritance resolves conflicts
+- <code>super()</code> — calling parent methods (works differently from Java's <code>super</code>)
+- <code>__init_subclass__</code> — hook called when a class is subclassed (used in registries)
+- <code>__subclasses__()</code> — discovering all subclasses at runtime</p>
+<p><strong>Practice:</strong>
+Create an ADK-like tool system:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">BaseTool</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="nd">@abstractmethod</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_async</span><span class="p">(</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">tool_context</span><span class="p">:</span> <span class="n">ToolContext</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="c1"># NOTE: args and tool_context are keyword-only (after *)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">class</span><span class="w"> </span><span class="nc">FunctionTool</span><span class="p">(</span><span class="n">BaseTool</span><span class="p">):</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">):</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_func</span> <span class="o">=</span> <span class="n">func</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">tool_context</span><span class="p">):</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">(</span><span class="o">**</span><span class="n">args</span><span class="p">)</span>
+</code></pre></div></p>
+<hr />
+<h3 id="week-2-advanced-patterns-adk-specific">Week 2 — Advanced Patterns &amp; ADK-Specific<a class="headerlink" href="#week-2-advanced-patterns-adk-specific" title="Permanent link">&para;</a></h3>
+<h4 id="day-8-decorators-first-class-functions">Day 8: Decorators &amp; First-Class Functions<a class="headerlink" href="#day-8-decorators-first-class-functions" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK's callback system and tool registration rely on passing functions as arguments and using decorators. Tool registration patterns, callback registration, and plugin hooks all use these patterns. Note: ADK has no <code>@tool</code> decorator — tools are registered via the <code>FunctionTool()</code> constructor or by passing plain functions directly to <code>LlmAgent(tools=[...])</code>.</p>
+<p><strong>Java to Python:</strong>
+Java's <code>@FunctionalInterface</code> and lambdas are limited compared to Python. In Python, functions are truly first-class objects — you can assign them to variables, pass them as arguments, return them from functions, and modify them with decorators.</p>
+<p><strong>Key concepts to study:</strong>
+- Functions as objects: <code>func.__name__</code>, <code>func.__doc__</code>, <code>func.__annotations__</code>
+- Higher-order functions: functions that take/return functions
+- Closures: inner functions capturing outer scope variables
+- Decorators: <code>@decorator</code> syntax is just <code>func = decorator(func)</code>
+- Decorators with arguments: <code>@decorator(arg)</code> needs a decorator factory
+- <code>functools.wraps</code> — preserving function metadata
+- <code>functools.partial</code> — partial application
+- <code>inspect</code> module — runtime introspection of function signatures (ADK uses this for tool schema generation)</p>
+<p><strong>Practice:</strong>
+Write a <code>@register_tool</code> decorator that:
+1. Reads the function's type hints and docstring
+2. Generates a JSON schema for the tool
+3. Registers it in a global tool registry
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nd">@register_tool</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search_web</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_results</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Search the web for information.&quot;&quot;&quot;</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="o">...</span>
+</code></pre></div></p>
+<hr />
+<h4 id="day-9-context-managers-resource-management">Day 9: Context Managers &amp; Resource Management<a class="headerlink" href="#day-9-context-managers-resource-management" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK uses async context managers for session management, MCP toolset connections, database connections, and cleanup. The <code>async with</code> pattern appears everywhere.</p>
+<p><strong>Java to Python:</strong>
+Java's try-with-resources (<code>try (var x = ...)</code>) maps to Python's <code>with</code>/<code>async with</code>. The <code>__enter__</code>/<code>__exit__</code> protocol is like Java's <code>AutoCloseable</code> but more powerful.</p>
+<p><strong>Key concepts to study:</strong>
+- <code>with</code> statement and the context manager protocol
+- <code>__enter__</code> / <code>__exit__</code> (sync)
+- <code>__aenter__</code> / <code>__aexit__</code> (async)
+- <code>contextlib.contextmanager</code> — create context managers from generators
+- <code>contextlib.asynccontextmanager</code> — async version
+- <code>contextlib.ExitStack</code> / <code>AsyncExitStack</code> — managing multiple resources
+- Cleanup guarantees and exception handling in <code>__exit__</code>
+- Using context managers for state management (not just resources)</p>
+<p><strong>Practice:</strong>
+Build an async session manager:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SessionManager</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_session</span><span class="p">()</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># don&#39;t suppress exceptions</span>
+</code></pre></div></p>
+<hr />
+<h4 id="day-10-dictkwargs-patterns-python-data-manipulation">Day 10: Dict/Kwargs Patterns &amp; Python Data Manipulation<a class="headerlink" href="#day-10-dictkwargs-patterns-python-data-manipulation" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK configuration, state management (<code>session.state</code>), event actions (<code>state_delta</code>), and tool arguments all use dict patterns heavily. Python dicts are far more central than Java Maps.</p>
+<p><strong>Java to Python:</strong>
+Java <code>Map&lt;String, Object&gt;</code> maps to Python <code>dict[str, Any]</code>. But Python dicts are used where Java would use POJOs, builder patterns, or configuration objects.</p>
+<p><strong>Key concepts to study:</strong>
+- <code>*args</code> and <code>**kwargs</code> — variadic arguments
+- Dict unpacking: <code>{**base, **overrides}</code> (like spread operator)
+- <code>dict.get(key, default)</code> vs <code>dict[key]</code>
+- <code>dict.setdefault()</code>, <code>dict.update()</code>
+- <code>collections.defaultdict</code> and <code>collections.Counter</code>
+- Destructuring: <code>a, b, *rest = some_list</code>
+- Walrus operator <code>:=</code> — assignment expressions
+- Pattern matching (<code>match/case</code> — Python 3.10+) — like Java's enhanced switch</p>
+<p><strong>Practice:</strong>
+Implement ADK-like state management:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SessionState</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">apply_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge delta into state, handling &#39;user:&#39; and &#39;app:&#39; prefixed keys.&quot;&quot;&quot;</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">delta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>  <span class="c1"># delete</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</code></pre></div></p>
+<hr />
+<h4 id="day-11-python-module-system-project-structure">Day 11: Python Module System &amp; Project Structure<a class="headerlink" href="#day-11-python-module-system-project-structure" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK uses namespace packages (<code>google.adk.agents</code>), and your agent projects need proper structure for imports, testing, and deployment.</p>
+<p><strong>Java to Python:</strong>
+Java packages map to directories with predictable rules. Python's module system is more flexible but also more confusing: <code>__init__.py</code>, relative imports, <code>sys.path</code> manipulation, namespace packages.</p>
+<p><strong>Key concepts to study:</strong>
+- Modules vs packages vs namespace packages
+- <code>__init__.py</code> — what it does, when to use it
+- Import mechanics: <code>import</code>, <code>from x import y</code>, relative imports
+- <code>__all__</code> — controlling <code>from module import *</code>
+- Circular import resolution strategies
+- <code>pyproject.toml</code> — modern Python project config (replaces <code>setup.py</code>)
+- Virtual environments: <code>venv</code>, <code>uv</code>, or <code>poetry</code>
+- Dependency management: <code>pip</code>, <code>uv</code>, <code>poetry</code>
+- Entry points and <code>__main__.py</code></p>
+<p><strong>Practice:</strong>
+Structure a multi-agent ADK project:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>my_agents/
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>├── pyproject.toml
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>├── src/
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>│   └── my_agents/
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>│       ├── __init__.py
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>│       ├── agents/
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>│       │   ├── __init__.py
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>│       │   ├── search_agent.py
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>│       │   └── summary_agent.py
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>│       ├── tools/
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>│       │   ├── __init__.py
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>│       │   └── web_search.py
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>│       └── config.py
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>└── tests/
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    └── test_agents.py
+</code></pre></div></p>
+<hr />
+<h4 id="day-12-error-handling-logging">Day 12: Error Handling &amp; Logging<a class="headerlink" href="#day-12-error-handling-logging" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+ADK's <code>LlmAgent</code> has error callbacks (<code>on_model_error_callback</code>, <code>on_tool_error_callback</code>), and production agents need robust error handling and observability.</p>
+<p><strong>Java to Python:</strong>
+Python has no checked exceptions (everything is unchecked). <code>logging</code> module is similar to SLF4J but configured differently. No <code>log4j.xml</code> — configuration is programmatic or via <code>dictConfig</code>.</p>
+<p><strong>Key concepts to study:</strong>
+- Exception hierarchy: <code>BaseException</code> → <code>Exception</code> → specific types
+- Custom exceptions: when and how to define them
+- <code>try/except/else/finally</code> — the <code>else</code> clause is Python-specific
+- Exception chaining: <code>raise X from Y</code>
+- <code>logging</code> module: loggers, handlers, formatters, levels
+- <code>logging.config.dictConfig()</code> — programmatic configuration
+- <code>structlog</code> — structured logging (common in production Python)
+- Async error handling: exceptions in tasks, <code>TaskGroup</code> exception groups
+- <code>traceback</code> module — programmatic access to stack traces</p>
+<p><strong>Practice:</strong>
+Build an error-handling wrapper for ADK tool execution:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">safe_tool_call</span><span class="p">(</span><span class="n">tool</span><span class="p">:</span> <span class="n">BaseTool</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ToolContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Event</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>            <span class="n">tool</span><span class="o">.</span><span class="n">run_async</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">tool_context</span><span class="o">=</span><span class="n">context</span><span class="p">),</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="p">)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        <span class="k">return</span> <span class="n">Event</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;tool_result&quot;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="n">result</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Tool </span><span class="si">%s</span><span class="s2"> timed out&quot;</span><span class="p">,</span> <span class="n">tool</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        <span class="k">return</span> <span class="n">Event</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;tool_error&quot;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Tool execution timed out&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Tool </span><span class="si">%s</span><span class="s2"> failed&quot;</span><span class="p">,</span> <span class="n">tool</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        <span class="k">return</span> <span class="n">Event</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;tool_error&quot;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+</code></pre></div></p>
+<hr />
+<h4 id="day-13-testing-async-python-code">Day 13: Testing Async Python Code<a class="headerlink" href="#day-13-testing-async-python-code" title="Permanent link">&para;</a></h4>
+<p><strong>Why ADK needs this:</strong>
+You need to test your agents, tools, and flows. Testing async code has specific patterns.</p>
+<p><strong>Java to Python:</strong>
+JUnit maps to <code>pytest</code>. Mockito maps to <code>unittest.mock</code>. But async testing needs <code>pytest-asyncio</code> and has its own patterns.</p>
+<p><strong>Key concepts to study:</strong>
+- <code>pytest</code> basics: test discovery, assertions, fixtures
+- <code>pytest-asyncio</code> — <code>@pytest.mark.asyncio</code> for async tests
+- <code>unittest.mock</code>: <code>Mock</code>, <code>MagicMock</code>, <code>AsyncMock</code>
+- <code>mock.patch</code> and <code>mock.patch.object</code> — monkey-patching for tests
+- Fixtures: <code>@pytest.fixture</code> — dependency injection for tests
+- <code>conftest.py</code> — shared fixtures
+- Parametrized tests: <code>@pytest.mark.parametrize</code>
+- Testing generators and async generators
+- <code>hypothesis</code> — property-based testing (optional but powerful)</p>
+<p><strong>Practice:</strong>
+Write tests for the tool system you built on Day 8:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">asyncio</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_search_tool_returns_results</span><span class="p">():</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="k">with</span> <span class="n">mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">&quot;my_agents.tools.web_search.fetch&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_fetch</span><span class="p">:</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="n">mock_fetch</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;result1&quot;</span><span class="p">,</span> <span class="s2">&quot;result2&quot;</span><span class="p">]</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        <span class="n">tool</span> <span class="o">=</span> <span class="n">FunctionTool</span><span class="p">(</span><span class="n">search_web</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">tool</span><span class="o">.</span><span class="n">run_async</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;test&quot;</span><span class="p">},</span> <span class="n">tool_context</span><span class="o">=</span><span class="n">mock_context</span><span class="p">)</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+</code></pre></div></p>
+<hr />
+<h4 id="day-14-putting-it-all-together-build-a-mini-adk-agent">Day 14: Putting It All Together — Build a Mini ADK Agent<a class="headerlink" href="#day-14-putting-it-all-together-build-a-mini-adk-agent" title="Permanent link">&para;</a></h4>
+<p><strong>Why this matters:</strong>
+Integrate everything into one working project that mirrors ADK's architecture.</p>
+<p><strong>Capstone project — build a simplified agent framework with:</strong></p>
+<ol>
+<li><strong>Event system</strong> (Pydantic models, typed events)</li>
+<li><strong>Base agent</strong> (ABC with <code>async run_async() -&gt; AsyncGenerator[Event, None]</code>)</li>
+<li><strong>LLM agent</strong> (subclass that calls a mock LLM)</li>
+<li><strong>Tool system</strong> (decorator-based registration, schema generation from type hints)</li>
+<li><strong>Sequential &amp; Parallel agents</strong> (composition using async generators)</li>
+<li><strong>Session with state</strong> (dict-based state with delta merging)</li>
+<li><strong>Runner</strong> (orchestrator that drives agents and collects events)</li>
+<li><strong>Error handling &amp; logging</strong> throughout</li>
+<li><strong>Tests</strong> for every component</li>
+</ol>
+<p>This is a <strong>multi-session project</strong> (not a single day). Expect ~300-500 lines of Python across multiple focused sessions, each exercising concepts from previous days.</p>
+<h2 id="common-mistakes">Common Mistakes<a class="headerlink" href="#common-mistakes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Mistake</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Using <code>time.sleep()</code> in async code</td>
+<td>Always use <code>await asyncio.sleep()</code></td>
+</tr>
+<tr>
+<td>Missing <code>@functools.wraps</code> on decorators</td>
+<td>ADK reads <code>__name__</code> and <code>__doc__</code> for tool schemas</td>
+</tr>
+<tr>
+<td>Mutable default arguments (<code>def f(x=[])</code>)</td>
+<td>Use <code>None</code> default and create inside function</td>
+</tr>
+<tr>
+<td>Forgetting to <code>await</code> a coroutine</td>
+<td>Python warns but won't raise — the coroutine never runs</td>
+</tr>
+<tr>
+<td>Using <code>asyncio.run()</code> inside async code</td>
+<td>Just <code>await</code> directly — nested <code>run()</code> raises RuntimeError</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
+<p>For a full Java → Python side-by-side mapping, see <a href="../../reference/java-to-python-cheat-sheet/">java-to-python-cheat-sheet.md</a>.</p>
+<hr />
+<p><strong>Recommended Resources</strong></p>
+<p><strong>Official docs (primary source of truth):</strong>
+- <a href="https://docs.python.org/3/library/typing.html">Python <code>typing</code> module</a>
+- <a href="https://docs.pydantic.dev/latest/">Pydantic v2 docs</a>
+- <a href="https://docs.python.org/3/library/asyncio.html">Python <code>asyncio</code> docs</a>
+- <a href="https://google.github.io/adk-python/">Google ADK documentation</a>
+- <a href="https://docs.pytest.org/">pytest docs</a></p>
+<p><strong>Books &amp; courses:</strong>
+- <em>Fluent Python</em> (2nd ed.) by Luciano Ramalho — chapters on generators, async, decorators, and protocols are gold
+- <em>Python Concurrency with asyncio</em> by Matthew Fowler — deep dive on async patterns
+- <em>Robust Python</em> by Patrick Viafore — type hints, Pydantic, and writing maintainable Python</p>
+<p><strong>Practice platforms:</strong>
+- Build small projects after each day's topic
+- Read ADK source code on GitHub (<code>google/adk-python</code>) — best way to see patterns in action
+- Contribute to ADK or build a sample multi-agent project</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      ADK v1.27.2 · Built with MkDocs Material
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/IvanWeiZ/learning-adk" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.action.edit", "content.code.copy"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      
+    
+  </body>
+</html>
