@@ -40,6 +40,7 @@ learning-adk/
 │   ├── 16-error-reference.md                      # Error paths, recovery, silent failures
 │   ├── 17-concurrency.md                          # Thread safety, parallel tools, locking
 │   ├── 18-session-lifecycle.md                    # Session service timeline, optimization
+│   ├── 18b-session-latency-optimization.md        # Latency optimization patterns (split from 18)
 │   ├── 19-session-security.md                     # Security considerations
 │   ├── 20-best-practices.md                       # Anti-patterns, common mistakes
 │   ├── 21-advanced-patterns.md                    # YAML configs, ReflectAndRetry, triage gates
@@ -167,6 +168,7 @@ l=$(wc -l < adk/00-onboarding-guide.md); [ "$l" -gt 250 ] && echo "OVER: onboard
 Limits: ADK docs **600**, Python guides **1000**, Onboarding **250**.
 
 **Files currently over limit:**
+
 - `adk/01-request-lifecycle.md`: 621 (limit 600)
 - `adk/18-session-lifecycle.md`: 603 (limit 600)
 - `adk/24-faq.md`: 648 (limit 600)
@@ -185,17 +187,18 @@ grep -rn 'name="user"' adk/*.md python/*.md
 
 ### 8. Links inside code blocks (not clickable)
 
-```bash
+````bash
 grep -B5 'https://' adk/*.md | grep -A1 '```'
-```
+````
 
-URLs inside `` ``` `` blocks aren't clickable. Use markdown tables or inline links outside code blocks.
+URLs inside ` ``` ` blocks aren't clickable. Use markdown tables or inline links outside code blocks.
 
 ---
 
 ## Lessons Learned (Do NOT Repeat These Mistakes)
 
 **Content accuracy:**
+
 1. **Verify class names against source** — `BaseEvaluator` → `Evaluator`. `ConversationTurn`, `ToolUse` don't exist. Always grep before writing.
 2. **Verify method signatures** — `run_live(user_id: str)` was wrong (`Optional[str] = None`). `BaseTool.run_async(args, context)` is keyword-only.
 3. **Verify field types** — `branch: str` → `Optional[str]`. `custom_metadata: Optional[dict]` → `dict[str, Any] = Field(default_factory=dict)`.
@@ -204,37 +207,11 @@ URLs inside `` ``` `` blocks aren't clickable. Use markdown tables or inline lin
 6. **`AgentEvaluator.evaluate()` is async** — must `await`. Returns None, asserts internally.
 7. **`ToolContext` = `CallbackContext` = `Context`** — aliases, not subclass relationship.
 
-**Diagram quality:**
-8. **No cramped one-liners** — `None → X | Y → Z` is unreadable. Use `if returns None:` on separate lines.
-9. **No stacked box separators** (`├───┤`) — use tree style.
-10. **No side-by-side boxes** — always vertical tree. (Violated in `00-onboarding-guide.md` lines 160-184.)
-11. **Descriptions on NEXT line** — not on same line as tree node.
-12. **Links in code blocks aren't clickable** — use markdown tables.
-13. **At a Glance must be compact** (5-10 lines) — not a full architecture walkthrough.
-14. **Check box alignment** — edges must match longest content. Test in monospace.
-15. **Use real model IDs** — not `claude-sonnet-4-5` or `gemini-pro`.
-16. **No opaque IDs as labels** — `evt-002` means nothing. Use "Tool Call", "Final Response".
+**Diagram quality:** 8. **No cramped one-liners** — `None → X | Y → Z` is unreadable. Use `if returns None:` on separate lines. 9. **No stacked box separators** (`├───┤`) — use tree style. 10. **No side-by-side boxes** — always vertical tree. (Violated in `00-onboarding-guide.md` lines 160-184.) 11. **Descriptions on NEXT line** — not on same line as tree node. 12. **Links in code blocks aren't clickable** — use markdown tables. 13. **At a Glance must be compact** (5-10 lines) — not a full architecture walkthrough. 14. **Check box alignment** — edges must match longest content. Test in monospace. 15. **Use real model IDs** — not `claude-sonnet-4-5` or `gemini-pro`. 16. **No opaque IDs as labels** — `evt-002` means nothing. Use "Tool Call", "Final Response".
 
-**User preferences:**
-17. **Onboarding = motivation** — under 200 lines. "agent = prompt + model + tools". Don't teach callbacks here.
-18. **No Java comparisons in onboarding** — keep those in deep-dive files.
-19. **New concepts in Big Picture** — MCP, new capabilities must appear in overview.
-20. **Ask about section order** — user changed mind about Examples vs How It Works.
+**User preferences:** 17. **Onboarding = motivation** — under 200 lines. "agent = prompt + model + tools". Don't teach callbacks here. 18. **No Java comparisons in onboarding** — keep those in deep-dive files. 19. **New concepts in Big Picture** — MCP, new capabilities must appear in overview. 20. **Ask about section order** — user changed mind about Examples vs How It Works.
 
-**Process:**
-21. **Agents reintroduce checkboxes** — run the check in §1 above after every agent completes.
-22. **Agents reintroduce removed content** — diff the file before/after every agent.
-23. **Agents overwrite each other** — never run multiple agents on same file.
-24. **Agents drop heading spaces** — run the check in §2 above after every agent.
-25. **Verify content, not just formatting** — read the rendered output, don't just grep.
-26. **Verify official doc URLs** — WebFetch every URL before using.
-27. **Header format: `Official docs | Source | Prereqs`** — always this order, always on line 3 of `adk/*.md`.
-28. **When removing content, verify it exists elsewhere** — move before delete.
-29. **Fix the pattern, not the instance** — search ALL files for same issue.
-30. **Test CI locally before pushing** — broken regex in CI caused multiple failures.
-31. **Introduce concepts before using them** — key terms must be defined before the trace.
-32. **After renaming/splitting files, grep ALL files for old filename** — stale "b-suffix" links persisted across 5 files (see §3 above).
-33. **Use GitHub URLs for source references** — not `../adk-python/` relative paths (see §4 above).
+**Process:** 21. **Agents reintroduce checkboxes** — run the check in §1 above after every agent completes. 22. **Agents reintroduce removed content** — diff the file before/after every agent. 23. **Agents overwrite each other** — never run multiple agents on same file. 24. **Agents drop heading spaces** — run the check in §2 above after every agent. 25. **Verify content, not just formatting** — read the rendered output, don't just grep. 26. **Verify official doc URLs** — WebFetch every URL before using. 27. **Header format: `Official docs | Source | Prereqs`** — always this order, always on line 3 of `adk/*.md`. 28. **When removing content, verify it exists elsewhere** — move before delete. 29. **Fix the pattern, not the instance** — search ALL files for same issue. 30. **Test CI locally before pushing** — broken regex in CI caused multiple failures. 31. **Introduce concepts before using them** — key terms must be defined before the trace. 32. **After renaming/splitting files, grep ALL files for old filename** — stale "b-suffix" links persisted across 5 files (see §3 above). 33. **Use GitHub URLs for source references** — not `../adk-python/` relative paths (see §4 above).
 
 ---
 
@@ -244,32 +221,32 @@ When editing documentation for readability, follow these rules strictly.
 
 ### Allowed
 
-| Type | Example |
-|------|---------|
-| Fix typos / grammar | "will raise" → "raises" |
-| Fix factual errors | Wrong class name, wrong model ID |
-| Fix broken links | `25-onboarding-guide.md` → `00-onboarding-guide.md` |
-| Rename headings | "Quick Decision Tree" → "Decision Tree" |
-| Clean up authoring notes | Remove "(big-picture diagram first...)" from heading |
+| Type                               | Example                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| Fix typos / grammar                | "will raise" → "raises"                                                             |
+| Fix factual errors                 | Wrong class name, wrong model ID                                                    |
+| Fix broken links                   | `25-onboarding-guide.md` → `00-onboarding-guide.md`                                 |
+| Rename headings                    | "Quick Decision Tree" → "Decision Tree"                                             |
+| Clean up authoring notes           | Remove "(big-picture diagram first...)" from heading                                |
 | Backward cross-reference for dedup | Add "See [01-request-lifecycle.md]" from file `05` — **only higher → lower number** |
-| Add "See [file]" notes | When content exists in two places, link to the earlier doc |
-| Fix formatting | Missing heading space, stray `---` |
-| Improve sentence clarity | Break a run-on sentence into bullets |
-| Add missing context callouts | "> Not needed for ADK — listed for completeness" |
-| Add vale tooling | `.vale.ini`, `.gitignore`, `validate.sh` updates |
-| Fix contradictory statements | Clarify one to be consistent — don't delete either |
-| Fix future tense → present tense | "will raise" → "raises" (mechanical, not content-changing) |
+| Add "See [file]" notes             | When content exists in two places, link to the earlier doc                          |
+| Fix formatting                     | Missing heading space, stray `---`                                                  |
+| Improve sentence clarity           | Break a run-on sentence into bullets                                                |
+| Add missing context callouts       | "> Not needed for ADK — listed for completeness"                                    |
+| Add vale tooling                   | `.vale.ini`, `.gitignore`, `validate.sh` updates                                    |
+| Fix contradictory statements       | Clarify one to be consistent — don't delete either                                  |
+| Fix future tense → present tense   | "will raise" → "raises" (mechanical, not content-changing)                          |
 
 ### Not Allowed
 
-| Type | Why |
-|------|-----|
-| Delete sections or paragraphs | Content stays, even if duplicated |
-| Remove code examples | Including Java comparison blocks |
-| Shorten code blocks | Don't collapse 3 examples into 1 |
-| Restructure file layout | Don't move sections between files |
-| Split over-limit files | Keep files as-is even if over 600/1000 lines |
-| Forward cross-references | Don't add "See [07]" from inside `01` — only backward refs |
+| Type                          | Why                                                        |
+| ----------------------------- | ---------------------------------------------------------- |
+| Delete sections or paragraphs | Content stays, even if duplicated                          |
+| Remove code examples          | Including Java comparison blocks                           |
+| Shorten code blocks           | Don't collapse 3 examples into 1                           |
+| Restructure file layout       | Don't move sections between files                          |
+| Split over-limit files        | Keep files as-is even if over 600/1000 lines               |
+| Forward cross-references      | Don't add "See [07]" from inside `01` — only backward refs |
 
 ---
 
@@ -277,18 +254,19 @@ When editing documentation for readability, follow these rules strictly.
 
 Understanding these layers is essential for adding or updating documentation:
 
-| Layer | Class | Role |
-|---|---|---|
-| Events | `Event`, `EventActions` | Universal data flowing through every layer |
-| Agents | `BaseAgent`, `LlmAgent` | Blueprints for agent behavior |
-| Runner | `Runner` | Stateless orchestrator: session → agent → events |
-| Flows | `BaseLlmFlow` | Reason-act loop inside LlmAgent |
-| Models | `BaseLlm`, `LLMRegistry` | Adapters for Gemini, Anthropic, LiteLLM |
-| Sessions | `Session`, `BaseSessionService` | Conversation history + state dict |
-| Tools | `BaseTool`, `FunctionTool`, `BaseToolset` | Pluggable capabilities |
-| Apps | `App`, `BasePlugin` | High-level container, cross-cutting hooks |
+| Layer    | Class                                     | Role                                             |
+| -------- | ----------------------------------------- | ------------------------------------------------ |
+| Events   | `Event`, `EventActions`                   | Universal data flowing through every layer       |
+| Agents   | `BaseAgent`, `LlmAgent`                   | Blueprints for agent behavior                    |
+| Runner   | `Runner`                                  | Stateless orchestrator: session → agent → events |
+| Flows    | `BaseLlmFlow`                             | Reason-act loop inside LlmAgent                  |
+| Models   | `BaseLlm`, `LLMRegistry`                  | Adapters for Gemini, Anthropic, LiteLLM          |
+| Sessions | `Session`, `BaseSessionService`           | Conversation history + state dict                |
+| Tools    | `BaseTool`, `FunctionTool`, `BaseToolset` | Pluggable capabilities                           |
+| Apps     | `App`, `BasePlugin`                       | High-level container, cross-cutting hooks        |
 
 **Key ADK modules** (in `google.adk.*`):
+
 - `events`, `agents`, `runners`, `flows.llm_flows`, `models`
 - `sessions`, `tools`, `apps`, `memory`, `artifacts`, `auth`, `telemetry`
 
@@ -313,34 +291,44 @@ When adding or editing documentation, preserve this structure.
 These patterns appear throughout the documentation and should be applied consistently in new content:
 
 ### 1. Async-First / Streaming
+
 Every agent produces an `AsyncGenerator[Event, None]`:
+
 ```python
 async def _run_async_impl(ctx: InvocationContext) -> AsyncGenerator[Event, None]:
     yield Event(...)
 ```
 
 ### 2. Context Threading
+
 `InvocationContext` is passed through every call chain. It carries the session, state, credentials, and enables callbacks.
 
 ### 3. Adapter / Strategy Pattern
+
 Abstract base classes define contracts; multiple concrete implementations exist:
+
 - `BaseLlm` → `GeminiLlm`, `AnthropicLlm`, `LiteLlm`
 - `BaseSessionService` → `InMemorySessionService`, `SQLiteSessionService`, `DatabaseSessionService`
 - `BaseTool` → `FunctionTool`, `AgentTool`, `LongRunningFunctionTool`
 
 ### 4. Hook / Callback Pattern
+
 LlmAgent supports layered interception:
+
 - `before_agent_callback` / `after_agent_callback`
 - `before_model_callback` / `after_model_callback`
 - `before_tool_callback` / `after_tool_callback`
 - `on_model_error_callback` / `on_tool_error_callback`
 
 ### 5. Pipeline / Processor Pattern
+
 `BaseLlmFlow` runs processors in order:
+
 - **Request processors**: instructions, contents, functions, output_schema
 - **Response processors**: code_execution, functions, agent_transfer
 
 ### 6. Event-Driven Side Effects
+
 Side effects (state mutations, agent transfers, escalations) are carried in `EventActions` — not via direct method calls.
 
 ---
@@ -376,12 +364,14 @@ Need to add a capability to an agent?
 ## What to Add / What to Avoid
 
 **Add:**
+
 - Additional Python guides (e.g., `python-generators-deep-dive.md`, `python-context-managers-deep-dive.md`)
 - Real-world scenario walkthroughs following the `01-request-lifecycle.md` format
 - Java-to-Python comparison tables where helpful
 - Deep dives on any ADK component not yet covered (most core components are now documented in files 00–25)
 
 **Avoid:**
+
 - Adding runnable code or build artifacts — this is a docs-only repo
 - Creating configuration files (no `pyproject.toml`, `requirements.txt`, etc. needed)
 - Duplicating content already covered in existing files
@@ -401,6 +391,7 @@ git push -u origin <current-branch>
 ```
 
 **Commit message conventions:**
+
 - `docs: add <topic> deep dive` — new documentation file
 - `docs: update <file> — <what changed>` — update existing file
 - `docs: fix <file> — <correction>` — factual correction
